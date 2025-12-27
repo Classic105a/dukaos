@@ -8,6 +8,11 @@ import { BranchProvider } from "@/hooks/useBranch";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Inventory from "./pages/Inventory";
+import Branches from "./pages/Branches";
+import Reports from "./pages/Reports";
+import Customers from "./pages/Customers";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,11 +46,11 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/inventory" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/customers" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/branches" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+            <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
