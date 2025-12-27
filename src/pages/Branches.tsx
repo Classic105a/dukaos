@@ -1,0 +1,700 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useBranch } from '@/hooks/useBranch';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Plus,
+  Building2,
+  MapPin,
+  Phone,
+  Package,
+  ArrowRight,
+  Users,
+  TrendingUp,
+  AlertTriangle,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+
+interface Branch {
+  id: string;
+  name: string;
+  location: string | null;
+  phone: string | null;
+  is_headquarters: boolean;
+  is_active: boolean;
+}
+
+interface StockTransfer {
+  id: string;
+  product_id: string;
+  from_branch_id: string | null;
+  to_branch_id: string;
+  quantity: number;
+  status: string | null;
+  notes: string | null;
+  created_at: string;
+  products: { name: string };
+  from_branch?: { name: string } | null;
+  to_branch: { name: string };
+}
+
+interface BranchInventory {
+  id: string;
+  branch_id: string;
+  product_id: string;
+  quantity: number;
+  products: { name: string; unit_price: number; low_stock_threshold: number | null };
+}
+
+const Branches = () => {
+  const { branches, currentBranch, refetch } = useBranch();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [branchDialogOpen, setBranchDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+
+  // Fetch stock transfers
+  const { data: transfers = [] } = useQuery({
+    queryKey: ['stock-transfers'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stock_transfers')
+        .select(`
+          *,
+          products(name),
+          from_branch:branches!stock_transfers_from_branch_id_fkey(name),
+          to_branch:branches!stock_transfers_to_branch_id_fkey(name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data as StockTransfer[];
+    },
+  });
+
+  // Fetch all branch inventory for overview
+  const { data: allInventory = [] } = useQuery({
+    queryKey: ['all-branch-inventory'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('branch_inventory')
+        .select('*, products(name, unit_price, low_stock_threshold)');
+      if (error) throw error;
+      return data as BranchInventory[];
+    },
+  });
+
+  // Fetch products for transfer
+  const { data: products = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Create branch mutation
+  const createBranch = useMutation({
+    mutationFn: async (branchData: Partial<Branch>) => {
+      const { data, error } = await supabase
+        .from('branches')
+        .insert([branchData as any])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: 'Branch created successfully' });
+      setBranchDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error creating branch', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Create stock transfer mutation
+  const createTransfer = useMutation({
+    mutationFn: async (transferData: {
+      product_id: string;
+      from_branch_id: string | null;
+      to_branch_id: string;
+      quantity: number;
+      notes?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('stock_transfers')
+        .insert({
+          ...transferData,
+          status: 'pending',
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-transfers'] });
+      toast({ title: 'Transfer request created successfully' });
+      setTransferDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error creating transfer', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Complete transfer mutation
+  const completeTransfer = useMutation({
+    mutationFn: async (transferId: string) => {
+      const transfer = transfers.find(t => t.id === transferId);
+      if (!transfer) throw new Error('Transfer not found');
+
+      // Update from branch inventory (reduce)
+      if (transfer.from_branch_id) {
+        const fromInventory = allInventory.find(
+          i => i.branch_id === transfer.from_branch_id && i.product_id === transfer.product_id
+        );
+        if (fromInventory) {
+          await supabase
+            .from('branch_inventory')
+            .update({ quantity: fromInventory.quantity - transfer.quantity })
+            .eq('id', fromInventory.id);
+        }
+      }
+
+      // Update to branch inventory (add)
+      const toInventory = allInventory.find(
+        i => i.branch_id === transfer.to_branch_id && i.product_id === transfer.product_id
+      );
+      if (toInventory) {
+        await supabase
+          .from('branch_inventory')
+          .update({ quantity: toInventory.quantity + transfer.quantity })
+          .eq('id', toInventory.id);
+      } else {
+        await supabase
+          .from('branch_inventory')
+          .insert({
+            branch_id: transfer.to_branch_id,
+            product_id: transfer.product_id,
+            quantity: transfer.quantity,
+          });
+      }
+
+      // Mark transfer as completed
+      const { error } = await supabase
+        .from('stock_transfers')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', transferId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['all-branch-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      toast({ title: 'Transfer completed successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error completing transfer', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Calculate branch stats
+  const getBranchStats = (branchId: string) => {
+    const branchInventory = allInventory.filter(i => i.branch_id === branchId);
+    const totalItems = branchInventory.reduce((sum, i) => sum + i.quantity, 0);
+    const totalValue = branchInventory.reduce((sum, i) => sum + (i.quantity * i.products.unit_price), 0);
+    const lowStockCount = branchInventory.filter(
+      i => i.quantity <= (i.products.low_stock_threshold || 10)
+    ).length;
+    return { totalItems, totalValue, lowStockCount, productCount: branchInventory.length };
+  };
+
+  const pendingTransfers = transfers.filter(t => t.status === 'pending');
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Branch Management</h1>
+            <p className="text-muted-foreground">
+              Manage branches, inventory levels, and stock transfers
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                  Transfer Stock
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Stock Transfer</DialogTitle>
+                </DialogHeader>
+                <TransferForm 
+                  branches={branches}
+                  products={products}
+                  onSubmit={(data) => createTransfer.mutate(data)}
+                />
+              </DialogContent>
+            </Dialog>
+            <Dialog open={branchDialogOpen} onOpenChange={setBranchDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Branch
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Branch</DialogTitle>
+                </DialogHeader>
+                <BranchForm onSubmit={(data) => createBranch.mutate(data)} />
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Branches</CardTitle>
+              <Building2 className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{branches.length}</div>
+              <p className="text-xs text-muted-foreground">Active locations</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Stock Value</CardTitle>
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                KES {allInventory.reduce((sum, i) => sum + (i.quantity * i.products.unit_price), 0).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Across all branches</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Pending Transfers</CardTitle>
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingTransfers.length}</div>
+              <p className="text-xs text-muted-foreground">Awaiting completion</p>
+            </CardContent>
+          </Card>
+          <Card className={cn(pendingTransfers.length > 0 && 'border-warning')}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
+              <AlertTriangle className={cn('w-4 h-4', pendingTransfers.length > 0 ? 'text-warning' : 'text-muted-foreground')} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {allInventory.filter(i => i.quantity <= (i.products.low_stock_threshold || 10)).length}
+              </div>
+              <p className="text-xs text-muted-foreground">Across all branches</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <Tabs defaultValue="branches" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="branches">Branches</TabsTrigger>
+            <TabsTrigger value="transfers" className="gap-2">
+              Transfers
+              {pendingTransfers.length > 0 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                  {pendingTransfers.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="inventory">Centralized Inventory</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="branches" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {branches.map(branch => {
+                const stats = getBranchStats(branch.id);
+                const isCurrentBranch = currentBranch?.id === branch.id;
+                
+                return (
+                  <Card 
+                    key={branch.id} 
+                    className={cn(
+                      'hover:shadow-soft transition-shadow',
+                      isCurrentBranch && 'ring-2 ring-primary'
+                    )}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base flex items-center gap-2">
+                              {branch.name}
+                              {branch.is_headquarters && (
+                                <Badge variant="secondary" className="text-xs">HQ</Badge>
+                              )}
+                            </CardTitle>
+                            {branch.location && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {branch.location}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {isCurrentBranch && (
+                          <Badge variant="outline" className="text-xs">Current</Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Products</p>
+                          <p className="font-medium">{stats.productCount}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Total Items</p>
+                          <p className="font-medium">{stats.totalItems.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Stock Value</p>
+                          <p className="font-medium">KES {stats.totalValue.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Low Stock</p>
+                          <p className={cn('font-medium', stats.lowStockCount > 0 && 'text-warning')}>
+                            {stats.lowStockCount} items
+                          </p>
+                        </div>
+                      </div>
+                      {branch.phone && (
+                        <div className="mt-4 pt-4 border-t border-border flex items-center gap-2 text-sm text-muted-foreground">
+                          <Phone className="w-3.5 h-3.5" />
+                          {branch.phone}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="transfers" className="space-y-4">
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left p-4 font-medium text-muted-foreground">Product</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">From</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">To</th>
+                      <th className="text-right p-4 font-medium text-muted-foreground">Quantity</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">Date</th>
+                      <th className="text-right p-4 font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transfers.map(transfer => (
+                      <tr key={transfer.id} className="border-b border-border hover:bg-muted/50">
+                        <td className="p-4 font-medium">{transfer.products.name}</td>
+                        <td className="p-4 text-muted-foreground">
+                          {transfer.from_branch?.name || 'Supplier'}
+                        </td>
+                        <td className="p-4">{transfer.to_branch.name}</td>
+                        <td className="p-4 text-right font-medium">{transfer.quantity}</td>
+                        <td className="p-4">
+                          <Badge variant={
+                            transfer.status === 'completed' ? 'default' :
+                            transfer.status === 'pending' ? 'secondary' : 'destructive'
+                          }>
+                            {transfer.status}
+                          </Badge>
+                        </td>
+                        <td className="p-4 text-muted-foreground">
+                          {format(new Date(transfer.created_at), 'MMM d, yyyy')}
+                        </td>
+                        <td className="p-4 text-right">
+                          {transfer.status === 'pending' && (
+                            <Button 
+                              size="sm"
+                              onClick={() => completeTransfer.mutate(transfer.id)}
+                            >
+                              Complete
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {transfers.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                          No transfers yet
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="inventory" className="space-y-4">
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left p-4 font-medium text-muted-foreground">Product</th>
+                      {branches.map(branch => (
+                        <th key={branch.id} className="text-right p-4 font-medium text-muted-foreground">
+                          {branch.name}
+                        </th>
+                      ))}
+                      <th className="text-right p-4 font-medium text-muted-foreground">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map(product => {
+                      const productInventory = allInventory.filter(i => i.product_id === product.id);
+                      const total = productInventory.reduce((sum, i) => sum + i.quantity, 0);
+                      
+                      return (
+                        <tr key={product.id} className="border-b border-border hover:bg-muted/50">
+                          <td className="p-4 font-medium">{product.name}</td>
+                          {branches.map(branch => {
+                            const inv = productInventory.find(i => i.branch_id === branch.id);
+                            return (
+                              <td key={branch.id} className="p-4 text-right">
+                                {inv ? inv.quantity : 0}
+                              </td>
+                            );
+                          })}
+                          <td className="p-4 text-right font-bold">{total}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+// Branch Form Component
+const BranchForm = ({ onSubmit }: { onSubmit: (data: Partial<Branch>) => void }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    location: '',
+    phone: '',
+    is_headquarters: false,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      name: formData.name,
+      location: formData.location || null,
+      phone: formData.phone || null,
+      is_headquarters: formData.is_headquarters,
+      is_active: true,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="name">Branch Name *</Label>
+        <Input
+          id="name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="location">Location</Label>
+        <Input
+          id="location"
+          value={formData.location}
+          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+          placeholder="e.g., Westlands, Nairobi"
+        />
+      </div>
+      <div>
+        <Label htmlFor="phone">Phone</Label>
+        <Input
+          id="phone"
+          value={formData.phone}
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          placeholder="+254..."
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <Switch
+          id="headquarters"
+          checked={formData.is_headquarters}
+          onCheckedChange={(checked) => setFormData({ ...formData, is_headquarters: checked })}
+        />
+        <Label htmlFor="headquarters">This is the headquarters</Label>
+      </div>
+      <Button type="submit" className="w-full">Create Branch</Button>
+    </form>
+  );
+};
+
+// Transfer Form Component
+const TransferForm = ({ 
+  branches, 
+  products,
+  onSubmit 
+}: { 
+  branches: Branch[];
+  products: { id: string; name: string }[];
+  onSubmit: (data: {
+    product_id: string;
+    from_branch_id: string | null;
+    to_branch_id: string;
+    quantity: number;
+    notes?: string;
+  }) => void;
+}) => {
+  const [formData, setFormData] = useState({
+    product_id: '',
+    from_branch_id: '',
+    to_branch_id: '',
+    quantity: '',
+    notes: '',
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      product_id: formData.product_id,
+      from_branch_id: formData.from_branch_id || null,
+      to_branch_id: formData.to_branch_id,
+      quantity: parseInt(formData.quantity),
+      notes: formData.notes || undefined,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="product">Product *</Label>
+        <Select value={formData.product_id} onValueChange={(v) => setFormData({ ...formData, product_id: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select product" />
+          </SelectTrigger>
+          <SelectContent>
+            {products.map(product => (
+              <SelectItem key={product.id} value={product.id}>{product.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="from_branch">From Branch</Label>
+        <Select value={formData.from_branch_id} onValueChange={(v) => setFormData({ ...formData, from_branch_id: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select source (or leave empty for new stock)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">New Stock (Supplier)</SelectItem>
+            {branches.map(branch => (
+              <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="to_branch">To Branch *</Label>
+        <Select value={formData.to_branch_id} onValueChange={(v) => setFormData({ ...formData, to_branch_id: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select destination" />
+          </SelectTrigger>
+          <SelectContent>
+            {branches.map(branch => (
+              <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="quantity">Quantity *</Label>
+        <Input
+          id="quantity"
+          type="number"
+          value={formData.quantity}
+          onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="notes">Notes</Label>
+        <Input
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+        />
+      </div>
+      <Button type="submit" className="w-full">Create Transfer</Button>
+    </form>
+  );
+};
+
+export default Branches;

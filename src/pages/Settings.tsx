@@ -1,0 +1,620 @@
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import {
+  User,
+  Shield,
+  Building2,
+  Users,
+  Key,
+  Bell,
+  Palette,
+  Plus,
+  Trash2,
+  Crown,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+
+interface Profile {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+}
+
+interface UserWithRole {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  created_at: string;
+}
+
+const Settings = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch current user profile
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      return data as Profile;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch current user role
+  const { data: userRole } = useQuery({
+    queryKey: ['user-role', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      if (error) return null;
+      return data?.role;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch all users with roles (admin only)
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['all-users'],
+    queryFn: async () => {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, created_at');
+      if (profilesError) throw profilesError;
+
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+      if (rolesError) throw rolesError;
+
+      return profiles.map(p => ({
+        ...p,
+        role: roles.find(r => r.user_id === p.id)?.role || 'cashier',
+      })) as UserWithRole[];
+    },
+    enabled: userRole === 'owner' || userRole === 'admin',
+  });
+
+  // Update profile mutation
+  const updateProfile = useMutation({
+    mutationFn: async (profileData: Partial<Profile>) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      const { error } = await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast({ title: 'Profile updated successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error updating profile', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Update user role mutation
+  const updateUserRole = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      // Check if role exists
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (existingRole) {
+        const { error } = await supabase
+          .from('user_roles')
+          .update({ role: role as any })
+          .eq('user_id', userId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('user_roles')
+          .insert([{ user_id: userId, role: role as any }]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      toast({ title: 'User role updated successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error updating role', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'owner': return 'bg-primary/10 text-primary';
+      case 'admin': return 'bg-warning/10 text-warning';
+      case 'manager': return 'bg-info/10 text-info';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6 max-w-4xl mx-auto">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold">Settings</h1>
+          <p className="text-muted-foreground">
+            Manage your account, team, and preferences
+          </p>
+        </div>
+
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="grid grid-cols-4 w-full max-w-md">
+            <TabsTrigger value="profile" className="gap-2">
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Profile</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-2">
+              <Key className="w-4 h-4" />
+              <span className="hidden sm:inline">Security</span>
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="team" className="gap-2">
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Team</span>
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="preferences" className="gap-2">
+              <Palette className="w-4 h-4" />
+              <span className="hidden sm:inline">Preferences</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            <ProfileSettings 
+              profile={profile}
+              userRole={userRole}
+              onUpdate={(data) => updateProfile.mutate(data)}
+            />
+          </TabsContent>
+
+          {/* Security Tab */}
+          <TabsContent value="security">
+            <SecuritySettings />
+          </TabsContent>
+
+          {/* Team Tab */}
+          {isAdmin && (
+            <TabsContent value="team">
+              <TeamSettings 
+                users={allUsers}
+                currentUserId={user?.id || ''}
+                onUpdateRole={(userId, role) => updateUserRole.mutate({ userId, role })}
+                getRoleColor={getRoleColor}
+              />
+            </TabsContent>
+          )}
+
+          {/* Preferences Tab */}
+          <TabsContent value="preferences">
+            <PreferencesSettings />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+// Profile Settings Component
+const ProfileSettings = ({ 
+  profile, 
+  userRole,
+  onUpdate 
+}: { 
+  profile: Profile | null | undefined;
+  userRole: string | null | undefined;
+  onUpdate: (data: Partial<Profile>) => void;
+}) => {
+  const [formData, setFormData] = useState({
+    full_name: '',
+    phone: '',
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || '',
+        phone: profile.phone || '',
+      });
+    }
+  }, [profile]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdate({
+      full_name: formData.full_name || null,
+      phone: formData.phone || null,
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Profile Information</CardTitle>
+        <CardDescription>Update your personal details</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-2xl font-bold text-primary">
+                {profile?.full_name?.charAt(0) || profile?.email?.charAt(0) || '?'}
+              </span>
+            </div>
+            <div>
+              <h3 className="font-medium">{profile?.full_name || 'No name set'}</h3>
+              <p className="text-sm text-muted-foreground">{profile?.email}</p>
+              {userRole && (
+                <Badge variant="outline" className="mt-1 capitalize">
+                  <Shield className="w-3 h-3 mr-1" />
+                  {userRole}
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="full_name">Full Name</Label>
+              <Input
+                id="full_name"
+                value={formData.full_name}
+                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                placeholder="Your full name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                value={profile?.email || ''}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+254..."
+              />
+            </div>
+          </div>
+
+          <Button type="submit">Save Changes</Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Security Settings Component
+const SecuritySettings = () => {
+  const { toast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (newPassword !== confirmPassword) {
+      toast({ title: 'Passwords do not match', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      toast({ title: 'Password updated successfully' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      toast({ title: 'Error updating password', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Security Settings</CardTitle>
+        <CardDescription>Manage your password and security preferences</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handlePasswordChange} className="space-y-4">
+          <div>
+            <Label htmlFor="new_password">New Password</Label>
+            <Input
+              id="new_password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter new password"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="confirm_password">Confirm Password</Label>
+            <Input
+              id="confirm_password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+              required
+            />
+          </div>
+          <Button type="submit">Update Password</Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Team Settings Component
+const TeamSettings = ({ 
+  users, 
+  currentUserId,
+  onUpdateRole,
+  getRoleColor,
+}: { 
+  users: UserWithRole[];
+  currentUserId: string;
+  onUpdateRole: (userId: string, role: string) => void;
+  getRoleColor: (role: string) => string;
+}) => {
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Team Members</CardTitle>
+          <CardDescription>Manage team access and roles</CardDescription>
+        </div>
+        <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Invite User
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Invite Team Member</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                New team members can sign up at the login page. After they sign up, 
+                you can assign them a role from this settings page.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {users.map(member => (
+            <div 
+              key={member.id} 
+              className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-sm font-medium text-primary">
+                    {member.full_name?.charAt(0) || member.email?.charAt(0) || '?'}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-medium flex items-center gap-2">
+                    {member.full_name || 'Unnamed'}
+                    {member.id === currentUserId && (
+                      <Badge variant="outline" className="text-xs">You</Badge>
+                    )}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{member.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Select 
+                  value={member.role}
+                  onValueChange={(role) => onUpdateRole(member.id, role)}
+                  disabled={member.id === currentUserId || member.role === 'owner'}
+                >
+                  <SelectTrigger className={cn('w-32', getRoleColor(member.role))}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owner">
+                      <div className="flex items-center gap-2">
+                        <Crown className="w-3.5 h-3.5" />
+                        Owner
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="cashier">Cashier</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ))}
+          {users.length === 0 && (
+            <p className="text-center text-muted-foreground py-8">
+              No team members yet
+            </p>
+          )}
+        </div>
+        
+        {/* Role Permissions Info */}
+        <div className="mt-6 pt-6 border-t border-border">
+          <h4 className="font-medium mb-3">Role Permissions</h4>
+          <div className="grid gap-2 text-sm">
+            <div className="flex items-start gap-3">
+              <Badge className="bg-primary/10 text-primary">Owner</Badge>
+              <span className="text-muted-foreground">Full access to all features, settings, and team management</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Badge className="bg-warning/10 text-warning">Admin</Badge>
+              <span className="text-muted-foreground">Manage products, inventory, reports, and team members</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Badge className="bg-info/10 text-info">Manager</Badge>
+              <span className="text-muted-foreground">Manage inventory, view reports, process sales</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Badge className="bg-muted text-muted-foreground">Cashier</Badge>
+              <span className="text-muted-foreground">Process sales and view own transactions</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Preferences Settings Component
+const PreferencesSettings = () => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Preferences</CardTitle>
+        <CardDescription>Customize your experience</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {/* Theme */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Theme</h4>
+              <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
+            </div>
+            <Select defaultValue="light">
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+                <SelectItem value="system">System</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Notifications */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Notifications</h4>
+              <p className="text-sm text-muted-foreground">Receive alerts for low stock and sales</p>
+            </div>
+            <Select defaultValue="all">
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="important">Important</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Currency */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Currency</h4>
+              <p className="text-sm text-muted-foreground">Default currency for transactions</p>
+            </div>
+            <Select defaultValue="kes">
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="kes">KES (KSh)</SelectItem>
+                <SelectItem value="usd">USD ($)</SelectItem>
+                <SelectItem value="eur">EUR (€)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Receipt Format */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Receipt Format</h4>
+              <p className="text-sm text-muted-foreground">Default format for printed receipts</p>
+            </div>
+            <Select defaultValue="thermal">
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="thermal">Thermal (80mm)</SelectItem>
+                <SelectItem value="a4">A4</SelectItem>
+                <SelectItem value="letter">Letter</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default Settings;
