@@ -161,69 +161,118 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
         ))}
       </div>
 
-      {/* Products Grid */}
+      {/* Products - List on mobile, Grid on desktop */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-muted animate-pulse rounded-xl h-32" />
-            ))}
-          </div>
+          <>
+            {/* Mobile loading skeleton - list */}
+            <div className="flex flex-col gap-2 sm:hidden">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-muted animate-pulse rounded-lg h-14" />
+              ))}
+            </div>
+            {/* Desktop loading skeleton - grid */}
+            <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-muted animate-pulse rounded-xl h-32" />
+              ))}
+            </div>
+          </>
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <Package className="w-12 h-12 mb-2" />
             <p>No products found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filteredProducts.map(product => (
-              <button
-                key={product.id}
-                onClick={() => onProductSelect(product)}
-                className={cn(
-                  'bg-card rounded-xl p-3 text-left transition-all hover:shadow-soft hover:scale-[1.02] active:scale-[0.98] border border-border',
-                  product.stock === 0 && 'opacity-50'
-                )}
-              >
-                {product.image_url ? (
-                  <div className="w-full h-16 rounded-lg mb-2 overflow-hidden bg-muted">
-                    <img 
-                      src={product.image_url} 
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
+          <>
+            {/* Mobile List View - No photos */}
+            <div className="flex flex-col gap-2 sm:hidden">
+              {filteredProducts.map(product => (
+                <button
+                  key={product.id}
+                  onClick={() => onProductSelect(product)}
+                  className={cn(
+                    'bg-card rounded-lg p-3 text-left transition-all hover:bg-accent active:scale-[0.98] border border-border flex items-center justify-between gap-3',
+                    product.stock === 0 && 'opacity-50'
+                  )}
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-sm truncate">{product.name}</h3>
+                    {product.category && (
+                      <span 
+                        className="text-xs"
+                        style={{ color: product.category.color }}
+                      >
+                        {product.category.name}
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <div className="w-full h-16 rounded-lg mb-2 bg-muted flex items-center justify-center">
-                    <Package className="w-6 h-6 text-muted-foreground" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-bold text-primary text-sm">
+                      KES {product.unit_price.toLocaleString()}
+                    </span>
+                    <Badge 
+                      variant={product.stock && product.stock > 0 ? 'secondary' : 'destructive'}
+                      className="text-xs"
+                    >
+                      {product.stock || 0}
+                    </Badge>
                   </div>
-                )}
-                <h3 className="font-medium text-sm line-clamp-2 mb-1">{product.name}</h3>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-primary">
-                    KES {product.unit_price.toLocaleString()}
-                  </span>
-                  <Badge 
-                    variant={product.stock && product.stock > 0 ? 'secondary' : 'destructive'}
-                    className="text-xs"
-                  >
-                    {product.stock || 0}
-                  </Badge>
-                </div>
-                {product.category && (
-                  <div 
-                    className="mt-2 text-xs px-2 py-0.5 rounded-full inline-block"
-                    style={{ 
-                      backgroundColor: `${product.category.color}20`,
-                      color: product.category.color
-                    }}
-                  >
-                    {product.category.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop Grid View - With photos */}
+            <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {filteredProducts.map(product => (
+                <button
+                  key={product.id}
+                  onClick={() => onProductSelect(product)}
+                  className={cn(
+                    'bg-card rounded-xl p-3 text-left transition-all hover:shadow-soft hover:scale-[1.02] active:scale-[0.98] border border-border',
+                    product.stock === 0 && 'opacity-50'
+                  )}
+                >
+                  {product.image_url ? (
+                    <div className="w-full h-16 rounded-lg mb-2 overflow-hidden bg-muted">
+                      <img 
+                        src={product.image_url} 
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-16 rounded-lg mb-2 bg-muted flex items-center justify-center">
+                      <Package className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  <h3 className="font-medium text-sm line-clamp-2 mb-1">{product.name}</h3>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-primary">
+                      KES {product.unit_price.toLocaleString()}
+                    </span>
+                    <Badge 
+                      variant={product.stock && product.stock > 0 ? 'secondary' : 'destructive'}
+                      className="text-xs"
+                    >
+                      {product.stock || 0}
+                    </Badge>
                   </div>
-                )}
-              </button>
-            ))}
-          </div>
+                  {product.category && (
+                    <div 
+                      className="mt-2 text-xs px-2 py-0.5 rounded-full inline-block"
+                      style={{ 
+                        backgroundColor: `${product.category.color}20`,
+                        color: product.category.color
+                      }}
+                    >
+                      {product.category.name}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
