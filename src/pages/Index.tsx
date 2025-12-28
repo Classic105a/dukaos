@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 
 const features = [
   {
@@ -125,8 +126,12 @@ export default function Index() {
             <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">Login</Button>
-            <Button variant="hero" size="sm">Get Started</Button>
+            <Link to="/auth">
+              <Button variant="ghost" size="sm">Login</Button>
+            </Link>
+            <Link to="/auth">
+              <Button variant="hero" size="sm">Get Started</Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -155,10 +160,12 @@ export default function Index() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <Button variant="hero" size="xl">
-                Start Selling in 5 Minutes
-                <ArrowRight className="w-5 h-5" />
-              </Button>
+              <Link to="/auth">
+                <Button variant="hero" size="xl">
+                  Start Selling in 5 Minutes
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </Link>
               <Button variant="outline" size="xl">
                 <Smartphone className="w-5 h-5" />
                 Watch Demo
@@ -413,10 +420,12 @@ export default function Index() {
               Join thousands of Kenyan retailers already using DukaOS. Start selling in less than 5 minutes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="outline-light" size="xl">
-                Start Free Today
-                <ArrowRight className="w-5 h-5" />
-              </Button>
+              <Link to="/auth">
+                <Button variant="outline-light" size="xl">
+                  Start Free Today
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </Link>
               <Button variant="ghost" size="xl" className="text-primary-foreground hover:bg-primary-foreground/10">
                 Talk to Sales
               </Button>
