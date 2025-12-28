@@ -17,8 +17,9 @@ const authSchema = z.object({
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, signIn, signUp, resetPassword, loading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -36,7 +37,9 @@ const Auth = () => {
 
   const validateForm = () => {
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        authSchema.pick({ email: true }).parse(formData);
+      } else if (isLogin) {
         authSchema.pick({ email: true, password: true }).parse(formData);
       } else {
         authSchema.parse({ ...formData, fullName: formData.fullName });
@@ -65,7 +68,15 @@ const Auth = () => {
     setIsSubmitting(true);
 
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        const { error } = await resetPassword(formData.email);
+        if (error) {
+          toast.error(error.message);
+        } else {
+          toast.success('Password reset email sent! Check your inbox.');
+          setIsForgotPassword(false);
+        }
+      } else if (isLogin) {
         const { error } = await signIn(formData.email, formData.password);
         if (error) {
           if (error.message.includes('Invalid login')) {
@@ -111,17 +122,19 @@ const Auth = () => {
             <ShoppingBag className="w-8 h-8 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            {isLogin ? 'Welcome Back' : 'Get Started'}
+            {isForgotPassword ? 'Reset Password' : isLogin ? 'Welcome Back' : 'Get Started'}
           </CardTitle>
           <CardDescription>
-            {isLogin 
-              ? 'Sign in to access your DukaOS dashboard' 
-              : 'Create your account and start selling in minutes'}
+            {isForgotPassword 
+              ? 'Enter your email to receive a password reset link'
+              : isLogin 
+                ? 'Sign in to access your DukaOS dashboard' 
+                : 'Create your account and start selling in minutes'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {!isLogin && !isForgotPassword && (
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input
@@ -153,29 +166,45 @@ const Auth = () => {
               )}
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {!isForgotPassword && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsForgotPassword(true);
+                        setErrors({});
+                      }}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
-            </div>
+            )}
 
             <Button 
               type="submit" 
@@ -183,24 +212,46 @@ const Auth = () => {
               size="lg"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
+              {isSubmitting 
+                ? 'Please wait...' 
+                : isForgotPassword 
+                  ? 'Send Reset Link' 
+                  : isLogin 
+                    ? 'Sign In' 
+                    : 'Create Account'}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              {isLogin ? "Don't have an account?" : 'Already have an account?'}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setErrors({});
-                }}
-                className="ml-1 text-primary font-medium hover:underline"
-              >
-                {isLogin ? 'Sign up' : 'Sign in'}
-              </button>
-            </p>
+            {isForgotPassword ? (
+              <p className="text-sm text-muted-foreground">
+                Remember your password?
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setErrors({});
+                  }}
+                  className="ml-1 text-primary font-medium hover:underline"
+                >
+                  Back to sign in
+                </button>
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {isLogin ? "Don't have an account?" : 'Already have an account?'}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    setErrors({});
+                  }}
+                  className="ml-1 text-primary font-medium hover:underline"
+                >
+                  {isLogin ? 'Sign up' : 'Sign in'}
+                </button>
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
