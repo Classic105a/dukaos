@@ -4,7 +4,7 @@ import { useBranch } from '@/hooks/useBranch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Barcode, Package } from 'lucide-react';
+import { Search, Barcode, Package, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -185,40 +185,51 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
           </div>
         ) : (
           <>
-            {/* Mobile List View - No photos */}
+            {/* Mobile List View - No photos, with quick-add button */}
             <div className="flex flex-col gap-2 sm:hidden">
               {filteredProducts.map(product => (
-                <button
+                <div
                   key={product.id}
-                  onClick={() => onProductSelect(product)}
                   className={cn(
-                    'bg-card rounded-lg p-3 text-left transition-all hover:bg-accent active:scale-[0.98] border border-border flex items-center justify-between gap-3',
+                    'bg-card rounded-lg p-3 transition-all border border-border flex items-center justify-between gap-2',
                     product.stock === 0 && 'opacity-50'
                   )}
                 >
-                  <div className="flex-1 min-w-0">
+                  <button
+                    onClick={() => onProductSelect(product)}
+                    className="flex-1 min-w-0 text-left"
+                  >
                     <h3 className="font-medium text-sm truncate">{product.name}</h3>
-                    {product.category && (
-                      <span 
-                        className="text-xs"
-                        style={{ color: product.category.color }}
-                      >
-                        {product.category.name}
+                    <div className="flex items-center gap-2">
+                      {product.category && (
+                        <span 
+                          className="text-xs"
+                          style={{ color: product.category.color }}
+                        >
+                          {product.category.name}
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        Stock: {product.stock || 0}
                       </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-bold text-primary text-sm">
-                      KES {product.unit_price.toLocaleString()}
-                    </span>
-                    <Badge 
-                      variant={product.stock && product.stock > 0 ? 'secondary' : 'destructive'}
-                      className="text-xs"
-                    >
-                      {product.stock || 0}
-                    </Badge>
-                  </div>
-                </button>
+                    </div>
+                  </button>
+                  <span className="font-bold text-primary text-sm shrink-0">
+                    KES {product.unit_price.toLocaleString()}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="default"
+                    className="h-8 w-8 shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onProductSelect(product);
+                    }}
+                    disabled={product.stock === 0}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               ))}
             </div>
 
