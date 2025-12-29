@@ -102,34 +102,70 @@ export type Database = {
       }
       branches: {
         Row: {
+          address: string | null
+          business_registration_number: string | null
+          city: string | null
           created_at: string
+          email: string | null
           id: string
           is_active: boolean | null
           is_headquarters: boolean | null
+          kra_pin: string | null
           location: string | null
+          logo_url: string | null
+          mpesa_account_number: string | null
+          mpesa_paybill_number: string | null
+          mpesa_till_number: string | null
           name: string
+          opening_hours: string | null
           phone: string | null
+          receipt_footer_message: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          address?: string | null
+          business_registration_number?: string | null
+          city?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_active?: boolean | null
           is_headquarters?: boolean | null
+          kra_pin?: string | null
           location?: string | null
+          logo_url?: string | null
+          mpesa_account_number?: string | null
+          mpesa_paybill_number?: string | null
+          mpesa_till_number?: string | null
           name: string
+          opening_hours?: string | null
           phone?: string | null
+          receipt_footer_message?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          address?: string | null
+          business_registration_number?: string | null
+          city?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_active?: boolean | null
           is_headquarters?: boolean | null
+          kra_pin?: string | null
           location?: string | null
+          logo_url?: string | null
+          mpesa_account_number?: string | null
+          mpesa_paybill_number?: string | null
+          mpesa_till_number?: string | null
           name?: string
+          opening_hours?: string | null
           phone?: string | null
+          receipt_footer_message?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -263,6 +299,80 @@ export type Database = {
           },
         ]
       }
+      printer_configurations: {
+        Row: {
+          bluetooth_device_id: string | null
+          bluetooth_device_name: string | null
+          branch_id: string
+          characters_per_line: number | null
+          connection_type: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          is_active: boolean | null
+          is_default: boolean | null
+          last_connected_at: string | null
+          name: string
+          paper_width: number | null
+          port: number | null
+          printer_brand: string | null
+          printer_model: string | null
+          updated_at: string
+          usb_product_id: string | null
+          usb_vendor_id: string | null
+        }
+        Insert: {
+          bluetooth_device_id?: string | null
+          bluetooth_device_name?: string | null
+          branch_id: string
+          characters_per_line?: number | null
+          connection_type: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          last_connected_at?: string | null
+          name: string
+          paper_width?: number | null
+          port?: number | null
+          printer_brand?: string | null
+          printer_model?: string | null
+          updated_at?: string
+          usb_product_id?: string | null
+          usb_vendor_id?: string | null
+        }
+        Update: {
+          bluetooth_device_id?: string | null
+          bluetooth_device_name?: string | null
+          branch_id?: string
+          characters_per_line?: number | null
+          connection_type?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          last_connected_at?: string | null
+          name?: string
+          paper_width?: number | null
+          port?: number | null
+          printer_brand?: string | null
+          printer_model?: string | null
+          updated_at?: string
+          usb_product_id?: string | null
+          usb_vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "printer_configurations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           barcode: string | null
@@ -357,6 +467,107 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      receipt_settings: {
+        Row: {
+          branch_id: string
+          created_at: string
+          footer_message: string | null
+          id: string
+          paper_width: string | null
+          return_policy: string | null
+          show_address: boolean | null
+          show_branch_name: boolean | null
+          show_business_name: boolean | null
+          show_cashier_name: boolean | null
+          show_customer_name: boolean | null
+          show_date_time: boolean | null
+          show_discount: boolean | null
+          show_email: boolean | null
+          show_footer_message: boolean | null
+          show_item_sku: boolean | null
+          show_item_tax: boolean | null
+          show_kra_pin: boolean | null
+          show_logo: boolean | null
+          show_mpesa_paybill: boolean | null
+          show_mpesa_till: boolean | null
+          show_phone: boolean | null
+          show_receipt_number: boolean | null
+          show_return_policy: boolean | null
+          show_subtotal: boolean | null
+          show_total_tax: boolean | null
+          show_website: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          footer_message?: string | null
+          id?: string
+          paper_width?: string | null
+          return_policy?: string | null
+          show_address?: boolean | null
+          show_branch_name?: boolean | null
+          show_business_name?: boolean | null
+          show_cashier_name?: boolean | null
+          show_customer_name?: boolean | null
+          show_date_time?: boolean | null
+          show_discount?: boolean | null
+          show_email?: boolean | null
+          show_footer_message?: boolean | null
+          show_item_sku?: boolean | null
+          show_item_tax?: boolean | null
+          show_kra_pin?: boolean | null
+          show_logo?: boolean | null
+          show_mpesa_paybill?: boolean | null
+          show_mpesa_till?: boolean | null
+          show_phone?: boolean | null
+          show_receipt_number?: boolean | null
+          show_return_policy?: boolean | null
+          show_subtotal?: boolean | null
+          show_total_tax?: boolean | null
+          show_website?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          footer_message?: string | null
+          id?: string
+          paper_width?: string | null
+          return_policy?: string | null
+          show_address?: boolean | null
+          show_branch_name?: boolean | null
+          show_business_name?: boolean | null
+          show_cashier_name?: boolean | null
+          show_customer_name?: boolean | null
+          show_date_time?: boolean | null
+          show_discount?: boolean | null
+          show_email?: boolean | null
+          show_footer_message?: boolean | null
+          show_item_sku?: boolean | null
+          show_item_tax?: boolean | null
+          show_kra_pin?: boolean | null
+          show_logo?: boolean | null
+          show_mpesa_paybill?: boolean | null
+          show_mpesa_till?: boolean | null
+          show_phone?: boolean | null
+          show_receipt_number?: boolean | null
+          show_return_policy?: boolean | null
+          show_subtotal?: boolean | null
+          show_total_tax?: boolean | null
+          show_website?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_settings_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: true
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sale_items: {
         Row: {
