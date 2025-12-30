@@ -16,8 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import { Receipt, Save, Eye } from 'lucide-react';
+import { ReceiptPreview } from './ReceiptPreview';
 
 interface ReceiptSettingsData {
   id?: string;
@@ -80,6 +88,8 @@ export const ReceiptSettings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<ReceiptSettingsData | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [branchDetails, setBranchDetails] = useState<any>(null);
 
   // Fetch receipt settings for current branch
   const { data: savedSettings, isLoading } = useQuery({
@@ -96,6 +106,20 @@ export const ReceiptSettings = () => {
     },
     enabled: !!currentBranch?.id,
   });
+
+  // Fetch branch details for preview
+  useEffect(() => {
+    const fetchBranchDetails = async () => {
+      if (!currentBranch?.id) return;
+      const { data } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('id', currentBranch.id)
+        .single();
+      setBranchDetails(data);
+    };
+    fetchBranchDetails();
+  }, [currentBranch?.id]);
 
   useEffect(() => {
     if (savedSettings) {
@@ -160,10 +184,25 @@ export const ReceiptSettings = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Eye className="w-4 h-4 mr-2" />
-            Preview
-          </Button>
+          <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-[400px] sm:w-[450px] overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Receipt Preview</SheetTitle>
+              </SheetHeader>
+              <div className="mt-6 py-4 bg-muted/30 rounded-lg">
+                <ReceiptPreview settings={settings} branchDetails={branchDetails} />
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-4">
+                This is a preview with sample data. Actual receipts will show real transaction data.
+              </p>
+            </SheetContent>
+          </Sheet>
           <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
             <Save className="w-4 h-4 mr-2" />
             Save Settings

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Save, Upload } from 'lucide-react';
+import { Building2, Save, Upload, X, Loader2, Image } from 'lucide-react';
 
 interface BranchDetails {
   id: string;
@@ -37,6 +37,8 @@ export const BranchDetailsForm = () => {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<BranchDetails>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchBranchDetails = async () => {
@@ -84,6 +86,85 @@ export const BranchDetailsForm = () => {
 
   const updateField = (field: keyof BranchDetails, value: string | null) => {
     setFormData(prev => ({ ...prev, [field]: value || null }));
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentBranch?.id) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file type', description: 'Please upload an image file.', variant: 'destructive' });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Please upload an image under 2MB.', variant: 'destructive' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentBranch.id}/logo.${fileExt}`;
+
+      // Delete old logo if exists
+      if (formData.logo_url) {
+        const oldPath = formData.logo_url.split('/').slice(-2).join('/');
+        await supabase.storage.from('branch-logos').remove([oldPath]);
+      }
+
+      // Upload new logo
+      const { error: uploadError } = await supabase.storage
+        .from('branch-logos')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('branch-logos')
+        .getPublicUrl(fileName);
+
+      // Update form data and save
+      const newLogoUrl = `${publicUrl}?t=${Date.now()}`;
+      setFormData(prev => ({ ...prev, logo_url: newLogoUrl }));
+      
+      await supabase
+        .from('branches')
+        .update({ logo_url: newLogoUrl })
+        .eq('id', currentBranch.id);
+
+      queryClient.invalidateQueries({ queryKey: ['branches'] });
+      toast({ title: 'Logo uploaded successfully' });
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!currentBranch?.id || !formData.logo_url) return;
+
+    try {
+      const oldPath = formData.logo_url.split('/').slice(-2).join('/').split('?')[0];
+      await supabase.storage.from('branch-logos').remove([oldPath]);
+
+      setFormData(prev => ({ ...prev, logo_url: null }));
+      
+      await supabase
+        .from('branches')
+        .update({ logo_url: null })
+        .eq('id', currentBranch.id);
+
+      queryClient.invalidateQueries({ queryKey: ['branches'] });
+      toast({ title: 'Logo removed' });
+    } catch (error: any) {
+      toast({ title: 'Error removing logo', description: error.message, variant: 'destructive' });
+    }
   };
 
   if (isLoading) {
@@ -201,21 +282,61 @@ export const BranchDetailsForm = () => {
             </div>
             <Separator />
             <div>
-              <Label htmlFor="logo_url">Logo URL</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="logo_url"
-                  value={formData.logo_url || ''}
-                  onChange={(e) => updateField('logo_url', e.target.value)}
-                  placeholder="https://..."
-                />
-                <Button variant="outline" size="icon" disabled>
-                  <Upload className="w-4 h-4" />
-                </Button>
+              <Label>Branch Logo</Label>
+              <div className="mt-2 space-y-3">
+                {/* Logo Preview */}
+                {formData.logo_url ? (
+                  <div className="relative w-24 h-24 rounded-lg border border-border overflow-hidden group">
+                    <img 
+                      src={formData.logo_url} 
+                      alt="Branch logo" 
+                      className="w-full h-full object-contain bg-muted"
+                    />
+                    <button
+                      onClick={handleRemoveLogo}
+                      className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-24 h-24 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                    <Image className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                )}
+                
+                {/* Upload Button */}
+                <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Logo
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  PNG or JPG, max 2MB. Used on receipts and branding.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Used on receipts and branding
-              </p>
             </div>
           </CardContent>
         </Card>
