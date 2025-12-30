@@ -35,9 +35,14 @@ import {
   Plus,
   Trash2,
   Crown,
+  Receipt,
+  Printer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { BranchDetailsForm } from '@/components/settings/BranchDetailsForm';
+import { ReceiptSettings } from '@/components/settings/ReceiptSettings';
+import { PrinterSettings } from '@/components/settings/PrinterSettings';
 
 interface Profile {
   id: string;
@@ -188,7 +193,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full max-w-md">
+          <TabsList className="flex flex-wrap gap-1 h-auto p-1 w-full max-w-2xl">
             <TabsTrigger value="profile" className="gap-2">
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">Profile</span>
@@ -198,10 +203,24 @@ const Settings = () => {
               <span className="hidden sm:inline">Security</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="team" className="gap-2">
-                <Users className="w-4 h-4" />
-                <span className="hidden sm:inline">Team</span>
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="team" className="gap-2">
+                  <Users className="w-4 h-4" />
+                  <span className="hidden sm:inline">Team</span>
+                </TabsTrigger>
+                <TabsTrigger value="branch" className="gap-2">
+                  <Building2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Branch</span>
+                </TabsTrigger>
+                <TabsTrigger value="receipts" className="gap-2">
+                  <Receipt className="w-4 h-4" />
+                  <span className="hidden sm:inline">Receipts</span>
+                </TabsTrigger>
+                <TabsTrigger value="printers" className="gap-2">
+                  <Printer className="w-4 h-4" />
+                  <span className="hidden sm:inline">Printers</span>
+                </TabsTrigger>
+              </>
             )}
             <TabsTrigger value="preferences" className="gap-2">
               <Palette className="w-4 h-4" />
@@ -232,6 +251,27 @@ const Settings = () => {
                 onUpdateRole={(userId, role) => updateUserRole.mutate({ userId, role })}
                 getRoleColor={getRoleColor}
               />
+            </TabsContent>
+          )}
+
+          {/* Branch Tab */}
+          {isAdmin && (
+            <TabsContent value="branch">
+              <BranchDetailsForm />
+            </TabsContent>
+          )}
+
+          {/* Receipts Tab */}
+          {isAdmin && (
+            <TabsContent value="receipts">
+              <ReceiptSettings />
+            </TabsContent>
+          )}
+
+          {/* Printers Tab */}
+          {isAdmin && (
+            <TabsContent value="printers">
+              <PrinterSettings />
             </TabsContent>
           )}
 
