@@ -33,6 +33,7 @@ import {
   TestTube,
   Check,
   X,
+  Search,
 } from 'lucide-react';
 import {
   connectBluetoothPrinter,
@@ -43,6 +44,7 @@ import {
   textToBytes,
   PrinterConfig,
 } from '@/lib/escpos';
+import { NetworkPrinterDiscovery } from './NetworkPrinterDiscovery';
 
 interface PrinterConfiguration {
   id: string;
@@ -87,6 +89,7 @@ export const PrinterSettings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
 
   // Fetch printer configurations
@@ -250,21 +253,45 @@ export const PrinterSettings = () => {
             Connect and configure thermal printers for {currentBranch?.name}
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Printer
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Printer</DialogTitle>
-            </DialogHeader>
-            <PrinterForm onSubmit={(data) => createPrinter.mutate(data)} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setDiscoveryOpen(true)}>
+            <Search className="w-4 h-4 mr-2" />
+            Discover
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Printer
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Printer</DialogTitle>
+              </DialogHeader>
+              <PrinterForm onSubmit={(data) => createPrinter.mutate(data)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      <NetworkPrinterDiscovery
+        open={discoveryOpen}
+        onOpenChange={setDiscoveryOpen}
+        onPrinterSelect={(printer) => {
+          createPrinter.mutate({
+            name: printer.name,
+            connection_type: 'ethernet',
+            ip_address: printer.ip_address,
+            port: printer.port,
+            printer_brand: 'generic',
+            paper_width: 80,
+            characters_per_line: 48,
+            is_active: true,
+            is_default: false,
+          });
+        }}
+      />
 
       {printers.length === 0 ? (
         <Card>
