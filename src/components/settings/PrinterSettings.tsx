@@ -64,6 +64,18 @@ interface PrinterConfiguration {
   last_connected_at: string | null;
 }
 
+interface PrinterFormData {
+  name: string;
+  connection_type: 'bluetooth' | 'usb' | 'ethernet';
+  ip_address: string | null;
+  port: number;
+  printer_brand: string;
+  paper_width: number;
+  characters_per_line: number;
+  is_active: boolean;
+  is_default: boolean;
+}
+
 const CONNECTION_ICONS = {
   bluetooth: Bluetooth,
   usb: Usb,
@@ -95,10 +107,13 @@ export const PrinterSettings = () => {
 
   // Create printer mutation
   const createPrinter = useMutation({
-    mutationFn: async (data: Partial<PrinterConfiguration>) => {
+    mutationFn: async (data: PrinterFormData) => {
       const { error } = await supabase
         .from('printer_configurations')
-        .insert([{ ...data, branch_id: currentBranch?.id }]);
+        .insert([{ 
+          ...data, 
+          branch_id: currentBranch?.id!,
+        }]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -391,7 +406,7 @@ export const PrinterSettings = () => {
 const PrinterForm = ({ 
   onSubmit 
 }: { 
-  onSubmit: (data: Partial<PrinterConfiguration>) => void;
+  onSubmit: (data: PrinterFormData) => void;
 }) => {
   const [formData, setFormData] = useState({
     name: '',
