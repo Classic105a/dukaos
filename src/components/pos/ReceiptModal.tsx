@@ -1,8 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer, Share2, Check } from 'lucide-react';
 import type { CartItem } from './Cart';
+import JsBarcode from 'jsbarcode';
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -38,10 +39,29 @@ const ReceiptModal = ({
   customerName
 }: ReceiptModalProps) => {
   const receiptRef = useRef<HTMLDivElement>(null);
+  const barcodeRef = useRef<SVGSVGElement>(null);
   const date = new Date().toLocaleString('en-KE', {
     dateStyle: 'medium',
     timeStyle: 'short'
   });
+
+  // Generate barcode when receipt number changes
+  useEffect(() => {
+    if (barcodeRef.current && receiptNumber) {
+      try {
+        JsBarcode(barcodeRef.current, receiptNumber.replace(/[^A-Z0-9]/gi, ''), {
+          format: 'CODE128',
+          width: 1.5,
+          height: 35,
+          displayValue: true,
+          fontSize: 10,
+          margin: 5,
+        });
+      } catch (e) {
+        console.error('Barcode generation error:', e);
+      }
+    }
+  }, [receiptNumber, isOpen]);
 
   const handlePrint = () => {
     const printContent = receiptRef.current?.innerHTML;
@@ -178,6 +198,13 @@ Thank you for shopping with us!
                 Ref: {payments.find(p => p.mpesa_reference)?.mpesa_reference}
               </p>
             )}
+          </div>
+
+          <div className="divider border-t border-dashed border-gray-400 my-3" />
+
+          {/* Barcode */}
+          <div className="text-center">
+            <svg ref={barcodeRef} className="mx-auto" />
           </div>
 
           <div className="divider border-t border-dashed border-gray-400 my-3" />

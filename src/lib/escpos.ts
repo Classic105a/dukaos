@@ -36,6 +36,27 @@ export const COMMANDS = {
   
   // Cash drawer
   OPEN_DRAWER: `${ESC}p\x00\x19\xFA`,
+  
+  // Barcode commands
+  BARCODE_HEIGHT: (h: number) => `${GS}h${String.fromCharCode(h)}`,
+  BARCODE_WIDTH: (w: number) => `${GS}w${String.fromCharCode(w)}`,
+  BARCODE_TEXT_BELOW: `${GS}H\x02`,
+  BARCODE_TEXT_NONE: `${GS}H\x00`,
+  // Barcode types: CODE39=4, CODE128=73
+  BARCODE_CODE128: (data: string) => `${GS}k${String.fromCharCode(73)}${String.fromCharCode(data.length)}${data}`,
+  BARCODE_CODE39: (data: string) => `${GS}k${String.fromCharCode(4)}${data}\x00`,
+  
+  // QR Code commands (GS ( k)
+  QRCODE_MODEL: `${GS}(k\x04\x00\x31\x41\x32\x00`, // Model 2
+  QRCODE_SIZE: (size: number) => `${GS}(k\x03\x00\x31\x43${String.fromCharCode(size)}`,
+  QRCODE_ERROR_CORRECTION: `${GS}(k\x03\x00\x31\x45\x31`, // Level L (7%)
+  QRCODE_STORE: (data: string) => {
+    const len = data.length + 3;
+    const pL = len % 256;
+    const pH = Math.floor(len / 256);
+    return `${GS}(k${String.fromCharCode(pL)}${String.fromCharCode(pH)}\x31\x50\x30${data}`;
+  },
+  QRCODE_PRINT: `${GS}(k\x03\x00\x31\x51\x30`,
 };
 
 export interface PrinterConfig {
@@ -109,6 +130,9 @@ export interface ReceiptSettings {
   footerMessage: string;
   showReturnPolicy: boolean;
   returnPolicy: string;
+  showBarcode: boolean;
+  showQrCode: boolean;
+  barcodeType: 'code128' | 'code39' | 'qrcode';
 }
 
 const defaultSettings: ReceiptSettings = {
@@ -135,6 +159,9 @@ const defaultSettings: ReceiptSettings = {
   footerMessage: 'Thank you for your business!',
   showReturnPolicy: false,
   returnPolicy: '',
+  showBarcode: true,
+  showQrCode: false,
+  barcodeType: 'code128',
 };
 
 // Format currency
@@ -295,6 +322,37 @@ export const buildReceiptText = (
       paymentLine += ` (${payment.reference})`;
     }
     receipt += paymentLine + '\n';
+  }
+  
+  // Barcode/QR Code section
+  if (s.showBarcode || s.showQrCode) {
+    receipt += '\n';
+    receipt += COMMANDS.ALIGN_CENTER;
+    
+    if (s.showQrCode || s.barcodeType === 'qrcode') {
+      // Print QR Code with receipt number
+      receipt += COMMANDS.QRCODE_MODEL;
+      receipt += COMMANDS.QRCODE_SIZE(6); // Size 6 for good visibility
+      receipt += COMMANDS.QRCODE_ERROR_CORRECTION;
+      receipt += COMMANDS.QRCODE_STORE(data.receiptNumber);
+      receipt += COMMANDS.QRCODE_PRINT;
+      receipt += '\n';
+    } else if (s.showBarcode) {
+      // Print barcode with receipt number
+      receipt += COMMANDS.BARCODE_HEIGHT(50);
+      receipt += COMMANDS.BARCODE_WIDTH(2);
+      receipt += COMMANDS.BARCODE_TEXT_BELOW;
+      
+      // Clean receipt number for barcode (alphanumeric only)
+      const cleanReceiptNum = data.receiptNumber.replace(/[^A-Z0-9]/gi, '');
+      
+      if (s.barcodeType === 'code128') {
+        receipt += COMMANDS.BARCODE_CODE128(cleanReceiptNum);
+      } else {
+        receipt += COMMANDS.BARCODE_CODE39(cleanReceiptNum);
+      }
+      receipt += '\n';
+    }
   }
   
   // Footer
