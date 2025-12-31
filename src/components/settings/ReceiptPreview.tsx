@@ -1,6 +1,9 @@
+import { useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
+import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 
 interface ReceiptSettings {
   show_logo: boolean;
@@ -27,6 +30,9 @@ interface ReceiptSettings {
   show_return_policy: boolean;
   return_policy: string | null;
   paper_width: string;
+  show_barcode?: boolean;
+  show_qr_code?: boolean;
+  barcode_type?: 'code128' | 'code39' | 'qrcode';
 }
 
 interface BranchDetails {
@@ -249,12 +255,69 @@ export const ReceiptPreview = ({ settings, branchDetails }: ReceiptPreviewProps)
           </>
         )}
 
-        {/* Barcode placeholder */}
-        <div className="text-center pt-2">
-          <div className="mx-auto w-32 h-8 bg-gradient-to-r from-black via-white to-black bg-[length:4px_100%] opacity-60" />
-          <p className="text-[8px] mt-1">RCP-2024-0001</p>
-        </div>
+        {/* Barcode/QR Code */}
+        <ReceiptBarcode 
+          receiptNumber="RCP-2024-0001" 
+          showBarcode={settings.show_barcode !== false}
+          showQrCode={settings.show_qr_code}
+          barcodeType={settings.barcode_type || 'code128'}
+        />
       </CardContent>
     </Card>
   );
 };
+
+// Separate barcode component
+const ReceiptBarcode = ({ 
+  receiptNumber, 
+  showBarcode = true, 
+  showQrCode = false,
+  barcodeType = 'code128'
+}: { 
+  receiptNumber: string; 
+  showBarcode?: boolean;
+  showQrCode?: boolean;
+  barcodeType?: 'code128' | 'code39' | 'qrcode';
+}) => {
+  const barcodeRef = useRef<SVGSVGElement>(null);
+  const qrRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (showQrCode || barcodeType === 'qrcode') {
+      if (qrRef.current) {
+        QRCode.toCanvas(qrRef.current, receiptNumber, {
+          width: 80,
+          margin: 1,
+          color: { dark: '#000000', light: '#ffffff' }
+        });
+      }
+    } else if (showBarcode && barcodeRef.current) {
+      try {
+        JsBarcode(barcodeRef.current, receiptNumber.replace(/[^A-Z0-9]/gi, ''), {
+          format: barcodeType === 'code39' ? 'CODE39' : 'CODE128',
+          width: 1.5,
+          height: 40,
+          displayValue: true,
+          fontSize: 10,
+          margin: 5,
+        });
+      } catch (e) {
+        console.error('Barcode generation error:', e);
+      }
+    }
+  }, [receiptNumber, showBarcode, showQrCode, barcodeType]);
+
+  if (!showBarcode && !showQrCode) return null;
+
+  return (
+    <div className="text-center pt-2">
+      {(showQrCode || barcodeType === 'qrcode') ? (
+        <canvas ref={qrRef} className="mx-auto" />
+      ) : (
+        <svg ref={barcodeRef} className="mx-auto" />
+      )}
+    </div>
+  );
+};
+
+export { ReceiptBarcode };
