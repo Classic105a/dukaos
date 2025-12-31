@@ -7,6 +7,16 @@ interface Branch {
   name: string;
   location: string | null;
   phone: string | null;
+  address: string | null;
+  city: string | null;
+  email: string | null;
+  website: string | null;
+  mpesa_till_number: string | null;
+  mpesa_paybill_number: string | null;
+  mpesa_account_number: string | null;
+  kra_pin: string | null;
+  receipt_footer_message: string | null;
+  logo_url: string | null;
   is_headquarters: boolean;
   is_active: boolean;
 }

@@ -1,20 +1,25 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { usePrinter } from '@/hooks/usePrinter';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart, { CartItem } from '@/components/pos/Cart';
 import PaymentModal from '@/components/pos/PaymentModal';
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import { toast } from 'sonner';
+import type { ReceiptData } from '@/lib/escpos';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { currentBranch } = useBranch();
   const { isOnline, saveSaleOffline } = useOfflineSync();
+  const { printReceipt, hasPrinter, isPrinting } = usePrinter();
+  const lastSaleItemsRef = useRef<CartItem[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
   const [showPayment, setShowPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastSale, setLastSale] = useState<{
@@ -85,6 +90,60 @@ const Dashboard = () => {
     setCartItems([]);
   }, []);
 
+  // Auto-print receipt function
+  const autoPrintReceipt = useCallback(async (
+    receiptNumber: string,
+    items: CartItem[],
+    saleSubtotal: number,
+    saleTax: number,
+    saleDiscount: number,
+    saleTotal: number,
+    payments: Array<{ method: string; amount: number; mpesa_reference?: string }>
+  ) => {
+    if (!hasPrinter || !currentBranch) return;
+
+    const receiptData: ReceiptData = {
+      header: {
+        businessName: 'DukaOS',
+        branchName: currentBranch.name,
+        address: currentBranch.address || undefined,
+        city: currentBranch.city || undefined,
+        phone: currentBranch.phone || undefined,
+        email: currentBranch.email || undefined,
+        website: currentBranch.website || undefined,
+        mpesaTill: currentBranch.mpesa_till_number || undefined,
+        mpesaPaybill: currentBranch.mpesa_paybill_number || undefined,
+        mpesaAccount: currentBranch.mpesa_account_number || undefined,
+        kraPin: currentBranch.kra_pin || undefined,
+      },
+      receiptNumber,
+      date: new Date(),
+      items: items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        totalPrice: item.total,
+      })),
+      subtotal: saleSubtotal,
+      taxAmount: saleTax,
+      discountAmount: saleDiscount,
+      totalAmount: saleTotal,
+      payments: payments.map(p => ({
+        method: p.method.toUpperCase(),
+        amount: p.amount,
+        reference: p.mpesa_reference,
+      })),
+      footer: {
+        message: currentBranch.receipt_footer_message || 'Thank you for your business!',
+      },
+    };
+
+    const success = await printReceipt(receiptData);
+    if (success) {
+      toast.success('Receipt printed');
+    }
+  }, [hasPrinter, currentBranch, printReceipt]);
+
   const handleConfirmPayment = async (payments: Array<{ method: string; amount: number; mpesa_reference?: string; mpesa_phone?: string }>) => {
     if (!currentBranch?.id || !user?.id) {
       toast.error('Please select a branch');
@@ -92,11 +151,18 @@ const Dashboard = () => {
     }
 
     const receiptNumber = `RCP-${Date.now().toString(36).toUpperCase()}`;
+    
+    // Store cart items and totals before clearing
+    const saleItems = [...cartItems];
+    const saleSubtotal = subtotal;
+    const saleTax = tax;
+    const saleDiscount = discount;
+    const saleTotal = total;
 
     if (!isOnline) {
       saveSaleOffline({
         branch_id: currentBranch.id,
-        items: cartItems.map(item => ({
+        items: saleItems.map(item => ({
           product_id: item.product_id,
           product_name: item.name,
           quantity: item.quantity,
@@ -109,18 +175,23 @@ const Dashboard = () => {
           mpesa_reference: p.mpesa_reference,
           mpesa_phone: p.mpesa_phone
         })),
-        subtotal,
-        tax_amount: tax,
-        discount_amount: discount,
-        total_amount: total,
+        subtotal: saleSubtotal,
+        tax_amount: saleTax,
+        discount_amount: saleDiscount,
+        total_amount: saleTotal,
         created_at: new Date().toISOString()
       });
       
+      lastSaleItemsRef.current = saleItems;
+      setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: saleDiscount, total: saleTotal });
       setLastSale({ receiptNumber, payments });
       setShowPayment(false);
       setShowReceipt(true);
       setCartItems([]);
       toast.success('Sale saved offline. Will sync when online.');
+      
+      // Auto-print receipt
+      autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
       return;
     }
 
@@ -131,10 +202,10 @@ const Dashboard = () => {
           branch_id: currentBranch.id,
           cashier_id: user.id,
           receipt_number: receiptNumber,
-          subtotal,
-          tax_amount: tax,
-          discount_amount: discount,
-          total_amount: total,
+          subtotal: saleSubtotal,
+          tax_amount: saleTax,
+          discount_amount: saleDiscount,
+          total_amount: saleTotal,
           payment_status: 'completed'
         })
         .select()
@@ -143,7 +214,7 @@ const Dashboard = () => {
       if (saleError) throw saleError;
 
       await supabase.from('sale_items').insert(
-        cartItems.map(item => ({
+        saleItems.map(item => ({
           sale_id: saleData.id,
           product_id: item.product_id,
           product_name: item.name,
@@ -152,6 +223,23 @@ const Dashboard = () => {
           total_amount: item.total
         }))
       );
+
+      // Deduct stock for each item
+      for (const item of saleItems) {
+        const { data: inventory } = await supabase
+          .from('branch_inventory')
+          .select('id, quantity')
+          .eq('branch_id', currentBranch.id)
+          .eq('product_id', item.product_id)
+          .maybeSingle();
+
+        if (inventory) {
+          await supabase
+            .from('branch_inventory')
+            .update({ quantity: Math.max(0, inventory.quantity - item.quantity) })
+            .eq('id', inventory.id);
+        }
+      }
 
       await supabase.from('payments').insert(
         payments.map(p => ({
@@ -164,11 +252,16 @@ const Dashboard = () => {
         }))
       );
 
+      lastSaleItemsRef.current = saleItems;
+      setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: saleDiscount, total: saleTotal });
       setLastSale({ receiptNumber, payments });
       setShowPayment(false);
       setShowReceipt(true);
       setCartItems([]);
       toast.success('Sale completed!');
+      
+      // Auto-print receipt
+      autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
     } catch (error) {
       console.error('Sale error:', error);
       toast.error('Failed to complete sale');
@@ -209,11 +302,11 @@ const Dashboard = () => {
           isOpen={showReceipt}
           onClose={() => setShowReceipt(false)}
           receiptNumber={lastSale.receiptNumber}
-          items={cartItems.length > 0 ? cartItems : []}
-          subtotal={subtotal}
-          tax={tax}
-          discount={discount}
-          total={total}
+          items={lastSaleItemsRef.current}
+          subtotal={lastSaleTotal.subtotal}
+          tax={lastSaleTotal.tax}
+          discount={lastSaleTotal.discount}
+          total={lastSaleTotal.total}
           payments={lastSale.payments}
           branchName={currentBranch?.name}
         />
