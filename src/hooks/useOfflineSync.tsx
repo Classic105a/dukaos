@@ -120,6 +120,23 @@ export const useOfflineSync = () => {
 
         await supabase.from('sale_items').insert(itemsToInsert);
 
+        // Deduct stock for each item
+        for (const item of sale.items) {
+          const { data: inventory } = await supabase
+            .from('branch_inventory')
+            .select('id, quantity')
+            .eq('branch_id', sale.branch_id)
+            .eq('product_id', item.product_id)
+            .maybeSingle();
+
+          if (inventory) {
+            await supabase
+              .from('branch_inventory')
+              .update({ quantity: Math.max(0, inventory.quantity - item.quantity) })
+              .eq('id', inventory.id);
+          }
+        }
+
         // Create payments
         const paymentsToInsert = sale.payments.map(payment => ({
           sale_id: saleData.id,
