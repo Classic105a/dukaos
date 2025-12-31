@@ -97,20 +97,46 @@ const Inventory = () => {
     },
   });
 
-  // Fetch products with inventory
+  // Fetch all products with their inventory for current branch
   const { data: inventory = [], isLoading } = useQuery({
     queryKey: ['inventory', currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
-      const { data, error } = await supabase
+      
+      // Fetch all active products
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('*, categories(name, color)')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (productsError) throw productsError;
+      
+      // Fetch inventory for current branch
+      const { data: inventoryData, error: inventoryError } = await supabase
         .from('branch_inventory')
-        .select(`
-          *,
-          products(*, categories(name, color))
-        `)
+        .select('*')
         .eq('branch_id', currentBranch.id);
-      if (error) throw error;
-      return data as InventoryItem[];
+      
+      if (inventoryError) throw inventoryError;
+      
+      // Create a map of inventory by product_id
+      const inventoryMap = new Map(
+        inventoryData?.map(inv => [inv.product_id, inv]) || []
+      );
+      
+      // Combine products with their inventory (defaulting to 0 if no record)
+      return (productsData || []).map(product => {
+        const inv = inventoryMap.get(product.id);
+        return {
+          id: inv?.id || `temp_${product.id}`,
+          product_id: product.id,
+          quantity: inv?.quantity || 0,
+          expiry_date: inv?.expiry_date || null,
+          batch_number: inv?.batch_number || null,
+          products: product
+        } as InventoryItem;
+      });
     },
     enabled: !!currentBranch?.id,
   });

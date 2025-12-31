@@ -27,9 +27,24 @@ const Dashboard = () => {
   const discount = 0;
   const total = subtotal + tax - discount;
 
-  const handleProductSelect = useCallback((product: { id: string; name: string; unit_price: number }) => {
+  const handleProductSelect = useCallback((product: { id: string; name: string; unit_price: number; stock?: number }) => {
     setCartItems(prev => {
       const existing = prev.find(item => item.product_id === product.id);
+      const currentQtyInCart = existing?.quantity || 0;
+      const availableStock = product.stock ?? 0;
+      
+      // Prevent adding if no stock available
+      if (availableStock <= 0) {
+        toast.error('Out of stock');
+        return prev;
+      }
+      
+      // Prevent exceeding available stock
+      if (currentQtyInCart >= availableStock) {
+        toast.error(`Only ${availableStock} available in stock`);
+        return prev;
+      }
+      
       if (existing) {
         return prev.map(item =>
           item.product_id === product.id
