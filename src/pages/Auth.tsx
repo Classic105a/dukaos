@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Eye, EyeOff, ShoppingBag } from 'lucide-react';
+import { Eye, EyeOff, Store, ArrowRight } from 'lucide-react';
 import { z } from 'zod';
 
 const authSchema = z.object({
@@ -109,152 +109,198 @@ const Auth = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-warm p-4">
-      <Card className="w-full max-w-md shadow-elevated">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-gradient-hero rounded-2xl flex items-center justify-center mb-4">
-            <ShoppingBag className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <CardTitle className="text-2xl font-bold">
-            {isForgotPassword ? 'Reset Password' : isLogin ? 'Welcome Back' : 'Get Started'}
-          </CardTitle>
-          <CardDescription>
-            {isForgotPassword 
-              ? 'Enter your email to receive a password reset link'
-              : isLogin 
-                ? 'Sign in to access your DukaOS dashboard' 
-                : 'Create your account and start selling in minutes'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && !isForgotPassword && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="John Kamau"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className={errors.fullName ? 'border-destructive' : ''}
-                />
-                {errors.fullName && (
-                  <p className="text-sm text-destructive">{errors.fullName}</p>
-                )}
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className={errors.email ? 'border-destructive' : ''}
-              />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
+    <div className="min-h-screen flex">
+      {/* Left Panel - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-dark p-12 flex-col justify-between relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-accent rounded-full blur-3xl" />
+        </div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-16">
+            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-glow">
+              <Store className="w-6 h-6 text-primary-foreground" />
             </div>
-            
-            {!isForgotPassword && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  {isLogin && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsForgotPassword(true);
-                        setErrors({});
-                      }}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </button>
+            <span className="text-2xl font-bold text-white">DukaOS</span>
+          </div>
+          
+          <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight mb-6">
+            Sell Smarter.<br />
+            <span className="text-primary">Grow Faster.</span>
+          </h1>
+          <p className="text-lg text-white/70 max-w-md">
+            The complete POS system designed for Kenyan retailers. Works offline, accepts M-Pesa, and scales with your business.
+          </p>
+        </div>
+
+        <div className="relative z-10 flex items-center gap-6 text-white/60 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-success" />
+            5K+ Shops
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-success" />
+            99.9% Uptime
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-success" />
+            Offline Ready
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Form */}
+      <div className="flex-1 flex items-center justify-center p-6 bg-background">
+        <Card variant="elevated" className="w-full max-w-md">
+          <CardHeader className="text-center pb-2">
+            {/* Mobile logo */}
+            <div className="lg:hidden mx-auto w-14 h-14 bg-gradient-hero rounded-2xl flex items-center justify-center mb-4 shadow-glow">
+              <Store className="w-7 h-7 text-primary-foreground" />
+            </div>
+            <CardTitle className="text-2xl">
+              {isForgotPassword ? 'Reset Password' : isLogin ? 'Welcome back' : 'Create account'}
+            </CardTitle>
+            <CardDescription className="text-base">
+              {isForgotPassword 
+                ? 'Enter your email to receive a reset link'
+                : isLogin 
+                  ? 'Sign in to access your dashboard' 
+                  : 'Get started in less than 5 minutes'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {!isLogin && !isForgotPassword && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName" className="text-sm font-medium">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="John Kamau"
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    className={errors.fullName ? 'border-destructive' : ''}
+                  />
+                  {errors.fullName && (
+                    <p className="text-xs text-destructive">{errors.fullName}</p>
                   )}
                 </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className={errors.email ? 'border-destructive' : ''}
+                />
+                {errors.email && (
+                  <p className="text-xs text-destructive">{errors.email}</p>
                 )}
               </div>
-            )}
+              
+              {!isForgotPassword && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                    {isLogin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsForgotPassword(true);
+                          setErrors({});
+                        }}
+                        className="text-xs text-primary hover:underline font-medium"
+                      >
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-xs text-destructive">{errors.password}</p>
+                  )}
+                </div>
+              )}
 
-            <Button 
-              type="submit" 
-              className="w-full" 
-              size="lg"
-              disabled={isSubmitting}
-            >
-              {isSubmitting 
-                ? 'Please wait...' 
-                : isForgotPassword 
-                  ? 'Send Reset Link' 
-                  : isLogin 
-                    ? 'Sign In' 
-                    : 'Create Account'}
-            </Button>
-          </form>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                size="lg"
+                disabled={isSubmitting}
+              >
+                {isSubmitting 
+                  ? 'Please wait...' 
+                  : isForgotPassword 
+                    ? 'Send Reset Link' 
+                    : isLogin 
+                      ? 'Sign In' 
+                      : 'Create Account'}
+                {!isSubmitting && <ArrowRight className="w-4 h-4" />}
+              </Button>
+            </form>
 
-          <div className="mt-6 text-center">
-            {isForgotPassword ? (
-              <p className="text-sm text-muted-foreground">
-                Remember your password?
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsForgotPassword(false);
-                    setErrors({});
-                  }}
-                  className="ml-1 text-primary font-medium hover:underline"
-                >
-                  Back to sign in
-                </button>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {isLogin ? "Don't have an account?" : 'Already have an account?'}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsLogin(!isLogin);
-                    setErrors({});
-                  }}
-                  className="ml-1 text-primary font-medium hover:underline"
-                >
-                  {isLogin ? 'Sign up' : 'Sign in'}
-                </button>
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            <div className="mt-6 text-center">
+              {isForgotPassword ? (
+                <p className="text-sm text-muted-foreground">
+                  Remember your password?
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPassword(false);
+                      setErrors({});
+                    }}
+                    className="ml-1 text-primary font-semibold hover:underline"
+                  >
+                    Back to sign in
+                  </button>
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {isLogin ? "Don't have an account?" : 'Already have an account?'}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLogin(!isLogin);
+                      setErrors({});
+                    }}
+                    className="ml-1 text-primary font-semibold hover:underline"
+                  >
+                    {isLogin ? 'Sign up' : 'Sign in'}
+                  </button>
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
