@@ -28,6 +28,7 @@ import {
   Store
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -156,6 +157,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
 
             {/* User Menu */}
             <DropdownMenu>
