@@ -103,8 +103,8 @@ const pricingTiers = [
 ];
 
 const stats = [
-  { value: "5K+", label: "Shops Powered" },
-  { value: "50M+", label: "Transactions" },
+  { value: "500+", label: "Active Shops" },
+  { value: "10K+", label: "Transactions/Day" },
   { value: "99.9%", label: "Uptime" },
   { value: "<5 min", label: "Setup Time" }
 ];
@@ -446,12 +446,12 @@ export default function Index() {
               <span className="font-bold text-sm">DukaOS</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-              <a href="#" className="hover:text-foreground transition-colors">Support</a>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+              <a href="mailto:support@dukaos.co.ke" className="hover:text-foreground transition-colors">Support</a>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 DukaOS. Built for Kenyan Retailers.
+              © 2026 DukaOS. Built for Kenyan Retailers.
             </p>
           </div>
         </div>

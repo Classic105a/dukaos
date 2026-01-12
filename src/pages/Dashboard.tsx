@@ -4,33 +4,43 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { usePrinter } from '@/hooks/usePrinter';
+import { useTaxSettings } from '@/hooks/useTaxSettings';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart, { CartItem } from '@/components/pos/Cart';
 import PaymentModal from '@/components/pos/PaymentModal';
 import ReceiptModal from '@/components/pos/ReceiptModal';
+import VoidSaleModal from '@/components/pos/VoidSaleModal';
+import ReturnModal from '@/components/pos/ReturnModal';
+import ReprintReceiptModal from '@/components/pos/ReprintReceiptModal';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import type { ReceiptData } from '@/lib/escpos';
+import { RotateCcw, Printer, XCircle } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { currentBranch } = useBranch();
   const { isOnline, saveSaleOffline } = useOfflineSync();
   const { printReceipt, hasPrinter, isPrinting } = usePrinter();
+  const { calculateTax } = useTaxSettings();
   const lastSaleItemsRef = useRef<CartItem[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
   const [showPayment, setShowPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showVoidModal, setShowVoidModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showReprintModal, setShowReprintModal] = useState(false);
   const [lastSale, setLastSale] = useState<{
     receiptNumber: string;
     payments: Array<{ method: string; amount: number; mpesa_reference?: string }>;
   } | null>(null);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-  const tax = 0;
+  const { tax, total: calculatedTotal } = calculateTax(subtotal);
   const discount = 0;
-  const total = subtotal + tax - discount;
+  const total = calculatedTotal - discount;
 
   const handleProductSelect = useCallback((product: { id: string; name: string; unit_price: number; stock?: number }) => {
     setCartItems(prev => {
@@ -268,10 +278,33 @@ const Dashboard = () => {
     }
   };
 
+  const handleVoidSale = (reason: string) => {
+    console.log('Sale voided:', { items: cartItems, reason });
+    toast.success('Sale voided');
+    setCartItems([]);
+  };
+
   return (
     <DashboardLayout>
       <div className="grid lg:grid-cols-3 gap-4 h-[calc(100vh-8rem)]">
         <div className="lg:col-span-2 bg-card rounded-xl p-4 border border-border overflow-hidden">
+          {/* Quick Action Buttons */}
+          <div className="flex gap-2 mb-4">
+            <Button variant="outline" size="sm" onClick={() => setShowReturnModal(true)}>
+              <RotateCcw className="w-4 h-4 mr-1" />
+              Returns
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowReprintModal(true)}>
+              <Printer className="w-4 h-4 mr-1" />
+              Reprint
+            </Button>
+            {cartItems.length > 0 && (
+              <Button variant="outline" size="sm" className="text-destructive" onClick={() => setShowVoidModal(true)}>
+                <XCircle className="w-4 h-4 mr-1" />
+                Void
+              </Button>
+            )}
+          </div>
           <ProductGrid onProductSelect={handleProductSelect} />
         </div>
         <div className="bg-card rounded-xl p-4 border border-border flex flex-col">
@@ -311,6 +344,25 @@ const Dashboard = () => {
           branchName={currentBranch?.name}
         />
       )}
+
+      <VoidSaleModal
+        isOpen={showVoidModal}
+        onClose={() => setShowVoidModal(false)}
+        onConfirm={handleVoidSale}
+        itemCount={cartItems.length}
+        total={total}
+      />
+
+      <ReturnModal
+        isOpen={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        onComplete={() => {}}
+      />
+
+      <ReprintReceiptModal
+        isOpen={showReprintModal}
+        onClose={() => setShowReprintModal(false)}
+      />
     </DashboardLayout>
   );
 };
