@@ -5,10 +5,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { BranchProvider } from "@/hooks/useBranch";
+import { TaxProvider } from "@/hooks/useTaxSettings";
 import { ThemeProvider } from "@/hooks/useTheme";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import SessionLockScreen from "@/components/SessionLockScreen";
+import SessionWarning from "@/components/SessionWarning";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import Branches from "./pages/Branches";
@@ -21,6 +27,7 @@ const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+  const { isLocked, showWarning, timeUntilLock, unlock, resetTimer, hasPin } = useSessionTimeout();
   
   if (loading) {
     return (
@@ -33,8 +40,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+
+  if (isLocked) {
+    return <SessionLockScreen onUnlock={unlock} hasPin={hasPin} />;
+  }
   
-  return <BranchProvider>{children}</BranchProvider>;
+  return (
+    <BranchProvider>
+      <TaxProvider>
+        {showWarning && (
+          <SessionWarning timeUntilLock={timeUntilLock} onStayLoggedIn={resetTimer} />
+        )}
+        {children}
+      </TaxProvider>
+    </BranchProvider>
+  );
 };
 
 const App = () => (
@@ -49,6 +69,8 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />

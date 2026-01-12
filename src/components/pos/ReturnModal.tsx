@@ -116,9 +116,9 @@ const ReturnModal = ({ isOpen, onClose, onComplete }: ReturnModalProps) => {
 
     setProcessing(true);
     try {
-      // Create return record
+      // Create return record using raw query since types may not be updated yet
       const { error: returnError } = await supabase
-        .from('returns')
+        .from('returns' as any)
         .insert({
           original_sale_id: saleData.id,
           branch_id: currentBranch?.id,

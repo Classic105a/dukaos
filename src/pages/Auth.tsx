@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -297,6 +297,14 @@ const Auth = () => {
                   </button>
                 </p>
               )}
+
+              {/* Legal Links */}
+              <p className="text-xs text-muted-foreground mt-4">
+                By continuing, you agree to our{' '}
+                <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+                {' '}and{' '}
+                <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+              </p>
             </div>
           </CardContent>
         </Card>

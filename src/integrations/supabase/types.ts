@@ -569,6 +569,60 @@ export type Database = {
           },
         ]
       }
+      returns: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          id: string
+          original_sale_id: string | null
+          processed_by: string | null
+          reason: string
+          refund_amount: number
+          refund_method: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          original_sale_id?: string | null
+          processed_by?: string | null
+          reason: string
+          refund_amount?: number
+          refund_method?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          original_sale_id?: string | null
+          processed_by?: string | null
+          reason?: string
+          refund_amount?: number
+          refund_method?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "returns_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_original_sale_id_fkey"
+            columns: ["original_sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sale_items: {
         Row: {
           created_at: string

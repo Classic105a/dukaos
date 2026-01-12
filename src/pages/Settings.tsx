@@ -37,12 +37,14 @@ import {
   Crown,
   Receipt,
   Printer,
+  Calculator,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { BranchDetailsForm } from '@/components/settings/BranchDetailsForm';
 import { ReceiptSettings } from '@/components/settings/ReceiptSettings';
 import { PrinterSettings } from '@/components/settings/PrinterSettings';
+import TaxSettings from '@/components/settings/TaxSettings';
 
 interface Profile {
   id: string;
@@ -220,6 +222,10 @@ const Settings = () => {
                   <Printer className="w-4 h-4" />
                   <span className="hidden sm:inline">Printers</span>
                 </TabsTrigger>
+                <TabsTrigger value="tax" className="gap-2">
+                  <Calculator className="w-4 h-4" />
+                  <span className="hidden sm:inline">Tax</span>
+                </TabsTrigger>
               </>
             )}
             <TabsTrigger value="preferences" className="gap-2">
@@ -272,6 +278,13 @@ const Settings = () => {
           {isAdmin && (
             <TabsContent value="printers">
               <PrinterSettings />
+            </TabsContent>
+          )}
+
+          {/* Tax Tab */}
+          {isAdmin && (
+            <TabsContent value="tax">
+              <TaxSettings />
             </TabsContent>
           )}
 

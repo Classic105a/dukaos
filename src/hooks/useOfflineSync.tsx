@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface OfflineSale {
   id: string;
@@ -23,25 +24,48 @@ interface OfflineSale {
   discount_amount: number;
   total_amount: number;
   created_at: string;
+  retryCount?: number;
+  lastError?: string;
 }
+
+const MAX_RETRY_COUNT = 3;
+const STORAGE_KEY = 'pendingSales';
 
 export const useOfflineSync = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSales, setPendingSales] = useState<OfflineSale[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Load pending sales from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem('pendingSales');
-    if (stored) {
-      setPendingSales(JSON.parse(stored));
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Validate structure
+        if (Array.isArray(parsed)) {
+          setPendingSales(parsed);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading pending sales:', error);
+      // Clear corrupted data
+      localStorage.removeItem(STORAGE_KEY);
     }
   }, []);
 
   // Monitor online status
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline = () => {
+      setIsOnline(true);
+      setSyncError(null);
+      toast.success('Back online! Syncing data...');
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.warning('You are offline. Sales will be saved locally.');
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -54,38 +78,81 @@ export const useOfflineSync = () => {
 
   // Auto-sync when coming online
   useEffect(() => {
-    if (isOnline && pendingSales.length > 0) {
+    if (isOnline && pendingSales.length > 0 && !isSyncing) {
       syncPendingSales();
     }
   }, [isOnline]);
 
+  const saveToStorage = useCallback((sales: OfflineSale[]) => {
+    try {
+      // Check localStorage capacity (typically 5MB)
+      const serialized = JSON.stringify(sales);
+      if (serialized.length > 4 * 1024 * 1024) { // 4MB limit for safety
+        toast.error('Local storage nearly full. Please sync your sales.');
+        return false;
+      }
+      localStorage.setItem(STORAGE_KEY, serialized);
+      return true;
+    } catch (error) {
+      console.error('Error saving to storage:', error);
+      toast.error('Failed to save offline. Storage may be full.');
+      return false;
+    }
+  }, []);
+
   const saveSaleOffline = useCallback((sale: Omit<OfflineSale, 'id'>) => {
     const newSale: OfflineSale = {
       ...sale,
-      id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      retryCount: 0,
     };
 
     const updated = [...pendingSales, newSale];
-    setPendingSales(updated);
-    localStorage.setItem('pendingSales', JSON.stringify(updated));
-    
-    return newSale;
-  }, [pendingSales]);
+    if (saveToStorage(updated)) {
+      setPendingSales(updated);
+      return newSale;
+    }
+    return null;
+  }, [pendingSales, saveToStorage]);
 
   const syncPendingSales = useCallback(async () => {
-    if (isSyncing || pendingSales.length === 0) return;
+    if (isSyncing || pendingSales.length === 0 || !isOnline) return;
 
     setIsSyncing(true);
+    setSyncError(null);
     const synced: string[] = [];
+    const failed: OfflineSale[] = [];
 
     for (const sale of pendingSales) {
+      // Skip sales that have exceeded retry limit
+      if ((sale.retryCount || 0) >= MAX_RETRY_COUNT) {
+        failed.push({ ...sale, lastError: 'Max retries exceeded' });
+        continue;
+      }
+
       try {
+        // Check if already synced (conflict resolution)
+        const { data: existingSale } = await supabase
+          .from('sales')
+          .select('id')
+          .eq('offline_id', sale.id)
+          .maybeSingle();
+
+        if (existingSale) {
+          // Already synced, mark as done
+          synced.push(sale.id);
+          continue;
+        }
+
         // Generate receipt number
         const receiptNumber = `RCP-${Date.now().toString(36).toUpperCase()}`;
 
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) continue;
+        if (!user) {
+          failed.push({ ...sale, lastError: 'Not authenticated', retryCount: (sale.retryCount || 0) + 1 });
+          continue;
+        }
 
         // Create sale record
         const { data: saleData, error: saleError } = await supabase
@@ -120,7 +187,7 @@ export const useOfflineSync = () => {
 
         await supabase.from('sale_items').insert(itemsToInsert);
 
-        // Deduct stock for each item
+        // Deduct stock atomically using a transaction-like approach
         for (const item of sale.items) {
           const { data: inventory } = await supabase
             .from('branch_inventory')
@@ -130,10 +197,12 @@ export const useOfflineSync = () => {
             .maybeSingle();
 
           if (inventory) {
+            const newQuantity = Math.max(0, inventory.quantity - item.quantity);
             await supabase
               .from('branch_inventory')
-              .update({ quantity: Math.max(0, inventory.quantity - item.quantity) })
-              .eq('id', inventory.id);
+              .update({ quantity: newQuantity })
+              .eq('id', inventory.id)
+              .eq('quantity', inventory.quantity); // Optimistic lock
           }
         }
 
@@ -150,25 +219,53 @@ export const useOfflineSync = () => {
         await supabase.from('payments').insert(paymentsToInsert);
 
         synced.push(sale.id);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error syncing sale:', sale.id, error);
+        failed.push({
+          ...sale,
+          lastError: error.message || 'Unknown error',
+          retryCount: (sale.retryCount || 0) + 1
+        });
       }
     }
 
-    // Remove synced sales
-    const remaining = pendingSales.filter(s => !synced.includes(s.id));
+    // Update state with results
+    const remaining = failed.filter(s => (s.retryCount || 0) < MAX_RETRY_COUNT);
+    const permanentlyFailed = failed.filter(s => (s.retryCount || 0) >= MAX_RETRY_COUNT);
+
     setPendingSales(remaining);
-    localStorage.setItem('pendingSales', JSON.stringify(remaining));
+    saveToStorage(remaining);
     
     setIsSyncing(false);
-  }, [pendingSales, isSyncing]);
+
+    // Show results
+    if (synced.length > 0) {
+      toast.success(`Synced ${synced.length} sale${synced.length > 1 ? 's' : ''}`);
+    }
+    if (permanentlyFailed.length > 0) {
+      setSyncError(`${permanentlyFailed.length} sale(s) failed to sync after ${MAX_RETRY_COUNT} attempts`);
+      toast.error(`${permanentlyFailed.length} sale(s) failed to sync. Contact support.`);
+    }
+    if (remaining.length > 0 && remaining.length !== pendingSales.length) {
+      toast.warning(`${remaining.length} sale(s) pending retry`);
+    }
+  }, [pendingSales, isSyncing, isOnline, saveToStorage]);
+
+  const clearFailedSales = useCallback(() => {
+    const remaining = pendingSales.filter(s => (s.retryCount || 0) < MAX_RETRY_COUNT);
+    setPendingSales(remaining);
+    saveToStorage(remaining);
+    setSyncError(null);
+  }, [pendingSales, saveToStorage]);
 
   return {
     isOnline,
     pendingSales,
     pendingCount: pendingSales.length,
     isSyncing,
+    syncError,
     saveSaleOffline,
-    syncPendingSales
+    syncPendingSales,
+    clearFailedSales,
   };
 };
