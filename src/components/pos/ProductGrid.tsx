@@ -4,7 +4,8 @@ import { useBranch } from '@/hooks/useBranch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Barcode, Package, Plus } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Search, Barcode, Package, Plus, ScanLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -115,7 +116,7 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search or scan barcode..."
+            placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -123,35 +124,35 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                 handleBarcodeSearch(e.target.value);
               }
             }}
-            className="pl-9 h-10 bg-card"
+            className="pl-9 h-11 bg-card border-border rounded-xl text-sm"
           />
         </div>
-        <Button variant="outline" size="icon" className="shrink-0 h-10 w-10">
-          <Barcode className="w-4 h-4" />
+        <Button variant="secondary" size="icon" className="shrink-0 h-11 w-11 rounded-xl">
+          <ScanLine className="w-5 h-5" />
         </Button>
       </div>
 
       {/* Category Filter - Scrollable pills */}
-      <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
         <button
           onClick={() => setSelectedCategory(null)}
           className={cn(
-            'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+            'shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap',
             selectedCategory === null 
-              ? 'bg-primary text-primary-foreground shadow-soft' 
+              ? 'bg-primary text-primary-foreground shadow-md' 
               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
           )}
         >
-          All
+          All Items
         </button>
         {categories.map(category => (
           <button
             key={category.id}
             onClick={() => setSelectedCategory(category.id)}
             className={cn(
-              'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+              'shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap',
               selectedCategory === category.id 
-                ? 'text-white shadow-soft' 
+                ? 'text-white shadow-md' 
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
             )}
             style={{
@@ -164,80 +165,109 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
       </div>
 
       {/* Products */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      <ScrollArea className="flex-1 -mx-3 px-3">
         {loading ? (
           <>
             {/* Mobile loading skeleton */}
-            <div className="flex flex-col gap-1.5 sm:hidden">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-secondary animate-pulse rounded-lg h-14" />
+            <div className="flex flex-col gap-2 lg:hidden">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-secondary animate-pulse rounded-xl h-20" />
               ))}
             </div>
             {/* Desktop loading skeleton */}
-            <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="bg-secondary animate-pulse rounded-xl h-28" />
+            <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {[...Array(12)].map((_, i) => (
+                <div key={i} className="bg-secondary animate-pulse rounded-xl h-32" />
               ))}
             </div>
           </>
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-            <Package className="w-10 h-10 mb-2 opacity-40" />
-            <p className="text-sm font-medium">No products found</p>
+            <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mb-3">
+              <Package className="w-8 h-8 opacity-40" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No products found</p>
+            <p className="text-xs text-muted-foreground mt-1">Try a different search or category</p>
           </div>
         ) : (
           <>
-            {/* Mobile List View */}
-            <div className="flex flex-col gap-1.5 sm:hidden">
+            {/* Mobile/Tablet List View */}
+            <div className="flex flex-col gap-2 lg:hidden pb-32">
               {filteredProducts.map(product => (
                 <div
                   key={product.id}
                   className={cn(
-                    'bg-card rounded-lg border border-border flex items-center gap-2 p-2 transition-all',
-                    product.stock === 0 ? 'opacity-50' : 'active:scale-[0.98]'
+                    'bg-card rounded-xl border border-border flex items-center gap-3 p-3 transition-all',
+                    product.stock === 0 ? 'opacity-50' : 'active:scale-[0.99]'
                   )}
                 >
+                  {/* Product Image */}
+                  <div className="w-14 h-14 rounded-lg bg-secondary flex-shrink-0 overflow-hidden">
+                    {product.image_url ? (
+                      <img 
+                        src={product.image_url} 
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-6 h-6 text-muted-foreground/40" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Product Info */}
                   <button
                     onClick={() => onProductSelect(product)}
-                    className="flex-1 min-w-0 text-left py-1"
+                    className="flex-1 min-w-0 text-left"
                     disabled={product.stock === 0}
                   >
-                    <h3 className="font-medium text-sm truncate">{product.name}</h3>
-                    <div className="flex items-center gap-2 text-xs">
+                    <h3 className="font-semibold text-sm truncate text-foreground">{product.name}</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
                       {product.category && (
-                        <span style={{ color: product.category.color }}>
+                        <span 
+                          className="text-xs font-medium"
+                          style={{ color: product.category.color }}
+                        >
                           {product.category.name}
                         </span>
                       )}
                       <span className={cn(
-                        'text-muted-foreground',
-                        product.stock === 0 && 'text-destructive'
+                        'text-xs',
+                        product.stock === 0 ? 'text-destructive font-medium' : 'text-muted-foreground'
                       )}>
-                        Stock: {product.stock || 0}
+                        {product.stock === 0 ? 'Out of stock' : `${product.stock} in stock`}
                       </span>
                     </div>
                   </button>
-                  <span className="font-bold text-primary text-sm shrink-0 tabular-nums">
-                    {product.unit_price.toLocaleString()}
-                  </span>
-                  <Button
-                    size="icon-sm"
-                    variant="accent"
-                    className="shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onProductSelect(product);
-                    }}
-                    disabled={product.stock === 0}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+
+                  {/* Price & Add Button */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <span className="font-bold text-primary text-base tabular-nums">
+                        {product.unit_price.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-muted-foreground block">KES</span>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="accent"
+                      className="h-10 w-10 rounded-xl shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onProductSelect(product);
+                      }}
+                      disabled={product.stock === 0}
+                    >
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
 
             {/* Desktop Grid View */}
-            <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+            <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-3 pb-4">
               {filteredProducts.map(product => (
                 <button
                   key={product.id}
@@ -258,24 +288,24 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                     </div>
                   ) : (
                     <div className="w-full aspect-square rounded-lg mb-2 bg-secondary flex items-center justify-center">
-                      <Package className="w-8 h-8 text-muted-foreground/40" />
+                      <Package className="w-10 h-10 text-muted-foreground/30" />
                     </div>
                   )}
-                  <h3 className="font-medium text-sm line-clamp-2 mb-1 leading-tight">{product.name}</h3>
+                  <h3 className="font-semibold text-sm line-clamp-2 mb-1.5 leading-tight">{product.name}</h3>
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-primary tabular-nums">
-                      {product.unit_price.toLocaleString()}
+                    <span className="font-bold text-primary tabular-nums text-base">
+                      KES {product.unit_price.toLocaleString()}
                     </span>
                     <Badge 
                       variant={product.stock && product.stock > 0 ? 'secondary' : 'destructive'}
-                      className="text-2xs h-5"
+                      className="text-xs"
                     >
                       {product.stock || 0}
                     </Badge>
                   </div>
                   {product.category && (
                     <div 
-                      className="mt-1.5 text-2xs px-1.5 py-0.5 rounded inline-block font-medium"
+                      className="mt-2 text-xs px-2 py-1 rounded-md inline-block font-medium"
                       style={{ 
                         backgroundColor: `${product.category.color}15`,
                         color: product.category.color
@@ -289,7 +319,7 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
             </div>
           </>
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 };

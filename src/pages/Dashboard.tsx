@@ -6,7 +6,6 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { usePrinter } from '@/hooks/usePrinter';
 import { useTaxSettings } from '@/hooks/useTaxSettings';
 import { useHoldSale } from '@/hooks/useHoldSale';
-import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart, { CartItem } from '@/components/pos/Cart';
 import PaymentModal from '@/components/pos/PaymentModal';
@@ -16,17 +15,19 @@ import ReturnModal from '@/components/pos/ReturnModal';
 import ReprintReceiptModal from '@/components/pos/ReprintReceiptModal';
 import HeldSalesPanel from '@/components/pos/HeldSalesPanel';
 import HoldSaleDialog from '@/components/pos/HoldSaleDialog';
+import POSHeader from '@/components/pos/POSHeader';
+import MobileCartSheet from '@/components/pos/MobileCartSheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { ReceiptData } from '@/lib/escpos';
-import { RotateCcw, Printer, XCircle, PauseCircle } from 'lucide-react';
+import { RotateCcw, Printer, XCircle, PauseCircle, ShoppingCart } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { currentBranch } = useBranch();
   const { isOnline, saveSaleOffline } = useOfflineSync();
-  const { printReceipt, hasPrinter, isPrinting } = usePrinter();
+  const { printReceipt, hasPrinter } = usePrinter();
   const { calculateTax } = useTaxSettings();
   const { heldSales, holdSale, resumeSale, deleteHeldSale } = useHoldSale();
   const lastSaleItemsRef = useRef<CartItem[]>([]);
@@ -38,6 +39,7 @@ const Dashboard = () => {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showReprintModal, setShowReprintModal] = useState(false);
   const [showHoldDialog, setShowHoldDialog] = useState(false);
+  const [showMobileCart, setShowMobileCart] = useState(false);
   const [lastSale, setLastSale] = useState<{
     receiptNumber: string;
     payments: Array<{ method: string; amount: number; mpesa_reference?: string }>;
@@ -54,13 +56,11 @@ const Dashboard = () => {
       const currentQtyInCart = existing?.quantity || 0;
       const availableStock = product.stock ?? 0;
       
-      // Prevent adding if no stock available
       if (availableStock <= 0) {
         toast.error('Out of stock');
         return prev;
       }
       
-      // Prevent exceeding available stock
       if (currentQtyInCart >= availableStock) {
         toast.error(`Only ${availableStock} available in stock`);
         return prev;
@@ -106,7 +106,6 @@ const Dashboard = () => {
     setCartItems([]);
   }, []);
 
-  // Auto-print receipt function
   const autoPrintReceipt = useCallback(async (
     receiptNumber: string,
     items: CartItem[],
@@ -168,7 +167,6 @@ const Dashboard = () => {
 
     const receiptNumber = `RCP-${Date.now().toString(36).toUpperCase()}`;
     
-    // Store cart items and totals before clearing
     const saleItems = [...cartItems];
     const saleSubtotal = subtotal;
     const saleTax = tax;
@@ -202,11 +200,11 @@ const Dashboard = () => {
       setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: saleDiscount, total: saleTotal });
       setLastSale({ receiptNumber, payments });
       setShowPayment(false);
+      setShowMobileCart(false);
       setShowReceipt(true);
       setCartItems([]);
       toast.success('Sale saved offline. Will sync when online.');
       
-      // Auto-print receipt
       autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
       return;
     }
@@ -240,7 +238,6 @@ const Dashboard = () => {
         }))
       );
 
-      // Deduct stock for each item
       for (const item of saleItems) {
         const { data: inventory } = await supabase
           .from('branch_inventory')
@@ -272,11 +269,11 @@ const Dashboard = () => {
       setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: saleDiscount, total: saleTotal });
       setLastSale({ receiptNumber, payments });
       setShowPayment(false);
+      setShowMobileCart(false);
       setShowReceipt(true);
       setCartItems([]);
       toast.success('Sale completed!');
       
-      // Auto-print receipt
       autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
     } catch (error) {
       console.error('Sale error:', error);
@@ -288,6 +285,7 @@ const Dashboard = () => {
     console.log('Sale voided:', { items: cartItems, reason });
     toast.success('Sale voided');
     setCartItems([]);
+    setShowMobileCart(false);
   };
 
   const handleHoldSale = (customerName?: string) => {
@@ -297,11 +295,11 @@ const Dashboard = () => {
     }
     holdSale(cartItems, subtotal, tax, discount, total, customerName);
     setCartItems([]);
+    setShowMobileCart(false);
     toast.success('Sale held successfully');
   };
 
   const handleResumeSale = (saleId: string) => {
-    // If current cart has items, offer to hold them first
     if (cartItems.length > 0) {
       holdSale(cartItems, subtotal, tax, discount, total);
       toast.info('Current cart was automatically held');
@@ -319,70 +317,128 @@ const Dashboard = () => {
     toast.success('Held sale deleted');
   };
 
+  const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
-    <DashboardLayout>
-      <div className="grid lg:grid-cols-3 gap-4 h-[calc(100vh-8rem)]">
-        <div className="lg:col-span-2 bg-card rounded-xl p-4 border border-border overflow-hidden">
-          {/* Quick Action Buttons */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <HeldSalesPanel
-              heldSales={heldSales}
-              onResume={handleResumeSale}
-              onDelete={handleDeleteHeldSale}
-              triggerButton={
-                <Button variant="outline" size="sm" className="relative">
-                  <PauseCircle className="w-4 h-4 mr-1" />
-                  Held
-                  {heldSales.length > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
-                    >
-                      {heldSales.length}
-                    </Badge>
-                  )}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* POS Header */}
+      <POSHeader 
+        heldSalesCount={heldSales.length}
+        onReturnClick={() => setShowReturnModal(true)}
+        onReprintClick={() => setShowReprintModal(true)}
+        heldSalesPanel={
+          <HeldSalesPanel
+            heldSales={heldSales}
+            onResume={handleResumeSale}
+            onDelete={handleDeleteHeldSale}
+          />
+        }
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Product Grid - Full width on mobile, 2/3 on desktop */}
+        <div className="flex-1 lg:w-2/3 overflow-hidden flex flex-col">
+          <div className="flex-1 p-3 lg:p-4 overflow-hidden">
+            <ProductGrid onProductSelect={handleProductSelect} />
+          </div>
+        </div>
+
+        {/* Desktop Cart Panel */}
+        <div className="hidden lg:flex lg:w-1/3 xl:w-[400px] border-l border-border bg-card flex-col">
+          {/* Quick Actions Bar */}
+          <div className="flex items-center gap-2 p-3 border-b border-border bg-muted/30">
+            {cartItems.length > 0 && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-xs h-8"
+                  onClick={() => setShowHoldDialog(true)}
+                >
+                  <PauseCircle className="w-3.5 h-3.5 mr-1" />
+                  Hold
                 </Button>
-              }
-            />
-            {cartItems.length > 0 && (
-              <Button variant="outline" size="sm" onClick={() => setShowHoldDialog(true)}>
-                <PauseCircle className="w-4 h-4 mr-1" />
-                Hold Sale
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => setShowReturnModal(true)}>
-              <RotateCcw className="w-4 h-4 mr-1" />
-              Returns
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowReprintModal(true)}>
-              <Printer className="w-4 h-4 mr-1" />
-              Reprint
-            </Button>
-            {cartItems.length > 0 && (
-              <Button variant="outline" size="sm" className="text-destructive" onClick={() => setShowVoidModal(true)}>
-                <XCircle className="w-4 h-4 mr-1" />
-                Void
-              </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-xs h-8 text-destructive hover:text-destructive"
+                  onClick={() => setShowVoidModal(true)}
+                >
+                  <XCircle className="w-3.5 h-3.5 mr-1" />
+                  Void
+                </Button>
+              </>
             )}
           </div>
-          <ProductGrid onProductSelect={handleProductSelect} />
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border flex flex-col">
-          <h2 className="font-bold text-lg mb-4">Current Sale</h2>
-          <Cart
-            items={cartItems}
-            onUpdateQuantity={handleUpdateQuantity}
-            onRemoveItem={handleRemoveItem}
-            onClearCart={handleClearCart}
-            subtotal={subtotal}
-            tax={tax}
-            discount={discount}
-            total={total}
-            onCheckout={() => setShowPayment(true)}
-          />
+          
+          <div className="flex-1 p-4 overflow-hidden">
+            <Cart
+              items={cartItems}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemoveItem={handleRemoveItem}
+              onClearCart={handleClearCart}
+              subtotal={subtotal}
+              tax={tax}
+              discount={discount}
+              total={total}
+              onCheckout={() => setShowPayment(true)}
+            />
+          </div>
         </div>
       </div>
 
+      {/* Mobile Floating Cart Button */}
+      <div className="lg:hidden fixed bottom-4 right-4 z-40">
+        <Button
+          size="lg"
+          className="h-14 w-14 rounded-full shadow-elevated relative"
+          onClick={() => setShowMobileCart(true)}
+        >
+          <ShoppingCart className="w-6 h-6" />
+          {cartItemCount > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 h-6 w-6 p-0 flex items-center justify-center text-xs font-bold"
+            >
+              {cartItemCount}
+            </Badge>
+          )}
+        </Button>
+      </div>
+
+      {/* Mobile Cart Total Bar */}
+      {cartItems.length > 0 && (
+        <div className="lg:hidden fixed bottom-20 left-4 right-4 z-30">
+          <Button
+            variant="accent"
+            className="w-full h-12 rounded-xl shadow-elevated justify-between px-4"
+            onClick={() => setShowMobileCart(true)}
+          >
+            <span className="font-medium">{cartItemCount} items</span>
+            <span className="font-bold text-lg">KES {total.toLocaleString()}</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Mobile Cart Sheet */}
+      <MobileCartSheet
+        isOpen={showMobileCart}
+        onClose={() => setShowMobileCart(false)}
+        items={cartItems}
+        onUpdateQuantity={handleUpdateQuantity}
+        onRemoveItem={handleRemoveItem}
+        onClearCart={handleClearCart}
+        subtotal={subtotal}
+        tax={tax}
+        discount={discount}
+        total={total}
+        onCheckout={() => setShowPayment(true)}
+        onHold={() => setShowHoldDialog(true)}
+        onVoid={() => setShowVoidModal(true)}
+      />
+
+      {/* Modals */}
       <PaymentModal
         isOpen={showPayment}
         onClose={() => setShowPayment(false)}
@@ -431,7 +487,7 @@ const Dashboard = () => {
         itemCount={cartItems.length}
         total={total}
       />
-    </DashboardLayout>
+    </div>
   );
 };
 
