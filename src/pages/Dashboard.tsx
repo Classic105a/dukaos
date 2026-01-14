@@ -5,6 +5,7 @@ import { useBranch } from '@/hooks/useBranch';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { usePrinter } from '@/hooks/usePrinter';
 import { useTaxSettings } from '@/hooks/useTaxSettings';
+import { useHoldSale } from '@/hooks/useHoldSale';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart, { CartItem } from '@/components/pos/Cart';
@@ -13,10 +14,13 @@ import ReceiptModal from '@/components/pos/ReceiptModal';
 import VoidSaleModal from '@/components/pos/VoidSaleModal';
 import ReturnModal from '@/components/pos/ReturnModal';
 import ReprintReceiptModal from '@/components/pos/ReprintReceiptModal';
+import HeldSalesPanel from '@/components/pos/HeldSalesPanel';
+import HoldSaleDialog from '@/components/pos/HoldSaleDialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { ReceiptData } from '@/lib/escpos';
-import { RotateCcw, Printer, XCircle } from 'lucide-react';
+import { RotateCcw, Printer, XCircle, PauseCircle } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -24,6 +28,7 @@ const Dashboard = () => {
   const { isOnline, saveSaleOffline } = useOfflineSync();
   const { printReceipt, hasPrinter, isPrinting } = usePrinter();
   const { calculateTax } = useTaxSettings();
+  const { heldSales, holdSale, resumeSale, deleteHeldSale } = useHoldSale();
   const lastSaleItemsRef = useRef<CartItem[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
@@ -32,6 +37,7 @@ const Dashboard = () => {
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showReprintModal, setShowReprintModal] = useState(false);
+  const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [lastSale, setLastSale] = useState<{
     receiptNumber: string;
     payments: Array<{ method: string; amount: number; mpesa_reference?: string }>;
@@ -284,12 +290,66 @@ const Dashboard = () => {
     setCartItems([]);
   };
 
+  const handleHoldSale = (customerName?: string) => {
+    if (cartItems.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
+    holdSale(cartItems, subtotal, tax, discount, total, customerName);
+    setCartItems([]);
+    toast.success('Sale held successfully');
+  };
+
+  const handleResumeSale = (saleId: string) => {
+    // If current cart has items, offer to hold them first
+    if (cartItems.length > 0) {
+      holdSale(cartItems, subtotal, tax, discount, total);
+      toast.info('Current cart was automatically held');
+    }
+    
+    const sale = resumeSale(saleId);
+    if (sale) {
+      setCartItems(sale.items);
+      toast.success('Sale resumed');
+    }
+  };
+
+  const handleDeleteHeldSale = (saleId: string) => {
+    deleteHeldSale(saleId);
+    toast.success('Held sale deleted');
+  };
+
   return (
     <DashboardLayout>
       <div className="grid lg:grid-cols-3 gap-4 h-[calc(100vh-8rem)]">
         <div className="lg:col-span-2 bg-card rounded-xl p-4 border border-border overflow-hidden">
           {/* Quick Action Buttons */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-4 flex-wrap">
+            <HeldSalesPanel
+              heldSales={heldSales}
+              onResume={handleResumeSale}
+              onDelete={handleDeleteHeldSale}
+              triggerButton={
+                <Button variant="outline" size="sm" className="relative">
+                  <PauseCircle className="w-4 h-4 mr-1" />
+                  Held
+                  {heldSales.length > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                    >
+                      {heldSales.length}
+                    </Badge>
+                  )}
+                </Button>
+              }
+            />
+            {cartItems.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => setShowHoldDialog(true)}>
+                <PauseCircle className="w-4 h-4 mr-1" />
+                Hold Sale
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => setShowReturnModal(true)}>
               <RotateCcw className="w-4 h-4 mr-1" />
               Returns
@@ -362,6 +422,14 @@ const Dashboard = () => {
       <ReprintReceiptModal
         isOpen={showReprintModal}
         onClose={() => setShowReprintModal(false)}
+      />
+
+      <HoldSaleDialog
+        isOpen={showHoldDialog}
+        onClose={() => setShowHoldDialog(false)}
+        onConfirm={handleHoldSale}
+        itemCount={cartItems.length}
+        total={total}
       />
     </DashboardLayout>
   );
