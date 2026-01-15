@@ -376,6 +376,7 @@ export type Database = {
       products: {
         Row: {
           barcode: string | null
+          branch_id: string | null
           category_id: string | null
           cost_price: number | null
           created_at: string
@@ -383,6 +384,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean | null
+          is_shared_product: boolean
           low_stock_threshold: number | null
           name: string
           sku: string | null
@@ -394,6 +396,7 @@ export type Database = {
         }
         Insert: {
           barcode?: string | null
+          branch_id?: string | null
           category_id?: string | null
           cost_price?: number | null
           created_at?: string
@@ -401,6 +404,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          is_shared_product?: boolean
           low_stock_threshold?: number | null
           name: string
           sku?: string | null
@@ -412,6 +416,7 @@ export type Database = {
         }
         Update: {
           barcode?: string | null
+          branch_id?: string | null
           category_id?: string | null
           cost_price?: number | null
           created_at?: string
@@ -419,6 +424,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          is_shared_product?: boolean
           low_stock_threshold?: number | null
           name?: string
           sku?: string | null
@@ -429,6 +435,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "products_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]
@@ -746,6 +759,63 @@ export type Database = {
           },
         ]
       }
+      stock_movements: {
+        Row: {
+          batch_number: string | null
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          expiry_date: string | null
+          id: string
+          movement_type: string
+          notes: string | null
+          product_id: string
+          quantity_change: number
+          reference_id: string | null
+        }
+        Insert: {
+          batch_number?: string | null
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string
+          movement_type: string
+          notes?: string | null
+          product_id: string
+          quantity_change: number
+          reference_id?: string | null
+        }
+        Update: {
+          batch_number?: string | null
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string
+          movement_type?: string
+          notes?: string | null
+          product_id?: string
+          quantity_change?: number
+          reference_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_transfers: {
         Row: {
           completed_at: string | null
@@ -833,9 +903,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      current_stock: {
+        Row: {
+          branch_id: string | null
+          last_movement_at: string | null
+          latest_batch_number: string | null
+          latest_expiry_date: string | null
+          product_id: string | null
+          quantity: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      get_product_stock: {
+        Args: { p_branch_id: string; p_product_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
