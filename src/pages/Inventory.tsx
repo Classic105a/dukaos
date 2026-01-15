@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
+import { useAuth } from '@/hooks/useAuth';
+import { useStockMovements } from '@/hooks/useStockMovements';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import StockHistoryDialog from '@/components/inventory/StockHistoryDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -33,9 +37,10 @@ import {
   Calendar,
   Barcode,
   Edit,
-  Trash2,
   Filter,
   ScanLine,
+  History,
+  Share2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
@@ -52,6 +57,8 @@ interface Product {
   is_active: boolean;
   image_url: string | null;
   description: string | null;
+  branch_id: string | null;
+  is_shared_product: boolean;
   categories?: { name: string; color: string } | null;
 }
 
@@ -62,6 +69,7 @@ interface InventoryItem {
   expiry_date: string | null;
   batch_number: string | null;
   products: Product;
+  has_real_inventory: boolean;
 }
 
 interface Category {
@@ -73,14 +81,19 @@ interface Category {
 
 const Inventory = () => {
   const { currentBranch } = useBranch();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { addStock, adjustStock } = useStockMovements();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [stockDialogOpen, setStockDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
   const [barcodeInput, setBarcodeInput] = useState('');
 
   // Fetch categories
@@ -97,77 +110,123 @@ const Inventory = () => {
     },
   });
 
-  // Fetch all products with their inventory for current branch
+  // Fetch products for current branch (branch-specific + shared products)
   const { data: inventory = [], isLoading } = useQuery({
     queryKey: ['inventory', currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
       
-      // Fetch all active products
+      // Fetch products visible to this branch (branch-specific OR shared OR legacy without branch)
       const { data: productsData, error: productsError } = await supabase
         .from('products')
-        .select('*, categories(name, color)')
+        .select('*')
         .eq('is_active', true)
+        .or(`branch_id.eq.${currentBranch.id},is_shared_product.eq.true,branch_id.is.null`)
         .order('name');
       
       if (productsError) throw productsError;
       
-      // Fetch inventory for current branch
-      const { data: inventoryData, error: inventoryError } = await supabase
+      // Fetch categories separately
+      const { data: categoriesData } = await supabase
+        .from('categories')
+        .select('id, name, color');
+      
+      const categoriesMap = new Map(
+        (categoriesData || []).map(cat => [cat.id, cat])
+      );
+      
+      // Fetch stock from stock_movements (using the view or manual calculation)
+      const { data: stockData, error: stockError } = await supabase
+        .from('current_stock')
+        .select('*')
+        .eq('branch_id', currentBranch.id);
+      
+      // Create a map of stock by product_id
+      const stockMap = new Map(
+        (stockData || []).map(s => [s.product_id, s])
+      );
+      
+      // Also fetch branch_inventory for backwards compatibility
+      const { data: legacyInventory } = await supabase
         .from('branch_inventory')
         .select('*')
         .eq('branch_id', currentBranch.id);
       
-      if (inventoryError) throw inventoryError;
-      
-      // Create a map of inventory by product_id
-      const inventoryMap = new Map(
-        inventoryData?.map(inv => [inv.product_id, inv]) || []
+      const legacyMap = new Map(
+        (legacyInventory || []).map(inv => [inv.product_id, inv])
       );
       
-      // Combine products with their inventory (defaulting to 0 if no record)
+      // Combine products with their stock
       return (productsData || []).map(product => {
-        const inv = inventoryMap.get(product.id);
+        const stock = stockMap.get(product.id);
+        const legacy = legacyMap.get(product.id);
+        
+        // Prefer stock_movements data, fall back to branch_inventory
+        const quantity = stock?.quantity ?? legacy?.quantity ?? 0;
+        const hasRealInventory = !!(stock || legacy);
+        
         return {
-          id: inv?.id || `temp_${product.id}`,
+          id: legacy?.id || `virtual_${product.id}`,
           product_id: product.id,
-          quantity: inv?.quantity || 0,
-          expiry_date: inv?.expiry_date || null,
-          batch_number: inv?.batch_number || null,
-          products: product
+          quantity,
+          expiry_date: stock?.latest_expiry_date || legacy?.expiry_date || null,
+          batch_number: stock?.latest_batch_number || legacy?.batch_number || null,
+          has_real_inventory: hasRealInventory,
+          products: {
+            ...product,
+            categories: product.category_id ? categoriesMap.get(product.category_id) || null : null,
+          },
         } as InventoryItem;
       });
     },
     enabled: !!currentBranch?.id,
   });
 
-  // Fetch all products
-  const { data: allProducts = [] } = useQuery({
-    queryKey: ['products'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*, categories(name, color)')
-        .eq('is_active', true)
-        .order('name');
-      if (error) throw error;
-      return data as Product[];
-    },
-  });
-
-  // Create product mutation
+  // Create product mutation with branch_id
   const createProduct = useMutation({
-    mutationFn: async (productData: Partial<Product>) => {
+    mutationFn: async (productData: Partial<Product> & { initialStock?: number }) => {
+      if (!currentBranch?.id) throw new Error('No branch selected');
+      if (!user?.id) throw new Error('User not authenticated');
+      
+      const { initialStock, ...productFields } = productData;
+      
+      // Insert product with branch_id
       const { data, error } = await supabase
         .from('products')
-        .insert([productData as any])
+        .insert([{
+          name: productFields.name!,
+          unit_price: productFields.unit_price!,
+          sku: productFields.sku,
+          barcode: productFields.barcode,
+          cost_price: productFields.cost_price,
+          category_id: productFields.category_id,
+          low_stock_threshold: productFields.low_stock_threshold,
+          description: productFields.description,
+          is_shared_product: productFields.is_shared_product,
+          branch_id: productFields.is_shared_product ? null : currentBranch.id,
+        }])
         .select()
         .single();
+      
       if (error) throw error;
+      
+      // If initial stock is provided, record it as a movement
+      if (initialStock && initialStock > 0) {
+        await supabase.from('stock_movements').insert({
+          product_id: data.id,
+          branch_id: currentBranch.id,
+          quantity_change: initialStock,
+          movement_type: 'INITIAL',
+          created_by: user.id,
+          notes: 'Initial stock on product creation',
+        });
+      }
+      
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
       toast({ title: 'Product created successfully' });
       setProductDialogOpen(false);
     },
@@ -197,48 +256,58 @@ const Inventory = () => {
     },
   });
 
-  // Update stock mutation
+  // Update stock using stock_movements (audit trail)
   const updateStock = useMutation({
-    mutationFn: async ({ productId, quantity, expiryDate, batchNumber }: { 
+    mutationFn: async ({ 
+      productId, 
+      currentQuantity,
+      newQuantity, 
+      expiryDate, 
+      batchNumber,
+      notes,
+    }: { 
       productId: string; 
-      quantity: number; 
+      currentQuantity: number;
+      newQuantity: number; 
       expiryDate?: string;
       batchNumber?: string;
+      notes?: string;
     }) => {
       if (!currentBranch?.id) throw new Error('No branch selected');
+      if (!user?.id) throw new Error('User not authenticated');
       
-      const existing = inventory.find(i => i.product_id === productId);
-      
-      if (existing) {
-        const { error } = await supabase
-          .from('branch_inventory')
-          .update({ 
-            quantity, 
-            expiry_date: expiryDate || null,
-            batch_number: batchNumber || null,
-            last_restocked_at: new Date().toISOString() 
-          })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('branch_inventory')
-          .insert({
-            branch_id: currentBranch.id,
-            product_id: productId,
-            quantity,
-            expiry_date: expiryDate || null,
-            batch_number: batchNumber || null,
-            last_restocked_at: new Date().toISOString(),
-          });
-        if (error) throw error;
+      // Validate productId is a real UUID
+      if (productId.startsWith('temp_') || productId.startsWith('virtual_')) {
+        throw new Error('Cannot update stock: product not yet saved');
       }
+      
+      const difference = newQuantity - currentQuantity;
+      
+      if (difference === 0 && !batchNumber && !expiryDate) {
+        return; // No change needed
+      }
+      
+      // Record the stock movement
+      const { error } = await supabase.from('stock_movements').insert({
+        product_id: productId,
+        branch_id: currentBranch.id,
+        quantity_change: difference,
+        movement_type: difference === 0 ? 'ADJUSTMENT' : (difference > 0 ? 'ADD' : 'ADJUSTMENT'),
+        batch_number: batchNumber || null,
+        expiry_date: expiryDate || null,
+        created_by: user.id,
+        notes: notes || `Stock ${difference >= 0 ? 'added' : 'adjusted'}: ${currentQuantity} → ${newQuantity}`,
+      });
+      
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       toast({ title: 'Stock updated successfully' });
       setStockDialogOpen(false);
       setSelectedProduct(null);
+      setSelectedInventoryItem(null);
     },
     onError: (error: Error) => {
       toast({ title: 'Error updating stock', description: error.message, variant: 'destructive' });
@@ -268,14 +337,31 @@ const Inventory = () => {
 
   // Handle barcode scan
   const handleBarcodeScan = () => {
-    const product = allProducts.find(p => p.barcode === barcodeInput);
-    if (product) {
-      setSelectedProduct(product);
+    const item = inventory.find(i => i.products.barcode === barcodeInput);
+    if (item) {
+      setSelectedProduct(item.products);
+      setSelectedInventoryItem(item);
       setStockDialogOpen(true);
     } else {
       toast({ title: 'Product not found', description: 'No product matches this barcode', variant: 'destructive' });
     }
     setBarcodeInput('');
+  };
+
+  const handleOpenStockDialog = (item: InventoryItem) => {
+    // Prevent editing if product isn't saved yet
+    if (item.id.startsWith('virtual_') && !item.has_real_inventory) {
+      // This is fine - we can still add stock
+    }
+    setSelectedProduct(item.products);
+    setSelectedInventoryItem(item);
+    setStockDialogOpen(true);
+  };
+
+  const handleOpenHistoryDialog = (item: InventoryItem) => {
+    setSelectedProduct(item.products);
+    setSelectedInventoryItem(item);
+    setHistoryDialogOpen(true);
   };
 
   return (
@@ -286,7 +372,7 @@ const Inventory = () => {
           <div>
             <h1 className="text-2xl font-bold">Inventory Management</h1>
             <p className="text-muted-foreground">
-              Manage products, stock levels, and categories for {currentBranch?.name || 'your branch'}
+              Manage products and stock for {currentBranch?.name || 'your branch'}
             </p>
           </div>
           <div className="flex gap-2">
@@ -306,7 +392,7 @@ const Inventory = () => {
             </Dialog>
             <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button disabled={!currentBranch}>
                   <Plus className="w-4 h-4 mr-2" />
                   Product
                 </Button>
@@ -317,12 +403,24 @@ const Inventory = () => {
                 </DialogHeader>
                 <ProductForm 
                   categories={categories} 
-                  onSubmit={(data) => createProduct.mutate(data)} 
+                  onSubmit={(data) => createProduct.mutate(data)}
+                  isLoading={createProduct.isPending}
                 />
               </DialogContent>
             </Dialog>
           </div>
         </div>
+
+        {/* No Branch Warning */}
+        {!currentBranch && (
+          <Card className="border-warning bg-warning/10">
+            <CardContent className="p-4">
+              <p className="text-warning font-medium">
+                Please select a branch to manage inventory
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Alert Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -432,10 +530,8 @@ const Inventory = () => {
             <InventoryTable 
               items={filteredInventory} 
               isLoading={isLoading}
-              onUpdateStock={(product) => {
-                setSelectedProduct(product);
-                setStockDialogOpen(true);
-              }}
+              onUpdateStock={handleOpenStockDialog}
+              onViewHistory={handleOpenHistoryDialog}
             />
           </TabsContent>
 
@@ -443,10 +539,8 @@ const Inventory = () => {
             <InventoryTable 
               items={lowStockItems} 
               isLoading={isLoading}
-              onUpdateStock={(product) => {
-                setSelectedProduct(product);
-                setStockDialogOpen(true);
-              }}
+              onUpdateStock={handleOpenStockDialog}
+              onViewHistory={handleOpenHistoryDialog}
             />
           </TabsContent>
 
@@ -454,10 +548,8 @@ const Inventory = () => {
             <InventoryTable 
               items={expiringItems} 
               isLoading={isLoading}
-              onUpdateStock={(product) => {
-                setSelectedProduct(product);
-                setStockDialogOpen(true);
-              }}
+              onUpdateStock={handleOpenStockDialog}
+              onViewHistory={handleOpenHistoryDialog}
               showExpiry
             />
           </TabsContent>
@@ -487,23 +579,56 @@ const Inventory = () => {
         </Tabs>
 
         {/* Stock Update Dialog */}
-        <Dialog open={stockDialogOpen} onOpenChange={setStockDialogOpen}>
+        <Dialog open={stockDialogOpen} onOpenChange={(open) => {
+          setStockDialogOpen(open);
+          if (!open) {
+            setSelectedProduct(null);
+            setSelectedInventoryItem(null);
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Update Stock - {selectedProduct?.name}</DialogTitle>
+              <DialogTitle>
+                Update Stock - {selectedProduct?.name}
+                {selectedProduct?.is_shared_product && (
+                  <Badge variant="secondary" className="ml-2">
+                    <Share2 className="w-3 h-3 mr-1" />
+                    Shared
+                  </Badge>
+                )}
+              </DialogTitle>
             </DialogHeader>
-            {selectedProduct && (
+            {selectedProduct && selectedInventoryItem && (
               <StockUpdateForm 
                 product={selectedProduct}
-                currentStock={inventory.find(i => i.product_id === selectedProduct.id)}
+                currentStock={selectedInventoryItem}
+                branchName={currentBranch?.name || ''}
                 onSubmit={(data) => updateStock.mutate({ 
-                  productId: selectedProduct.id, 
+                  productId: selectedProduct.id,
+                  currentQuantity: selectedInventoryItem.quantity,
                   ...data 
                 })}
+                isLoading={updateStock.isPending}
               />
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Stock History Dialog */}
+        {selectedProduct && currentBranch && (
+          <StockHistoryDialog
+            isOpen={historyDialogOpen}
+            onClose={() => {
+              setHistoryDialogOpen(false);
+              setSelectedProduct(null);
+              setSelectedInventoryItem(null);
+            }}
+            productId={selectedProduct.id}
+            productName={selectedProduct.name}
+            branchId={currentBranch.id}
+            branchName={currentBranch.name}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
@@ -514,11 +639,13 @@ const InventoryTable = ({
   items, 
   isLoading, 
   onUpdateStock,
+  onViewHistory,
   showExpiry = false 
 }: { 
   items: InventoryItem[]; 
   isLoading: boolean;
-  onUpdateStock: (product: Product) => void;
+  onUpdateStock: (item: InventoryItem) => void;
+  onViewHistory: (item: InventoryItem) => void;
   showExpiry?: boolean;
 }) => {
   if (isLoading) {
@@ -578,7 +705,14 @@ const InventoryTable = ({
                         )}
                       </div>
                       <div>
-                        <p className="font-medium">{item.products.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{item.products.name}</p>
+                          {item.products.is_shared_product && (
+                            <span title="Shared product">
+                              <Share2 className="w-3 h-3 text-muted-foreground" />
+                            </span>
+                          )}
+                        </div>
                         {item.products.barcode && (
                           <p className="text-xs text-muted-foreground">{item.products.barcode}</p>
                         )}
@@ -628,13 +762,24 @@ const InventoryTable = ({
                     </td>
                   )}
                   <td className="p-4 text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => onUpdateStock(item.products)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => onViewHistory(item)}
+                        title="View stock history"
+                      >
+                        <History className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => onUpdateStock(item)}
+                        title="Update stock"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -649,10 +794,12 @@ const InventoryTable = ({
 // Product Form Component
 const ProductForm = ({ 
   categories, 
-  onSubmit 
+  onSubmit,
+  isLoading,
 }: { 
   categories: Category[];
-  onSubmit: (data: Partial<Product>) => void;
+  onSubmit: (data: Partial<Product> & { initialStock?: number }) => void;
+  isLoading?: boolean;
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -663,6 +810,8 @@ const ProductForm = ({
     category_id: '',
     low_stock_threshold: '10',
     description: '',
+    is_shared_product: false,
+    initialStock: '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -676,6 +825,8 @@ const ProductForm = ({
       category_id: formData.category_id || null,
       low_stock_threshold: parseInt(formData.low_stock_threshold),
       description: formData.description || null,
+      is_shared_product: formData.is_shared_product,
+      initialStock: formData.initialStock ? parseInt(formData.initialStock) : undefined,
     });
   };
 
@@ -689,6 +840,7 @@ const ProductForm = ({
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
+            disabled={isLoading}
           />
         </div>
         <div>
@@ -697,6 +849,7 @@ const ProductForm = ({
             id="sku"
             value={formData.sku}
             onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+            disabled={isLoading}
           />
         </div>
         <div>
@@ -705,6 +858,7 @@ const ProductForm = ({
             id="barcode"
             value={formData.barcode}
             onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+            disabled={isLoading}
           />
         </div>
         <div>
@@ -715,6 +869,7 @@ const ProductForm = ({
             value={formData.unit_price}
             onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
             required
+            disabled={isLoading}
           />
         </div>
         <div>
@@ -724,11 +879,16 @@ const ProductForm = ({
             type="number"
             value={formData.cost_price}
             onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
+            disabled={isLoading}
           />
         </div>
         <div>
           <Label htmlFor="category">Category</Label>
-          <Select value={formData.category_id} onValueChange={(v) => setFormData({ ...formData, category_id: v })}>
+          <Select 
+            value={formData.category_id} 
+            onValueChange={(v) => setFormData({ ...formData, category_id: v })}
+            disabled={isLoading}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
@@ -746,7 +906,31 @@ const ProductForm = ({
             type="number"
             value={formData.low_stock_threshold}
             onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
+            disabled={isLoading}
           />
+        </div>
+        <div>
+          <Label htmlFor="initialStock">Initial Stock</Label>
+          <Input
+            id="initialStock"
+            type="number"
+            value={formData.initialStock}
+            onChange={(e) => setFormData({ ...formData, initialStock: e.target.value })}
+            placeholder="0"
+            disabled={isLoading}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="shared"
+            checked={formData.is_shared_product}
+            onCheckedChange={(checked) => setFormData({ ...formData, is_shared_product: checked })}
+            disabled={isLoading}
+          />
+          <Label htmlFor="shared" className="flex items-center gap-1 cursor-pointer">
+            <Share2 className="w-4 h-4" />
+            Shared across branches
+          </Label>
         </div>
         <div className="col-span-2">
           <Label htmlFor="description">Description</Label>
@@ -755,10 +939,13 @@ const ProductForm = ({
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={2}
+            disabled={isLoading}
           />
         </div>
       </div>
-      <Button type="submit" className="w-full">Create Product</Button>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? 'Creating...' : 'Create Product'}
+      </Button>
     </form>
   );
 };
@@ -824,38 +1011,60 @@ const CategoryForm = ({ onSubmit }: { onSubmit: (data: Partial<Category>) => voi
 const StockUpdateForm = ({ 
   product, 
   currentStock,
-  onSubmit 
+  branchName,
+  onSubmit,
+  isLoading,
 }: { 
   product: Product;
-  currentStock?: InventoryItem;
-  onSubmit: (data: { quantity: number; expiryDate?: string; batchNumber?: string }) => void;
+  currentStock: InventoryItem;
+  branchName: string;
+  onSubmit: (data: { newQuantity: number; expiryDate?: string; batchNumber?: string; notes?: string }) => void;
+  isLoading?: boolean;
 }) => {
   const [formData, setFormData] = useState({
-    quantity: currentStock?.quantity?.toString() || '0',
-    expiryDate: currentStock?.expiry_date || '',
-    batchNumber: currentStock?.batch_number || '',
+    newQuantity: currentStock.quantity.toString(),
+    expiryDate: currentStock.expiry_date || '',
+    batchNumber: currentStock.batch_number || '',
+    notes: '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      quantity: parseInt(formData.quantity),
+      newQuantity: parseInt(formData.newQuantity),
       expiryDate: formData.expiryDate || undefined,
       batchNumber: formData.batchNumber || undefined,
+      notes: formData.notes || undefined,
     });
   };
 
+  const quantityDiff = parseInt(formData.newQuantity || '0') - currentStock.quantity;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-3 bg-muted rounded-lg text-sm">
+        <p><strong>Branch:</strong> {branchName}</p>
+        <p><strong>Current Stock:</strong> {currentStock.quantity}</p>
+      </div>
+      
       <div>
-        <Label htmlFor="quantity">Quantity *</Label>
+        <Label htmlFor="newQuantity">New Quantity *</Label>
         <Input
-          id="quantity"
+          id="newQuantity"
           type="number"
-          value={formData.quantity}
-          onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+          value={formData.newQuantity}
+          onChange={(e) => setFormData({ ...formData, newQuantity: e.target.value })}
           required
+          disabled={isLoading}
         />
+        {quantityDiff !== 0 && (
+          <p className={cn(
+            'text-sm mt-1',
+            quantityDiff > 0 ? 'text-green-600' : 'text-red-600'
+          )}>
+            {quantityDiff > 0 ? '+' : ''}{quantityDiff} units
+          </p>
+        )}
       </div>
       <div>
         <Label htmlFor="batchNumber">Batch Number</Label>
@@ -863,6 +1072,7 @@ const StockUpdateForm = ({
           id="batchNumber"
           value={formData.batchNumber}
           onChange={(e) => setFormData({ ...formData, batchNumber: e.target.value })}
+          disabled={isLoading}
         />
       </div>
       <div>
@@ -872,9 +1082,23 @@ const StockUpdateForm = ({
           type="date"
           value={formData.expiryDate}
           onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+          disabled={isLoading}
         />
       </div>
-      <Button type="submit" className="w-full">Update Stock</Button>
+      <div>
+        <Label htmlFor="notes">Notes (for audit trail)</Label>
+        <Textarea
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          rows={2}
+          placeholder="Reason for stock change..."
+          disabled={isLoading}
+        />
+      </div>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? 'Updating...' : 'Update Stock'}
+      </Button>
     </form>
   );
 };
