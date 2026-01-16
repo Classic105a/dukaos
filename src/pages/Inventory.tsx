@@ -41,6 +41,7 @@ import {
   ScanLine,
   History,
   Share2,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
@@ -110,18 +111,18 @@ const Inventory = () => {
     },
   });
 
-  // Fetch products for current branch (branch-specific + shared products)
+  // Fetch products for current branch (branch-specific + shared products ONLY)
   const { data: inventory = [], isLoading } = useQuery({
     queryKey: ['inventory', currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
       
-      // Fetch products visible to this branch (branch-specific OR shared OR legacy without branch)
+      // Fetch products visible to this branch (branch-specific OR shared) - NO legacy null branch support
       const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
         .eq('is_active', true)
-        .or(`branch_id.eq.${currentBranch.id},is_shared_product.eq.true,branch_id.is.null`)
+        .or(`branch_id.eq.${currentBranch.id},is_shared_product.eq.true`)
         .order('name');
       
       if (productsError) throw productsError;
@@ -135,8 +136,8 @@ const Inventory = () => {
         (categoriesData || []).map(cat => [cat.id, cat])
       );
       
-      // Fetch stock from stock_movements (using the view or manual calculation)
-      const { data: stockData, error: stockError } = await supabase
+      // Fetch stock from stock_movements view
+      const { data: stockData } = await supabase
         .from('current_stock')
         .select('*')
         .eq('branch_id', currentBranch.id);
@@ -146,32 +147,18 @@ const Inventory = () => {
         (stockData || []).map(s => [s.product_id, s])
       );
       
-      // Also fetch branch_inventory for backwards compatibility
-      const { data: legacyInventory } = await supabase
-        .from('branch_inventory')
-        .select('*')
-        .eq('branch_id', currentBranch.id);
-      
-      const legacyMap = new Map(
-        (legacyInventory || []).map(inv => [inv.product_id, inv])
-      );
-      
       // Combine products with their stock
       return (productsData || []).map(product => {
         const stock = stockMap.get(product.id);
-        const legacy = legacyMap.get(product.id);
-        
-        // Prefer stock_movements data, fall back to branch_inventory
-        const quantity = stock?.quantity ?? legacy?.quantity ?? 0;
-        const hasRealInventory = !!(stock || legacy);
+        const quantity = stock?.quantity ?? 0;
         
         return {
-          id: legacy?.id || `virtual_${product.id}`,
+          id: product.id, // Use product id directly
           product_id: product.id,
           quantity,
-          expiry_date: stock?.latest_expiry_date || legacy?.expiry_date || null,
-          batch_number: stock?.latest_batch_number || legacy?.batch_number || null,
-          has_real_inventory: hasRealInventory,
+          expiry_date: stock?.latest_expiry_date || null,
+          batch_number: stock?.latest_batch_number || null,
+          has_real_inventory: !!stock,
           products: {
             ...product,
             categories: product.category_id ? categoriesMap.get(product.category_id) || null : null,
@@ -253,6 +240,35 @@ const Inventory = () => {
     },
     onError: (error: Error) => {
       toast({ title: 'Error creating category', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Delete product mutation
+  const deleteProduct = useMutation({
+    mutationFn: async (productId: string) => {
+      if (!currentBranch?.id) throw new Error('No branch selected');
+      
+      // First delete stock movements for this product
+      await supabase
+        .from('stock_movements')
+        .delete()
+        .eq('product_id', productId);
+      
+      // Then delete the product
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      toast({ title: 'Product deleted successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error deleting product', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -532,6 +548,7 @@ const Inventory = () => {
               isLoading={isLoading}
               onUpdateStock={handleOpenStockDialog}
               onViewHistory={handleOpenHistoryDialog}
+              onDelete={(item) => deleteProduct.mutate(item.product_id)}
             />
           </TabsContent>
 
@@ -541,6 +558,7 @@ const Inventory = () => {
               isLoading={isLoading}
               onUpdateStock={handleOpenStockDialog}
               onViewHistory={handleOpenHistoryDialog}
+              onDelete={(item) => deleteProduct.mutate(item.product_id)}
             />
           </TabsContent>
 
@@ -550,6 +568,7 @@ const Inventory = () => {
               isLoading={isLoading}
               onUpdateStock={handleOpenStockDialog}
               onViewHistory={handleOpenHistoryDialog}
+              onDelete={(item) => deleteProduct.mutate(item.product_id)}
               showExpiry
             />
           </TabsContent>
@@ -640,12 +659,14 @@ const InventoryTable = ({
   isLoading, 
   onUpdateStock,
   onViewHistory,
+  onDelete,
   showExpiry = false 
 }: { 
   items: InventoryItem[]; 
   isLoading: boolean;
   onUpdateStock: (item: InventoryItem) => void;
   onViewHistory: (item: InventoryItem) => void;
+  onDelete?: (item: InventoryItem) => void;
   showExpiry?: boolean;
 }) => {
   if (isLoading) {
@@ -779,6 +800,21 @@ const InventoryTable = ({
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
+                      {onDelete && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            if (confirm(`Delete "${item.products.name}"?`)) {
+                              onDelete(item);
+                            }
+                          }}
+                          title="Delete product"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -35,7 +35,10 @@ import {
   Users,
   TrendingUp,
   AlertTriangle,
+  Edit,
+  Trash2,
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -76,6 +79,8 @@ const Branches = () => {
   const queryClient = useQueryClient();
   const [branchDialogOpen, setBranchDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Fetch stock transfers
   const { data: transfers = [] } = useQuery({
@@ -140,6 +145,68 @@ const Branches = () => {
     },
     onError: (error: Error) => {
       toast({ title: 'Error creating branch', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Update branch mutation
+  const updateBranch = useMutation({
+    mutationFn: async ({ id, ...branchData }: Partial<Branch> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('branches')
+        .update(branchData)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['branches'] });
+      toast({ title: 'Branch updated successfully' });
+      setEditDialogOpen(false);
+      setEditingBranch(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error updating branch', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Delete branch mutation
+  const deleteBranch = useMutation({
+    mutationFn: async (branchId: string) => {
+      // Check if branch has inventory or stock movements
+      const { count: stockCount } = await supabase
+        .from('stock_movements')
+        .select('*', { count: 'exact', head: true })
+        .eq('branch_id', branchId);
+
+      if (stockCount && stockCount > 0) {
+        throw new Error('Cannot delete branch with existing stock movements. Transfer or clear stock first.');
+      }
+
+      // Check for products
+      const { count: productCount } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('branch_id', branchId);
+
+      if (productCount && productCount > 0) {
+        throw new Error('Cannot delete branch with products. Delete products first.');
+      }
+
+      const { error } = await supabase
+        .from('branches')
+        .delete()
+        .eq('id', branchId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: 'Branch deleted successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error deleting branch', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -390,9 +457,37 @@ const Branches = () => {
                             )}
                           </div>
                         </div>
-                        {isCurrentBranch && (
-                          <Badge variant="outline" className="text-xs">Current</Badge>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {isCurrentBranch && (
+                            <Badge variant="outline" className="text-xs mr-2">Current</Badge>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingBranch(branch);
+                              setEditDialogOpen(true);
+                            }}
+                            title="Edit branch"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          {!isCurrentBranch && !branch.is_headquarters && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm(`Delete branch "${branch.name}"? This cannot be undone.`)) {
+                                  deleteBranch.mutate(branch.id);
+                                }
+                              }}
+                              title="Delete branch"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-4">
@@ -530,6 +625,25 @@ const Branches = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Branch Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) setEditingBranch(null);
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Branch</DialogTitle>
+            </DialogHeader>
+            {editingBranch && (
+              <EditBranchForm 
+                branch={editingBranch}
+                onSubmit={(data) => updateBranch.mutate({ id: editingBranch.id, ...data })}
+                isLoading={updateBranch.isPending}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
@@ -593,6 +707,81 @@ const BranchForm = ({ onSubmit }: { onSubmit: (data: Partial<Branch>) => void })
         <Label htmlFor="headquarters">This is the headquarters</Label>
       </div>
       <Button type="submit" className="w-full">Create Branch</Button>
+    </form>
+  );
+};
+
+// Edit Branch Form Component
+const EditBranchForm = ({ 
+  branch,
+  onSubmit,
+  isLoading 
+}: { 
+  branch: Branch;
+  onSubmit: (data: Partial<Branch>) => void;
+  isLoading?: boolean;
+}) => {
+  const [formData, setFormData] = useState({
+    name: branch.name,
+    location: branch.location || '',
+    phone: branch.phone || '',
+    is_headquarters: branch.is_headquarters,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      name: formData.name,
+      location: formData.location || null,
+      phone: formData.phone || null,
+      is_headquarters: formData.is_headquarters,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="edit-name">Branch Name *</Label>
+        <Input
+          id="edit-name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+          disabled={isLoading}
+        />
+      </div>
+      <div>
+        <Label htmlFor="edit-location">Location</Label>
+        <Input
+          id="edit-location"
+          value={formData.location}
+          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+          placeholder="e.g., Westlands, Nairobi"
+          disabled={isLoading}
+        />
+      </div>
+      <div>
+        <Label htmlFor="edit-phone">Phone</Label>
+        <Input
+          id="edit-phone"
+          value={formData.phone}
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          placeholder="+254..."
+          disabled={isLoading}
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <Switch
+          id="edit-headquarters"
+          checked={formData.is_headquarters}
+          onCheckedChange={(checked) => setFormData({ ...formData, is_headquarters: checked })}
+          disabled={isLoading}
+        />
+        <Label htmlFor="edit-headquarters">This is the headquarters</Label>
+      </div>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? 'Saving...' : 'Save Changes'}
+      </Button>
     </form>
   );
 };
