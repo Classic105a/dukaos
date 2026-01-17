@@ -187,24 +187,21 @@ export const useOfflineSync = () => {
 
         await supabase.from('sale_items').insert(itemsToInsert);
 
-        // Deduct stock atomically using a transaction-like approach
-        for (const item of sale.items) {
-          const { data: inventory } = await supabase
-            .from('branch_inventory')
-            .select('id, quantity')
-            .eq('branch_id', sale.branch_id)
-            .eq('product_id', item.product_id)
-            .maybeSingle();
+        const { error: movementError } = await supabase
+          .from('stock_movements')
+          .insert(
+            sale.items.map(item => ({
+              product_id: item.product_id,
+              branch_id: sale.branch_id,
+              quantity_change: -item.quantity,
+              movement_type: 'SALE',
+              reference_id: saleData.id,
+              created_by: user.id,
+              notes: `Offline sale sync ${receiptNumber}`,
+            }))
+          );
 
-          if (inventory) {
-            const newQuantity = Math.max(0, inventory.quantity - item.quantity);
-            await supabase
-              .from('branch_inventory')
-              .update({ quantity: newQuantity })
-              .eq('id', inventory.id)
-              .eq('quantity', inventory.quantity); // Optimistic lock
-          }
-        }
+        if (movementError) throw movementError;
 
         // Create payments
         const paymentsToInsert = sale.payments.map(payment => ({

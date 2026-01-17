@@ -57,7 +57,7 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
 
     setLoading(true);
     try {
-      const { data: productsData } = await supabase
+      const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select(`
           id,
@@ -66,25 +66,33 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
           unit_price,
           image_url,
           category_id,
+          is_shared_product,
+          branch_id,
           categories (name, color)
         `)
         .eq('is_active', true)
+        .or(`branch_id.eq.${currentBranch.id},is_shared_product.eq.true`)
         .order('name');
 
-      const { data: inventoryData } = await supabase
-        .from('branch_inventory')
+      if (productsError) throw productsError;
+
+      const { data: stockData, error: stockError } = await supabase
+        .from('current_stock')
         .select('product_id, quantity')
         .eq('branch_id', currentBranch.id);
 
-      const inventoryMap = new Map(
-        inventoryData?.map(inv => [inv.product_id, inv.quantity]) || []
+      if (stockError) throw stockError;
+
+      const stockMap = new Map(
+        (stockData || []).map(s => [s.product_id, s.quantity ?? 0])
       );
 
-      const productsWithStock = productsData?.map(product => ({
-        ...product,
-        category: product.categories,
-        stock: inventoryMap.get(product.id) || 0
-      })) || [];
+      const productsWithStock =
+        (productsData as any[])?.map((product) => ({
+          ...product,
+          category: product.categories,
+          stock: stockMap.get(product.id) ?? 0,
+        })) || [];
 
       setProducts(productsWithStock);
     } catch (error) {

@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { RotateCcw, Search, Package, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface ReturnItem {
@@ -34,6 +35,7 @@ interface ReturnModalProps {
 
 const ReturnModal = ({ isOpen, onClose, onComplete }: ReturnModalProps) => {
   const { currentBranch } = useBranch();
+  const { user } = useAuth();
   const [receiptNumber, setReceiptNumber] = useState('');
   const [saleData, setSaleData] = useState<{
     id: string;
@@ -49,6 +51,10 @@ const ReturnModal = ({ isOpen, onClose, onComplete }: ReturnModalProps) => {
 
   const handleSearch = async () => {
     if (!receiptNumber.trim()) return;
+    if (!currentBranch?.id) {
+      toast.error('Please select a branch');
+      return;
+    }
     
     setSearching(true);
     try {
@@ -109,6 +115,12 @@ const ReturnModal = ({ isOpen, onClose, onComplete }: ReturnModalProps) => {
   );
 
   const handleProcessReturn = async () => {
+    const branchId = (currentBranch as any)?.id as string | undefined;
+    if (!branchId || !user?.id) {
+      toast.error('Please select a branch');
+      return;
+    }
+
     if (!saleData || returnItems.length === 0 || !reason.trim()) {
       toast.error('Please select items to return and provide a reason');
       return;
@@ -116,36 +128,42 @@ const ReturnModal = ({ isOpen, onClose, onComplete }: ReturnModalProps) => {
 
     setProcessing(true);
     try {
-      // Create return record using raw query since types may not be updated yet
-      const { error: returnError } = await supabase
+      // Create return record
+      const { data: returnRow, error: returnError } = await supabase
         .from('returns' as any)
         .insert({
           original_sale_id: saleData.id,
-          branch_id: currentBranch?.id,
+          branch_id: branchId,
+          processed_by: user.id,
           reason,
           refund_method: refundMethod,
           refund_amount: totalRefund,
           status: 'completed',
-        });
+        })
+        .select('id')
+        .single();
 
       if (returnError) throw returnError;
 
-      // Restore inventory for returned items
-      for (const item of returnItems) {
-        const { data: inventory } = await supabase
-          .from('branch_inventory')
-          .select('id, quantity')
-          .eq('branch_id', currentBranch?.id)
-          .eq('product_id', item.product_id)
-          .maybeSingle();
+      const returnId = (returnRow as any)?.id as string | undefined;
+      if (!returnId) throw new Error('Failed to create return record');
 
-        if (inventory) {
-          await supabase
-            .from('branch_inventory')
-            .update({ quantity: inventory.quantity + item.returnQuantity })
-            .eq('id', inventory.id);
-        }
-      }
+      // Restore inventory for returned items via stock movements
+      const { error: movementError } = await supabase
+        .from('stock_movements')
+        .insert(
+          returnItems.map(item => ({
+            product_id: item.product_id,
+            branch_id: branchId,
+            quantity_change: item.returnQuantity,
+            movement_type: 'RETURN',
+            reference_id: returnId,
+            created_by: user.id,
+            notes: `Return for ${saleData.receipt_number}`,
+          }))
+        );
+
+      if (movementError) throw movementError;
 
       toast.success(`Return processed. Refund: KES ${totalRefund.toLocaleString()}`);
       handleClose();
