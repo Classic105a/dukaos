@@ -31,6 +31,7 @@ const Dashboard = () => {
   const { calculateTax } = useTaxSettings();
   const { heldSales, holdSale, resumeSale, deleteHeldSale } = useHoldSale();
   const lastSaleItemsRef = useRef<CartItem[]>([]);
+  const [productRefreshKey, setProductRefreshKey] = useState(0);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
   const [showPayment, setShowPayment] = useState(false);
@@ -203,6 +204,7 @@ const Dashboard = () => {
       setShowMobileCart(false);
       setShowReceipt(true);
       setCartItems([]);
+      setProductRefreshKey(k => k + 1);
       toast.success('Sale saved offline. Will sync when online.');
       
       autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
@@ -238,21 +240,19 @@ const Dashboard = () => {
         }))
       );
 
-      for (const item of saleItems) {
-        const { data: inventory } = await supabase
-          .from('branch_inventory')
-          .select('id, quantity')
-          .eq('branch_id', currentBranch.id)
-          .eq('product_id', item.product_id)
-          .maybeSingle();
+      const { error: movementError } = await supabase.from('stock_movements').insert(
+        saleItems.map(item => ({
+          product_id: item.product_id,
+          branch_id: currentBranch.id,
+          quantity_change: -item.quantity,
+          movement_type: 'SALE',
+          reference_id: saleData.id,
+          created_by: user.id,
+          notes: `Sale ${receiptNumber}`,
+        }))
+      );
 
-        if (inventory) {
-          await supabase
-            .from('branch_inventory')
-            .update({ quantity: Math.max(0, inventory.quantity - item.quantity) })
-            .eq('id', inventory.id);
-        }
-      }
+      if (movementError) throw movementError;
 
       await supabase.from('payments').insert(
         payments.map(p => ({
@@ -272,6 +272,7 @@ const Dashboard = () => {
       setShowMobileCart(false);
       setShowReceipt(true);
       setCartItems([]);
+      setProductRefreshKey(k => k + 1);
       toast.success('Sale completed!');
       
       autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
@@ -340,7 +341,7 @@ const Dashboard = () => {
         {/* Product Grid - Full width on mobile, 2/3 on desktop */}
         <div className="flex-1 lg:w-2/3 overflow-hidden flex flex-col">
           <div className="flex-1 p-3 lg:p-4 overflow-hidden">
-            <ProductGrid onProductSelect={handleProductSelect} />
+            <ProductGrid key={productRefreshKey} onProductSelect={handleProductSelect} />
           </div>
         </div>
 
