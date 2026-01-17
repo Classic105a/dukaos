@@ -65,12 +65,13 @@ interface StockTransfer {
   to_branch: { name: string };
 }
 
-interface BranchInventory {
-  id: string;
-  branch_id: string;
+interface BranchStock {
   product_id: string;
+  branch_id: string;
   quantity: number;
-  products: { name: string; unit_price: number; low_stock_threshold: number | null };
+  product_name: string;
+  unit_price: number;
+  low_stock_threshold: number | null;
 }
 
 const Branches = () => {
@@ -101,15 +102,38 @@ const Branches = () => {
     },
   });
 
-  // Fetch all branch inventory for overview
-  const { data: allInventory = [] } = useQuery({
-    queryKey: ['all-branch-inventory'],
+  // Fetch all stock from current_stock view, joined with products for display
+  const { data: allStock = [] } = useQuery({
+    queryKey: ['all-branch-stock'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('branch_inventory')
-        .select('*, products(name, unit_price, low_stock_threshold)');
-      if (error) throw error;
-      return data as BranchInventory[];
+      const { data: stockData, error: stockError } = await supabase
+        .from('current_stock')
+        .select('product_id, branch_id, quantity');
+      if (stockError) throw stockError;
+
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('id, name, unit_price, low_stock_threshold')
+        .eq('is_active', true);
+      if (productsError) throw productsError;
+
+      const productMap = new Map(
+        (productsData || []).map((p) => [p.id, p])
+      );
+
+      return (stockData || [])
+        .filter((s) => s.product_id && productMap.has(s.product_id))
+        .map((s) => {
+          const product = productMap.get(s.product_id!)!;
+          return {
+            product_id: s.product_id!,
+            branch_id: s.branch_id!,
+            quantity: s.quantity ?? 0,
+            product_name: product.name,
+            unit_price: product.unit_price,
+            low_stock_threshold: product.low_stock_threshold,
+          } as BranchStock;
+        });
     },
   });
 
@@ -240,58 +264,60 @@ const Branches = () => {
     },
   });
 
-  // Complete transfer mutation
+  // Complete transfer mutation - uses stock_movements now
   const completeTransfer = useMutation({
     mutationFn: async (transferId: string) => {
       const transfer = transfers.find(t => t.id === transferId);
       if (!transfer) throw new Error('Transfer not found');
 
-      // Update from branch inventory (reduce)
+      // Get current user for created_by field
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Record TRANSFER_OUT from source branch
       if (transfer.from_branch_id) {
-        const fromInventory = allInventory.find(
-          i => i.branch_id === transfer.from_branch_id && i.product_id === transfer.product_id
-        );
-        if (fromInventory) {
-          await supabase
-            .from('branch_inventory')
-            .update({ quantity: fromInventory.quantity - transfer.quantity })
-            .eq('id', fromInventory.id);
-        }
+        const { error: outError } = await supabase.from('stock_movements').insert({
+          product_id: transfer.product_id,
+          branch_id: transfer.from_branch_id,
+          quantity_change: -transfer.quantity,
+          movement_type: 'TRANSFER_OUT',
+          reference_id: transferId,
+          created_by: user.id,
+          notes: `Transfer to ${transfer.to_branch?.name || transfer.to_branch_id}`,
+        });
+        if (outError) throw outError;
       }
 
-      // Update to branch inventory (add)
-      const toInventory = allInventory.find(
-        i => i.branch_id === transfer.to_branch_id && i.product_id === transfer.product_id
-      );
-      if (toInventory) {
-        await supabase
-          .from('branch_inventory')
-          .update({ quantity: toInventory.quantity + transfer.quantity })
-          .eq('id', toInventory.id);
-      } else {
-        await supabase
-          .from('branch_inventory')
-          .insert({
-            branch_id: transfer.to_branch_id,
-            product_id: transfer.product_id,
-            quantity: transfer.quantity,
-          });
-      }
+      // Record TRANSFER_IN to destination branch
+      const { error: inError } = await supabase.from('stock_movements').insert({
+        product_id: transfer.product_id,
+        branch_id: transfer.to_branch_id,
+        quantity_change: transfer.quantity,
+        movement_type: 'TRANSFER_IN',
+        reference_id: transferId,
+        created_by: user.id,
+        notes: transfer.from_branch_id
+          ? `Transfer from ${transfer.from_branch?.name || transfer.from_branch_id}`
+          : 'New stock transfer',
+      });
+      if (inError) throw inError;
 
       // Mark transfer as completed
       const { error } = await supabase
         .from('stock_transfers')
-        .update({ 
+        .update({
           status: 'completed',
-          completed_at: new Date().toISOString()
+          completed_at: new Date().toISOString(),
         })
         .eq('id', transferId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-transfers'] });
-      queryClient.invalidateQueries({ queryKey: ['all-branch-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['all-branch-stock'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['current-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       toast({ title: 'Transfer completed successfully' });
     },
     onError: (error: Error) => {
@@ -299,15 +325,15 @@ const Branches = () => {
     },
   });
 
-  // Calculate branch stats
+  // Calculate branch stats using allStock
   const getBranchStats = (branchId: string) => {
-    const branchInventory = allInventory.filter(i => i.branch_id === branchId);
-    const totalItems = branchInventory.reduce((sum, i) => sum + i.quantity, 0);
-    const totalValue = branchInventory.reduce((sum, i) => sum + (i.quantity * i.products.unit_price), 0);
-    const lowStockCount = branchInventory.filter(
-      i => i.quantity <= (i.products.low_stock_threshold || 10)
+    const branchStock = allStock.filter((s) => s.branch_id === branchId);
+    const totalItems = branchStock.reduce((sum, s) => sum + s.quantity, 0);
+    const totalValue = branchStock.reduce((sum, s) => sum + s.quantity * s.unit_price, 0);
+    const lowStockCount = branchStock.filter(
+      (s) => s.quantity <= (s.low_stock_threshold || 10)
     ).length;
-    return { totalItems, totalValue, lowStockCount, productCount: branchInventory.length };
+    return { totalItems, totalValue, lowStockCount, productCount: branchStock.length };
   };
 
   const pendingTransfers = transfers.filter(t => t.status === 'pending');
@@ -378,7 +404,7 @@ const Branches = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                KES {allInventory.reduce((sum, i) => sum + (i.quantity * i.products.unit_price), 0).toLocaleString()}
+                KES {allStock.reduce((sum, s) => sum + s.quantity * s.unit_price, 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">Across all branches</p>
             </CardContent>
@@ -400,7 +426,7 @@ const Branches = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {allInventory.filter(i => i.quantity <= (i.products.low_stock_threshold || 10)).length}
+                {allStock.filter((s) => s.quantity <= (s.low_stock_threshold || 10)).length}
               </div>
               <p className="text-xs text-muted-foreground">Across all branches</p>
             </CardContent>
@@ -600,18 +626,18 @@ const Branches = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map(product => {
-                      const productInventory = allInventory.filter(i => i.product_id === product.id);
-                      const total = productInventory.reduce((sum, i) => sum + i.quantity, 0);
-                      
+                    {products.map((product) => {
+                      const productStock = allStock.filter((s) => s.product_id === product.id);
+                      const total = productStock.reduce((sum, s) => sum + s.quantity, 0);
+
                       return (
                         <tr key={product.id} className="border-b border-border hover:bg-muted/50">
                           <td className="p-4 font-medium">{product.name}</td>
-                          {branches.map(branch => {
-                            const inv = productInventory.find(i => i.branch_id === branch.id);
+                          {branches.map((branch) => {
+                            const stock = productStock.find((s) => s.branch_id === branch.id);
                             return (
                               <td key={branch.id} className="p-4 text-right">
-                                {inv ? inv.quantity : 0}
+                                {stock ? stock.quantity : 0}
                               </td>
                             );
                           })}
