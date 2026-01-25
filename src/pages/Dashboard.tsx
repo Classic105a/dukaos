@@ -276,9 +276,19 @@ const Dashboard = () => {
       toast.success('Sale completed!');
       
       autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sale error:', error);
-      toast.error('Failed to complete sale');
+      
+      // Provide user-friendly error messages
+      if (error.code === '42501' || error.message?.includes('row-level security')) {
+        toast.error('Access denied. Please log out and back in.');
+      } else if (error.code === '23503') {
+        toast.error('Product or branch not found. Please refresh.');
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        toast.error('Network error. Check your connection.');
+      } else {
+        toast.error('Failed to complete sale. Please try again.');
+      }
     }
   };
 
