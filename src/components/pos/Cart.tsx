@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Trash2, Plus, Minus, ShoppingBag, CreditCard } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface CartItem {
   id: string;
@@ -9,6 +10,7 @@ export interface CartItem {
   unit_price: number;
   quantity: number;
   total: number;
+  maxStock?: number; // Available stock for this item
 }
 
 interface CartProps {
@@ -58,55 +60,76 @@ const Cart = ({
 
       {/* Cart Items */}
       <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin -mx-1 px-1">
-        {items.map(item => (
-          <div
-            key={item.id}
-            className="bg-secondary/50 rounded-lg p-2.5 flex items-center gap-2"
-          >
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-sm truncate leading-tight">{item.name}</h4>
-              <p className="text-xs text-muted-foreground">
-                KES {item.unit_price.toLocaleString()}
-              </p>
-            </div>
-            
-            {/* Quantity Controls - Compact */}
-            <div className="flex items-center bg-card rounded-md border border-border">
-              <button
-                onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-l-md transition-colors"
-              >
-                <Minus className="w-3 h-3" />
-              </button>
-              <Input
-                type="number"
-                value={item.quantity}
-                onChange={(e) => onUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
-                className="w-8 h-7 text-center text-xs px-0 border-0 bg-transparent focus-visible:ring-0"
-                min={1}
-              />
-              <button
-                onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-r-md transition-colors"
-              >
-                <Plus className="w-3 h-3" />
-              </button>
-            </div>
+        {items.map(item => {
+          const maxStock = item.maxStock ?? Infinity;
+          const canIncrease = item.quantity < maxStock;
+          
+          return (
+            <div
+              key={item.id}
+              className="bg-secondary/50 rounded-lg p-2.5 flex items-center gap-2"
+            >
+              <div className="flex-1 min-w-0">
+                <h4 className="font-medium text-sm truncate leading-tight">{item.name}</h4>
+                <p className="text-xs text-muted-foreground">
+                  KES {item.unit_price.toLocaleString()}
+                </p>
+              </div>
+              
+              {/* Quantity Controls - Compact */}
+              <div className="flex items-center bg-card rounded-md border border-border">
+                <button
+                  onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-l-md transition-colors"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <Input
+                  type="number"
+                  value={item.quantity}
+                  onChange={(e) => {
+                    const newQty = parseInt(e.target.value) || 1;
+                    // Clamp between 1 and maxStock
+                    const clampedQty = Math.max(1, Math.min(newQty, maxStock));
+                    onUpdateQuantity(item.id, clampedQty);
+                  }}
+                  className="w-8 h-7 text-center text-xs px-0 border-0 bg-transparent focus-visible:ring-0"
+                  min={1}
+                  max={maxStock}
+                />
+                <button
+                  onClick={() => {
+                    if (canIncrease) {
+                      onUpdateQuantity(item.id, item.quantity + 1);
+                    }
+                  }}
+                  disabled={!canIncrease}
+                  className={cn(
+                    "p-1.5 rounded-r-md transition-colors",
+                    canIncrease 
+                      ? "text-muted-foreground hover:text-foreground hover:bg-secondary" 
+                      : "text-muted-foreground/30 cursor-not-allowed"
+                  )}
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
 
-            {/* Item Total & Remove */}
-            <div className="text-right flex items-center gap-2">
-              <p className="font-bold text-sm tabular-nums">
-                {item.total.toLocaleString()}
-              </p>
-              <button
-                onClick={() => onRemoveItem(item.id)}
-                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {/* Item Total & Remove */}
+              <div className="text-right flex items-center gap-2">
+                <p className="font-bold text-sm tabular-nums">
+                  {item.total.toLocaleString()}
+                </p>
+                <button
+                  onClick={() => onRemoveItem(item.id)}
+                  className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Cart Summary */}

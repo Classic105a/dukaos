@@ -70,7 +70,12 @@ const Dashboard = () => {
       if (existing) {
         return prev.map(item =>
           item.product_id === product.id
-            ? { ...item, quantity: item.quantity + 1, total: (item.quantity + 1) * item.unit_price }
+            ? { 
+                ...item, 
+                quantity: item.quantity + 1, 
+                total: (item.quantity + 1) * item.unit_price,
+                maxStock: availableStock 
+              }
             : item
         );
       }
@@ -80,7 +85,8 @@ const Dashboard = () => {
         name: product.name,
         unit_price: product.unit_price,
         quantity: 1,
-        total: product.unit_price
+        total: product.unit_price,
+        maxStock: availableStock
       }];
     });
   }, []);
@@ -469,6 +475,14 @@ const Dashboard = () => {
           total={lastSaleTotal.total}
           payments={lastSale.payments}
           branchName={currentBranch?.name}
+          branchAddress={currentBranch?.address}
+          branchCity={currentBranch?.city}
+          branchPhone={currentBranch?.phone}
+          mpesaTill={currentBranch?.mpesa_till_number}
+          mpesaPaybill={currentBranch?.mpesa_paybill_number}
+          mpesaAccount={currentBranch?.mpesa_account_number}
+          kraPin={currentBranch?.kra_pin}
+          footerMessage={currentBranch?.receipt_footer_message || 'Thank you for your business!'}
         />
       )}
 
