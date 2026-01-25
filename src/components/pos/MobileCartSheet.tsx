@@ -2,8 +2,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Plus, Minus, CreditCard, PauseCircle, XCircle, X } from 'lucide-react';
+import { Trash2, Plus, Minus, CreditCard, PauseCircle, XCircle } from 'lucide-react';
 import { CartItem } from './Cart';
+import { cn } from '@/lib/utils';
 
 interface MobileCartSheetProps {
   isOpen: boolean;
@@ -86,55 +87,75 @@ const MobileCartSheet = ({
           <>
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-2 py-3">
-                {items.map(item => (
-                  <div
-                    key={item.id}
-                    className="bg-secondary/50 rounded-xl p-3 flex items-center gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm truncate leading-tight">{item.name}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        KES {item.unit_price.toLocaleString()} each
-                      </p>
-                    </div>
-                    
-                    {/* Quantity Controls */}
-                    <div className="flex items-center bg-card rounded-lg border border-border">
-                      <button
-                        onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-l-lg transition-colors"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => onUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
-                        className="w-10 h-8 text-center text-sm px-0 border-0 bg-transparent focus-visible:ring-0"
-                        min={1}
-                      />
-                      <button
-                        onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-r-lg transition-colors"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
+                {items.map(item => {
+                  const maxStock = item.maxStock ?? Infinity;
+                  const canIncrease = item.quantity < maxStock;
+                  
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-secondary/50 rounded-xl p-3 flex items-center gap-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm truncate leading-tight">{item.name}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          KES {item.unit_price.toLocaleString()} each
+                        </p>
+                      </div>
+                      
+                      {/* Quantity Controls */}
+                      <div className="flex items-center bg-card rounded-lg border border-border">
+                        <button
+                          onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                          className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-l-lg transition-colors"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const newQty = parseInt(e.target.value) || 1;
+                            const clampedQty = Math.max(1, Math.min(newQty, maxStock));
+                            onUpdateQuantity(item.id, clampedQty);
+                          }}
+                          className="w-10 h-8 text-center text-sm px-0 border-0 bg-transparent focus-visible:ring-0"
+                          min={1}
+                          max={maxStock}
+                        />
+                        <button
+                          onClick={() => {
+                            if (canIncrease) {
+                              onUpdateQuantity(item.id, item.quantity + 1);
+                            }
+                          }}
+                          disabled={!canIncrease}
+                          className={cn(
+                            "p-2 rounded-r-lg transition-colors",
+                            canIncrease 
+                              ? "text-muted-foreground hover:text-foreground hover:bg-secondary" 
+                              : "text-muted-foreground/30 cursor-not-allowed"
+                          )}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
 
-                    {/* Item Total & Remove */}
-                    <div className="text-right flex items-center gap-2">
-                      <p className="font-bold text-sm tabular-nums min-w-[60px]">
-                        {item.total.toLocaleString()}
-                      </p>
-                      <button
-                        onClick={() => onRemoveItem(item.id)}
-                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {/* Item Total & Remove */}
+                      <div className="text-right flex items-center gap-2">
+                        <p className="font-bold text-sm tabular-nums min-w-[60px]">
+                          {item.total.toLocaleString()}
+                        </p>
+                        <button
+                          onClick={() => onRemoveItem(item.id)}
+                          className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
 
@@ -152,7 +173,7 @@ const MobileCartSheet = ({
                   </div>
                 )}
                 {discount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
+                  <div className="flex justify-between text-sm text-emerald-600">
                     <span>Discount</span>
                     <span className="tabular-nums">-KES {discount.toLocaleString()}</span>
                   </div>
