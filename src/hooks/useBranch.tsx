@@ -60,11 +60,21 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
       const savedBranchId = localStorage.getItem('currentBranchId');
       const savedBranch = data?.find(b => b.id === savedBranchId);
       
-      if (savedBranch) {
-        setCurrentBranch(savedBranch);
-      } else if (data && data.length > 0) {
-        setCurrentBranch(data[0]);
-        localStorage.setItem('currentBranchId', data[0].id);
+      const selectedBranch = savedBranch || (data && data.length > 0 ? data[0] : null);
+      
+      if (selectedBranch) {
+        setCurrentBranch(selectedBranch);
+        localStorage.setItem('currentBranchId', selectedBranch.id);
+        
+        // Auto-assign user to branch on load
+        if (user) {
+          await supabase
+            .from('branch_users')
+            .upsert(
+              { branch_id: selectedBranch.id, user_id: user.id, is_default: false },
+              { onConflict: 'branch_id,user_id' }
+            );
+        }
       }
     } catch (error) {
       console.error('Error fetching branches:', error);
@@ -77,9 +87,23 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     fetchBranches();
   }, [user]);
 
-  const handleSetCurrentBranch = (branch: Branch) => {
+  const handleSetCurrentBranch = async (branch: Branch) => {
     setCurrentBranch(branch);
     localStorage.setItem('currentBranchId', branch.id);
+    
+    // Ensure user is assigned to this branch (for cashiers/managers)
+    if (user) {
+      const { error } = await supabase
+        .from('branch_users')
+        .upsert(
+          { branch_id: branch.id, user_id: user.id, is_default: false },
+          { onConflict: 'branch_id,user_id' }
+        );
+      
+      if (error) {
+        console.error('Failed to assign user to branch:', error);
+      }
+    }
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,32 +31,68 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
   const [mpesaReference, setMpesaReference] = useState('');
   const [splitCash, setSplitCash] = useState(0);
   const [splitMpesa, setSplitMpesa] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const change = cashAmount - total;
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setCashAmount(total);
+      setMpesaPhone('');
+      setMpesaReference('');
+      setSplitCash(0);
+      setSplitMpesa(0);
+      setPaymentMethod('cash');
+      setIsProcessing(false);
+    }
+  }, [isOpen, total]);
 
-  const handleConfirm = () => {
+  const change = Math.max(0, cashAmount - total);
+
+  const handleConfirm = async () => {
+    if (isProcessing) return;
+    
+    // Validate total is positive
+    if (total <= 0) {
+      toast.error('Invalid total amount');
+      return;
+    }
+    
     const payments: Payment[] = [];
 
     if (paymentMethod === 'cash') {
+      if (cashAmount < 0) {
+        toast.error('Cash amount cannot be negative');
+        return;
+      }
       if (cashAmount < total) {
         toast.error('Cash amount is less than total');
         return;
       }
       payments.push({ method: 'cash', amount: total });
     } else if (paymentMethod === 'mpesa') {
-      if (!mpesaPhone || !mpesaReference) {
+      if (!mpesaPhone.trim() || !mpesaReference.trim()) {
         toast.error('Please enter M-Pesa phone and reference');
+        return;
+      }
+      // Validate phone format (Kenyan)
+      const phoneClean = mpesaPhone.replace(/\s/g, '');
+      if (!/^(07|01|\+254|254)\d{8,9}$/.test(phoneClean)) {
+        toast.error('Invalid phone number format');
         return;
       }
       payments.push({ 
         method: 'mpesa', 
         amount: total,
-        mpesa_phone: mpesaPhone,
-        mpesa_reference: mpesaReference
+        mpesa_phone: phoneClean,
+        mpesa_reference: mpesaReference.trim().toUpperCase()
       });
     } else if (paymentMethod === 'card') {
       payments.push({ method: 'card', amount: total });
     } else if (paymentMethod === 'split') {
+      if (splitCash < 0 || splitMpesa < 0) {
+        toast.error('Amounts cannot be negative');
+        return;
+      }
       if (splitCash + splitMpesa < total) {
         toast.error('Split amounts must equal or exceed total');
         return;
@@ -65,20 +101,25 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
         payments.push({ method: 'cash', amount: splitCash });
       }
       if (splitMpesa > 0) {
-        if (!mpesaPhone) {
+        if (!mpesaPhone.trim()) {
           toast.error('Please enter M-Pesa phone number');
           return;
         }
         payments.push({ 
           method: 'mpesa', 
           amount: splitMpesa,
-          mpesa_phone: mpesaPhone,
-          mpesa_reference: mpesaReference || `SPLIT-${Date.now()}`
+          mpesa_phone: mpesaPhone.replace(/\s/g, ''),
+          mpesa_reference: mpesaReference.trim().toUpperCase() || `SPLIT-${Date.now()}`
         });
       }
     }
 
-    onConfirmPayment(payments);
+    setIsProcessing(true);
+    try {
+      await onConfirmPayment(payments);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -227,11 +268,11 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
         </Tabs>
 
         <div className="flex gap-2 mt-4">
-          <Button variant="outline" onClick={onClose} className="flex-1">
+          <Button variant="outline" onClick={onClose} className="flex-1" disabled={isProcessing}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} className="flex-[2]" size="lg">
-            Complete Sale
+          <Button onClick={handleConfirm} className="flex-[2]" size="lg" disabled={isProcessing}>
+            {isProcessing ? 'Processing...' : 'Complete Sale'}
           </Button>
         </div>
       </DialogContent>
