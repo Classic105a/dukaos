@@ -396,90 +396,178 @@ export interface EthernetPrinter {
   port: number;
 }
 
-// Bluetooth printer connection
+// Check if Web Bluetooth is available
+export const isBluetoothSupported = (): boolean => {
+  const nav = navigator as any;
+  return !!nav.bluetooth;
+};
+
+// Check if WebUSB is available
+export const isUSBSupported = (): boolean => {
+  const nav = navigator as any;
+  return !!nav.usb;
+};
+
+// Check if we're running in a native app context (Capacitor)
+export const isNativeApp = (): boolean => {
+  return !!(window as any).Capacitor;
+};
+
+// Bluetooth printer connection - with improved device discovery
 export const connectBluetoothPrinter = async (): Promise<BluetoothPrinter | null> => {
   try {
     const nav = navigator as any;
     if (!nav.bluetooth) {
-      throw new Error('Bluetooth not supported in this browser');
+      throw new Error('Web Bluetooth is not supported in this browser. Use Chrome on desktop or Android.');
     }
     
+    // Request device with broader filters to catch more printers
+    // Most thermal printers use the Serial Port Profile (SPP) service
     const device = await nav.bluetooth.requestDevice({
-      filters: [
-        { services: ['000018f0-0000-1000-8000-00805f9b34fb'] },
-        { namePrefix: 'XP-' },
-        { namePrefix: 'TM-' },
-        { namePrefix: 'POS' },
+      // Accept all devices to maximize compatibility
+      acceptAllDevices: true,
+      optionalServices: [
+        '000018f0-0000-1000-8000-00805f9b34fb', // Common thermal printer service
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455', // Nordic UART service
+        '0000ff00-0000-1000-8000-00805f9b34fb', // Common SPP UUID
+        '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10/HM-16 BLE module
+        '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic Semiconductor
       ],
-      optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'],
     });
     
+    console.log('Bluetooth device selected:', device.name);
+    
     const server = await device.gatt?.connect();
-    if (!server) throw new Error('Failed to connect to GATT server');
+    if (!server) throw new Error('Failed to connect to Bluetooth GATT server');
     
-    const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
-    const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+    // Try different services until we find one that works
+    const serviceUUIDs = [
+      '000018f0-0000-1000-8000-00805f9b34fb',
+      '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+      '0000ff00-0000-1000-8000-00805f9b34fb',
+      '0000ffe0-0000-1000-8000-00805f9b34fb',
+      '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+    ];
     
-    return { device, characteristic };
+    for (const uuid of serviceUUIDs) {
+      try {
+        const service = await server.getPrimaryService(uuid);
+        const characteristics = await service.getCharacteristics();
+        
+        // Find a writable characteristic
+        for (const char of characteristics) {
+          if (char.properties.write || char.properties.writeWithoutResponse) {
+            console.log('Found writable characteristic:', char.uuid);
+            return { device, characteristic: char };
+          }
+        }
+      } catch (e) {
+        // Service not found, try next
+        continue;
+      }
+    }
+    
+    throw new Error('No writable characteristic found on this Bluetooth device');
   } catch (error) {
     console.error('Bluetooth connection error:', error);
-    return null;
+    throw error;
   }
 };
 
-// Print via Bluetooth
+// Print via Bluetooth with chunking for reliability
 export const printViaBluetooth = async (
   printer: BluetoothPrinter,
   data: Uint8Array
 ): Promise<boolean> => {
   try {
-    const chunkSize = 512;
-    for (let i = 0; i < data.length; i += chunkSize) {
-      const chunk = data.slice(i, i + chunkSize);
-      await printer.characteristic.writeValue(chunk);
-      await new Promise(resolve => setTimeout(resolve, 50));
+    // Check if device is still connected
+    if (!printer.device.gatt?.connected) {
+      await printer.device.gatt?.connect();
     }
+    
+    // Chunk size - most BLE devices can handle 512 bytes at a time
+    // Some older devices may need smaller chunks (20-100 bytes)
+    const chunkSize = 200; // Conservative chunk size for maximum compatibility
+    
+    for (let i = 0; i < data.length; i += chunkSize) {
+      const chunk = data.slice(i, Math.min(i + chunkSize, data.length));
+      
+      // Use writeWithoutResponse if available (faster), otherwise use write
+      if (printer.characteristic.properties.writeWithoutResponse) {
+        await printer.characteristic.writeValueWithoutResponse(chunk);
+      } else {
+        await printer.characteristic.writeValue(chunk);
+      }
+      
+      // Small delay between chunks to prevent buffer overflow
+      await new Promise(resolve => setTimeout(resolve, 30));
+    }
+    
     return true;
   } catch (error) {
     console.error('Bluetooth print error:', error);
-    return false;
+    throw error;
   }
 };
 
-// USB printer connection
+// USB printer connection - with broader vendor ID support
 export const connectUSBPrinter = async (): Promise<USBPrinter | null> => {
   try {
     const nav = navigator as any;
     if (!nav.usb) {
-      throw new Error('WebUSB not supported in this browser');
+      throw new Error('WebUSB is not supported in this browser. Use Chrome on desktop.');
     }
     
+    // Request any USB device - let user select their printer
     const device = await nav.usb.requestDevice({
       filters: [
-        { vendorId: 0x0416 }, // Winbond (common for XPrinter)
+        { vendorId: 0x0416 }, // Winbond (XPrinter)
         { vendorId: 0x04b8 }, // Seiko Epson
         { vendorId: 0x0519 }, // Star Micronics
-        { vendorId: 0x1fc9 }, // NXP (generic POS)
-        { vendorId: 0x0fe6 }, // ICS (generic thermal)
+        { vendorId: 0x1fc9 }, // NXP
+        { vendorId: 0x0fe6 }, // ICS
+        { vendorId: 0x0483 }, // STMicroelectronics (many cheap printers)
+        { vendorId: 0x1a86 }, // QinHeng Electronics (CH340)
+        { vendorId: 0x067b }, // Prolific Technology (PL2303)
+        { vendorId: 0x10c4 }, // Silicon Labs
+        { vendorId: 0x0403 }, // FTDI
+        { vendorId: 0x20d1 }, // Simucube (some POS printers)
+        { vendorId: 0x0dd4 }, // Custom Engineering (printers)
+        { vendorId: 0x0b00 }, // Snbc (printers)
+        { vendorId: 0x0485 }, // Nokia (some thermal)
+        { vendorId: 0x154f }, // Bixolon
+        { vendorId: 0x0d3a }, // Posiflex
+        { vendorId: 0x1504 }, // DSP Group
+        { vendorId: 0x0dd4 }, // Custom Engineering
       ],
     });
     
+    console.log('USB device selected:', device.productName);
+    
     await device.open();
-    await device.selectConfiguration(1);
+    
+    // Select configuration 1 (standard)
+    if (device.configuration === null) {
+      await device.selectConfiguration(1);
+    }
+    
+    // Claim interface 0 (standard printer interface)
     await device.claimInterface(0);
     
     // Find bulk OUT endpoint
     const iface = device.configuration?.interfaces[0];
     const endpoint = iface?.alternate.endpoints.find(
-      e => e.direction === 'out' && e.type === 'bulk'
+      (e: any) => e.direction === 'out' && e.type === 'bulk'
     );
     
-    if (!endpoint) throw new Error('No bulk OUT endpoint found');
+    if (!endpoint) {
+      throw new Error('No bulk OUT endpoint found. This device may not be a compatible printer.');
+    }
     
     return { device, endpointOut: endpoint };
   } catch (error) {
     console.error('USB connection error:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -493,7 +581,7 @@ export const printViaUSB = async (
     return true;
   } catch (error) {
     console.error('USB print error:', error);
-    return false;
+    throw error;
   }
 };
 
@@ -547,4 +635,49 @@ export const generateTestPage = (config: PrinterConfig): string => {
   test += COMMANDS.CUT_PAPER_PARTIAL;
   
   return test;
+};
+
+// Browser print fallback - formats receipt for 80mm thermal paper width
+export const printViaBrowserFallback = (receiptHtml: string, receiptNumber: string): void => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    throw new Error('Could not open print window. Please allow pop-ups.');
+  }
+  
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Receipt ${receiptNumber}</title>
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          body {
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 11px;
+            line-height: 1.3;
+            max-width: 80mm;
+            margin: 0 auto;
+            padding: 5mm;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .receipt-content {
+            width: 100%;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="receipt-content">${receiptHtml}</div>
+        <script>
+          window.onload = function() {
+            window.print();
+            window.onafterprint = function() { window.close(); };
+          };
+        </script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
 };
