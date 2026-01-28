@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
 import { useQuery } from '@tanstack/react-query';
@@ -9,6 +9,9 @@ import {
   printViaBluetooth,
   connectUSBPrinter,
   printViaUSB,
+  isBluetoothSupported,
+  isUSBSupported,
+  printViaBrowserFallback,
   type ReceiptData,
   type PrinterConfig,
   type BluetoothPrinter,
@@ -28,14 +31,23 @@ interface PrinterConfiguration {
   is_default: boolean;
 }
 
+export interface PrintResult {
+  success: boolean;
+  method: 'thermal' | 'browser' | 'none';
+  error?: string;
+}
+
 export const usePrinter = () => {
   const { currentBranch } = useBranch();
   const [isPrinting, setIsPrinting] = useState(false);
-  const [bluetoothPrinter, setBluetoothPrinter] = useState<BluetoothPrinter | null>(null);
-  const [usbPrinter, setUsbPrinter] = useState<USBPrinter | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
+  
+  // Cache connected printers for reuse
+  const bluetoothPrinterRef = useRef<BluetoothPrinter | null>(null);
+  const usbPrinterRef = useRef<USBPrinter | null>(null);
 
   // Fetch default printer configuration
-  const { data: defaultPrinter } = useQuery({
+  const { data: defaultPrinter, isLoading: printerLoading } = useQuery({
     queryKey: ['default-printer', currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return null;
@@ -88,101 +100,138 @@ export const usePrinter = () => {
         },
       });
 
-      if (error) throw error;
-      return data?.success || false;
+      if (error) {
+        console.error('Network print edge function error:', error);
+        throw new Error(error.message || 'Network print failed');
+      }
+      
+      if (!data?.success) {
+        throw new Error(data?.error || 'Print request failed');
+      }
+      
+      return true;
     } catch (error) {
       console.error('Network print error:', error);
-      return false;
+      throw error;
     }
   }, []);
 
-  // Main print function
-  const printReceipt = useCallback(async (receiptData: ReceiptData): Promise<boolean> => {
-    if (!defaultPrinter) {
-      toast.error('No default printer configured');
-      return false;
-    }
+  // Build receipt data from settings
+  const buildReceiptSettings = useCallback(() => {
+    if (!receiptSettings) return {};
+    
+    return {
+      showLogo: receiptSettings.show_logo,
+      showBusinessName: receiptSettings.show_business_name,
+      showBranchName: receiptSettings.show_branch_name,
+      showAddress: receiptSettings.show_address,
+      showPhone: receiptSettings.show_phone,
+      showEmail: receiptSettings.show_email,
+      showWebsite: receiptSettings.show_website,
+      showMpesaTill: receiptSettings.show_mpesa_till,
+      showMpesaPaybill: receiptSettings.show_mpesa_paybill,
+      showKraPin: receiptSettings.show_kra_pin,
+      showCashierName: receiptSettings.show_cashier_name,
+      showCustomerName: receiptSettings.show_customer_name,
+      showDateTime: receiptSettings.show_date_time,
+      showReceiptNumber: receiptSettings.show_receipt_number,
+      showItemSku: receiptSettings.show_item_sku,
+      showItemTax: receiptSettings.show_item_tax,
+      showSubtotal: receiptSettings.show_subtotal,
+      showTotalTax: receiptSettings.show_total_tax,
+      showDiscount: receiptSettings.show_discount,
+      showFooterMessage: receiptSettings.show_footer_message,
+      footerMessage: receiptSettings.footer_message || 'Thank you for your business!',
+      showReturnPolicy: receiptSettings.show_return_policy,
+      returnPolicy: receiptSettings.return_policy || '',
+    };
+  }, [receiptSettings]);
 
+  // Main print function
+  const printReceipt = useCallback(async (
+    receiptData: ReceiptData,
+    options?: { fallbackToBrowser?: boolean; receiptHtml?: string }
+  ): Promise<PrintResult> => {
     setIsPrinting(true);
+    setLastError(null);
+
+    const fallbackToBrowser = options?.fallbackToBrowser ?? true;
 
     try {
+      // If no printer configured, use browser fallback
+      if (!defaultPrinter) {
+        if (fallbackToBrowser && options?.receiptHtml) {
+          printViaBrowserFallback(options.receiptHtml, receiptData.receiptNumber);
+          return { success: true, method: 'browser' };
+        }
+        throw new Error('No printer configured. Please set up a printer in Settings.');
+      }
+
       const printerConfig: PrinterConfig = {
         paperWidth: (defaultPrinter.paper_width || 80) as 58 | 80,
         charactersPerLine: defaultPrinter.characters_per_line || 48,
         brand: (defaultPrinter.printer_brand || 'generic') as 'xprinter' | 'epson' | 'generic',
       };
 
-      // Build receipt settings from DB
-      const settings = receiptSettings ? {
-        showLogo: receiptSettings.show_logo,
-        showBusinessName: receiptSettings.show_business_name,
-        showBranchName: receiptSettings.show_branch_name,
-        showAddress: receiptSettings.show_address,
-        showPhone: receiptSettings.show_phone,
-        showEmail: receiptSettings.show_email,
-        showWebsite: receiptSettings.show_website,
-        showMpesaTill: receiptSettings.show_mpesa_till,
-        showMpesaPaybill: receiptSettings.show_mpesa_paybill,
-        showKraPin: receiptSettings.show_kra_pin,
-        showCashierName: receiptSettings.show_cashier_name,
-        showCustomerName: receiptSettings.show_customer_name,
-        showDateTime: receiptSettings.show_date_time,
-        showReceiptNumber: receiptSettings.show_receipt_number,
-        showItemSku: receiptSettings.show_item_sku,
-        showItemTax: receiptSettings.show_item_tax,
-        showSubtotal: receiptSettings.show_subtotal,
-        showTotalTax: receiptSettings.show_total_tax,
-        showDiscount: receiptSettings.show_discount,
-        showFooterMessage: receiptSettings.show_footer_message,
-        footerMessage: receiptSettings.footer_message || 'Thank you for your business!',
-        showReturnPolicy: receiptSettings.show_return_policy,
-        returnPolicy: receiptSettings.return_policy || '',
-      } : {};
-
-      // Build ESC/POS receipt text
+      const settings = buildReceiptSettings();
       const receiptText = buildReceiptText(receiptData, settings, printerConfig);
       const receiptBytes = textToBytes(receiptText);
 
       let success = false;
 
       switch (defaultPrinter.connection_type) {
-        case 'ethernet':
-          if (defaultPrinter.ip_address) {
-            success = await printViaNetwork(
-              defaultPrinter.ip_address,
-              defaultPrinter.port || 9100,
-              receiptBytes
-            );
+        case 'ethernet': {
+          if (!defaultPrinter.ip_address) {
+            throw new Error('Printer IP address not configured');
           }
+          success = await printViaNetwork(
+            defaultPrinter.ip_address,
+            defaultPrinter.port || 9100,
+            receiptBytes
+          );
           break;
+        }
 
-        case 'bluetooth':
-          if (!bluetoothPrinter) {
+        case 'bluetooth': {
+          if (!isBluetoothSupported()) {
+            throw new Error('Bluetooth not supported. Use Chrome on desktop or Android.');
+          }
+          
+          // Try to reuse existing connection
+          if (!bluetoothPrinterRef.current || !bluetoothPrinterRef.current.device.gatt?.connected) {
+            toast.info('Connecting to Bluetooth printer...', { duration: 2000 });
             const printer = await connectBluetoothPrinter();
-            if (printer) {
-              setBluetoothPrinter(printer);
-              success = await printViaBluetooth(printer, receiptBytes);
+            if (!printer) {
+              throw new Error('Failed to connect to Bluetooth printer');
             }
-          } else {
-            success = await printViaBluetooth(bluetoothPrinter, receiptBytes);
+            bluetoothPrinterRef.current = printer;
           }
+          
+          success = await printViaBluetooth(bluetoothPrinterRef.current, receiptBytes);
           break;
+        }
 
-        case 'usb':
-          if (!usbPrinter) {
-            const printer = await connectUSBPrinter();
-            if (printer) {
-              setUsbPrinter(printer);
-              success = await printViaUSB(printer, receiptBytes);
-            }
-          } else {
-            success = await printViaUSB(usbPrinter, receiptBytes);
+        case 'usb': {
+          if (!isUSBSupported()) {
+            throw new Error('WebUSB not supported. Use Chrome on desktop.');
           }
+          
+          // Try to reuse existing connection
+          if (!usbPrinterRef.current) {
+            toast.info('Connecting to USB printer...', { duration: 2000 });
+            const printer = await connectUSBPrinter();
+            if (!printer) {
+              throw new Error('Failed to connect to USB printer');
+            }
+            usbPrinterRef.current = printer;
+          }
+          
+          success = await printViaUSB(usbPrinterRef.current, receiptBytes);
           break;
+        }
 
         default:
-          toast.error('Unknown printer connection type');
-          return false;
+          throw new Error(`Unknown printer connection type: ${defaultPrinter.connection_type}`);
       }
 
       if (success) {
@@ -191,21 +240,56 @@ export const usePrinter = () => {
           .from('printer_configurations')
           .update({ last_connected_at: new Date().toISOString() })
           .eq('id', defaultPrinter.id);
+          
+        return { success: true, method: 'thermal' };
+      } else {
+        throw new Error('Print command sent but no confirmation received');
       }
-
-      return success;
     } catch (error) {
-      console.error('Print error:', error);
-      return false;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown print error';
+      console.error('Print error:', errorMessage);
+      setLastError(errorMessage);
+      
+      // Try browser fallback if enabled
+      if (fallbackToBrowser && options?.receiptHtml) {
+        try {
+          printViaBrowserFallback(options.receiptHtml, receiptData.receiptNumber);
+          toast.warning('Thermal print failed. Using browser print instead.', { duration: 4000 });
+          return { success: true, method: 'browser', error: errorMessage };
+        } catch (fallbackError) {
+          return { 
+            success: false, 
+            method: 'none', 
+            error: `Thermal: ${errorMessage}. Browser: ${fallbackError instanceof Error ? fallbackError.message : 'Failed'}` 
+          };
+        }
+      }
+      
+      return { success: false, method: 'none', error: errorMessage };
     } finally {
       setIsPrinting(false);
     }
-  }, [defaultPrinter, receiptSettings, bluetoothPrinter, usbPrinter, printViaNetwork]);
+  }, [defaultPrinter, buildReceiptSettings, printViaNetwork]);
+
+  // Check printer capabilities
+  const getPrinterCapabilities = useCallback(() => {
+    return {
+      bluetooth: isBluetoothSupported(),
+      usb: isUSBSupported(),
+      network: true, // Always supported via edge function
+      browser: true, // Always supported
+    };
+  }, []);
 
   return {
     defaultPrinter,
     isPrinting,
+    printerLoading,
     printReceipt,
     hasPrinter: !!defaultPrinter,
+    lastError,
+    getPrinterCapabilities,
+    receiptSettings,
+    buildReceiptSettings,
   };
 };

@@ -1,11 +1,14 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Printer, Share2, Check } from 'lucide-react';
+import { Printer, Share2, Check, Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { usePrinter } from '@/hooks/usePrinter';
 import type { CartItem } from './Cart';
+import type { ReceiptData } from '@/lib/escpos';
 import JsBarcode from 'jsbarcode';
+import { toast } from 'sonner';
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -59,6 +62,9 @@ const ReceiptModal = ({
   const receiptRef = useRef<HTMLDivElement>(null);
   const barcodeRef = useRef<SVGSVGElement>(null);
   const date = format(new Date(), 'dd/MM/yyyy HH:mm');
+  
+  const { printReceipt, isPrinting, hasPrinter, defaultPrinter, getPrinterCapabilities } = usePrinter();
+  const [printStatus, setPrintStatus] = useState<'idle' | 'printing' | 'success' | 'error'>('idle');
 
   // Generate barcode when receipt number changes
   useEffect(() => {
@@ -78,20 +84,107 @@ const ReceiptModal = ({
     }
   }, [receiptNumber, isOpen]);
 
-  const handlePrint = () => {
+  // Reset print status when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setPrintStatus('idle');
+    }
+  }, [isOpen]);
+
+  // Build receipt data for thermal printing
+  const buildReceiptData = (): ReceiptData => ({
+    header: {
+      businessName: 'DukaOS',
+      branchName: branchName || undefined,
+      address: branchAddress || undefined,
+      city: branchCity || undefined,
+      phone: branchPhone || undefined,
+      mpesaTill: mpesaTill || undefined,
+      mpesaPaybill: mpesaPaybill || undefined,
+      mpesaAccount: mpesaAccount || undefined,
+      kraPin: kraPin || undefined,
+    },
+    receiptNumber,
+    date: new Date(),
+    cashierName: cashierName,
+    customerName: customerName,
+    items: items.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      totalPrice: item.total,
+    })),
+    subtotal,
+    taxAmount: tax,
+    discountAmount: discount,
+    totalAmount: total,
+    payments: payments.map(p => ({
+      method: p.method.toUpperCase(),
+      amount: p.amount,
+      reference: p.mpesa_reference,
+    })),
+    footer: {
+      message: footerMessage,
+    },
+  });
+
+  const handlePrint = async () => {
+    setPrintStatus('printing');
+    
+    try {
+      const receiptData = buildReceiptData();
+      const receiptHtml = receiptRef.current?.innerHTML || '';
+      
+      const result = await printReceipt(receiptData, {
+        fallbackToBrowser: true,
+        receiptHtml,
+      });
+
+      if (result.success) {
+        setPrintStatus('success');
+        if (result.method === 'thermal') {
+          toast.success('Receipt printed successfully!');
+        } else if (result.method === 'browser') {
+          // Browser print dialog opened
+          setPrintStatus('idle');
+        }
+      } else {
+        setPrintStatus('error');
+        toast.error(result.error || 'Print failed');
+      }
+    } catch (error) {
+      setPrintStatus('error');
+      toast.error(error instanceof Error ? error.message : 'Print failed');
+    }
+  };
+
+  const handleBrowserPrint = () => {
     const printContent = receiptRef.current?.innerHTML;
     if (!printContent) return;
 
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      toast.error('Could not open print window. Please allow pop-ups.');
+      return;
+    }
 
     printWindow.document.write(`
       <html>
         <head>
           <title>Receipt ${receiptNumber}</title>
           <style>
-            body { font-family: 'Courier New', monospace; font-size: 12px; max-width: 300px; margin: 0 auto; padding: 20px; }
-            .header { text-align: center; margin-bottom: 10px; }
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
+            body { 
+              font-family: 'Courier New', monospace; 
+              font-size: 12px; 
+              max-width: 80mm; 
+              margin: 0 auto; 
+              padding: 5mm;
+              line-height: 1.3;
+            }
             .divider { border-top: 1px dashed #000; margin: 10px 0; }
             .row { display: flex; justify-content: space-between; margin: 4px 0; }
             .total { font-weight: bold; font-size: 14px; }
@@ -130,6 +223,11 @@ ${footerMessage}
       window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     }
   };
+
+  const capabilities = getPrinterCapabilities();
+  const printerInfo = defaultPrinter 
+    ? `${defaultPrinter.name} (${defaultPrinter.connection_type})`
+    : 'No printer configured';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -218,7 +316,7 @@ ${footerMessage}
                   <span className="flex-1 truncate pr-2">{item.name}</span>
                   <span>KSh {item.total.toLocaleString()}</span>
                 </div>
-              <div className="text-[9px] text-muted-foreground flex justify-between">
+                <div className="text-[9px] text-muted-foreground flex justify-between">
                   <span>{item.quantity} x {item.unit_price.toLocaleString()}</span>
                 </div>
               </div>
@@ -280,11 +378,37 @@ ${footerMessage}
           </div>
         </div>
 
+        {/* Printer Status */}
+        <div className="mx-4 text-xs text-muted-foreground flex items-center gap-2">
+          {hasPrinter ? (
+            <>
+              <Printer className="w-3 h-3" />
+              <span>{printerInfo}</span>
+            </>
+          ) : (
+            <>
+              <AlertCircle className="w-3 h-3" />
+              <span>No thermal printer - will use browser print</span>
+            </>
+          )}
+        </div>
+
         {/* Actions */}
         <div className="flex gap-2 p-4 pt-2">
-          <Button variant="outline" onClick={handlePrint} className="flex-1 gap-2">
-            <Printer className="w-4 h-4" />
-            Print
+          <Button 
+            variant="outline" 
+            onClick={handlePrint} 
+            className="flex-1 gap-2"
+            disabled={isPrinting}
+          >
+            {isPrinting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+          ) : printStatus === 'success' ? (
+            <Check className="w-4 h-4 text-emerald-500" />
+          ) : (
+              <Printer className="w-4 h-4" />
+            )}
+            {isPrinting ? 'Printing...' : printStatus === 'success' ? 'Printed!' : 'Print Receipt'}
           </Button>
           <Button variant="outline" onClick={handleShare} className="flex-1 gap-2">
             <Share2 className="w-4 h-4" />
