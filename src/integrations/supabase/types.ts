@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      approval_requests: {
+        Row: {
+          approval_notes: string | null
+          approved_by: string | null
+          branch_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          reason: string | null
+          request_data: Json | null
+          request_type: string
+          requested_by: string
+          resolved_at: string | null
+          status: string | null
+        }
+        Insert: {
+          approval_notes?: string | null
+          approved_by?: string | null
+          branch_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          reason?: string | null
+          request_data?: Json | null
+          request_type: string
+          requested_by: string
+          resolved_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          approval_notes?: string | null
+          approved_by?: string | null
+          branch_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          reason?: string | null
+          request_data?: Json | null
+          request_type?: string
+          requested_by?: string
+          resolved_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_requests_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          branch_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          new_values: Json | null
+          old_values: Json | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          branch_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          branch_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       branch_inventory: {
         Row: {
           batch_number: string | null
@@ -169,6 +267,65 @@ export type Database = {
         }
         Relationships: []
       }
+      cashier_shifts: {
+        Row: {
+          actual_cash: number | null
+          branch_id: string
+          cash_discrepancy: number | null
+          cashier_id: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          expected_cash: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          opening_float: number
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_cash?: number | null
+          branch_id: string
+          cash_discrepancy?: number | null
+          cashier_id: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          expected_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_float?: number
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_cash?: number | null
+          branch_id?: string
+          cash_discrepancy?: number | null
+          cashier_id?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          expected_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_float?: number
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashier_shifts_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           color: string | null
@@ -213,10 +370,70 @@ export type Database = {
           },
         ]
       }
+      credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          processed_by: string
+          reference: string | null
+          running_balance: number
+          sale_id: string | null
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          customer_id: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          processed_by: string
+          reference?: string | null
+          running_balance: number
+          sale_id?: string | null
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          processed_by?: string
+          reference?: string | null
+          running_balance?: number
+          sale_id?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transactions_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
           created_at: string
+          credit_balance: number | null
+          credit_enabled: boolean | null
+          credit_limit: number | null
           email: string | null
           id: string
           loyalty_points: number | null
@@ -231,6 +448,9 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string
+          credit_balance?: number | null
+          credit_enabled?: boolean | null
+          credit_limit?: number | null
           email?: string | null
           id?: string
           loyalty_points?: number | null
@@ -245,6 +465,9 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string
+          credit_balance?: number | null
+          credit_enabled?: boolean | null
+          credit_limit?: number | null
           email?: string | null
           id?: string
           loyalty_points?: number | null
@@ -458,7 +681,9 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          manager_pin: string | null
           phone: string | null
+          pin_hash: string | null
           updated_at: string
         }
         Insert: {
@@ -467,7 +692,9 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          manager_pin?: string | null
           phone?: string | null
+          pin_hash?: string | null
           updated_at?: string
         }
         Update: {
@@ -476,7 +703,9 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          manager_pin?: string | null
           phone?: string | null
+          pin_hash?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -694,6 +923,7 @@ export type Database = {
         Row: {
           branch_id: string
           cashier_id: string
+          cost_total: number | null
           created_at: string
           customer_id: string | null
           discount_amount: number | null
@@ -702,7 +932,9 @@ export type Database = {
           notes: string | null
           offline_id: string | null
           payment_status: string | null
+          profit_total: number | null
           receipt_number: string
+          shift_id: string | null
           subtotal: number
           tax_amount: number | null
           total_amount: number
@@ -711,6 +943,7 @@ export type Database = {
         Insert: {
           branch_id: string
           cashier_id: string
+          cost_total?: number | null
           created_at?: string
           customer_id?: string | null
           discount_amount?: number | null
@@ -719,7 +952,9 @@ export type Database = {
           notes?: string | null
           offline_id?: string | null
           payment_status?: string | null
+          profit_total?: number | null
           receipt_number: string
+          shift_id?: string | null
           subtotal?: number
           tax_amount?: number | null
           total_amount?: number
@@ -728,6 +963,7 @@ export type Database = {
         Update: {
           branch_id?: string
           cashier_id?: string
+          cost_total?: number | null
           created_at?: string
           customer_id?: string | null
           discount_amount?: number | null
@@ -736,7 +972,9 @@ export type Database = {
           notes?: string | null
           offline_id?: string | null
           payment_status?: string | null
+          profit_total?: number | null
           receipt_number?: string
+          shift_id?: string | null
           subtotal?: number
           tax_amount?: number | null
           total_amount?: number
@@ -755,6 +993,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "cashier_shifts"
             referencedColumns: ["id"]
           },
         ]

@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { BranchProvider } from "@/hooks/useBranch";
 import { TaxProvider } from "@/hooks/useTaxSettings";
 import { ThemeProvider } from "@/hooks/useTheme";
+import { ShiftProvider } from "@/hooks/useShift";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import SessionLockScreen from "@/components/SessionLockScreen";
@@ -48,10 +49,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return (
     <BranchProvider>
       <TaxProvider>
-        {showWarning && (
-          <SessionWarning timeUntilLock={timeUntilLock} onStayLoggedIn={resetTimer} />
-        )}
-        {children}
+        <ShiftProvider>
+          {showWarning && (
+            <SessionWarning timeUntilLock={timeUntilLock} onStayLoggedIn={resetTimer} />
+          )}
+          {children}
+        </ShiftProvider>
       </TaxProvider>
     </BranchProvider>
   );

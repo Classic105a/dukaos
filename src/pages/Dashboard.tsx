@@ -6,6 +6,8 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { usePrinter } from '@/hooks/usePrinter';
 import { useTaxSettings } from '@/hooks/useTaxSettings';
 import { useHoldSale } from '@/hooks/useHoldSale';
+import { useShift } from '@/hooks/useShift';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart, { CartItem } from '@/components/pos/Cart';
 import PaymentModal from '@/components/pos/PaymentModal';
@@ -17,6 +19,8 @@ import HeldSalesPanel from '@/components/pos/HeldSalesPanel';
 import HoldSaleDialog from '@/components/pos/HoldSaleDialog';
 import POSHeader from '@/components/pos/POSHeader';
 import MobileCartSheet from '@/components/pos/MobileCartSheet';
+import OpenShiftDialog from '@/components/shift/OpenShiftDialog';
+import CloseShiftDialog from '@/components/shift/CloseShiftDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -30,9 +34,13 @@ const Dashboard = () => {
   const { printReceipt, hasPrinter } = usePrinter();
   const { calculateTax } = useTaxSettings();
   const { heldSales, holdSale, resumeSale, deleteHeldSale } = useHoldSale();
+  const { currentShift, hasOpenShift } = useShift();
+  const { log } = useAuditLog();
   const lastSaleItemsRef = useRef<CartItem[]>([]);
   const [productRefreshKey, setProductRefreshKey] = useState(0);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [showOpenShift, setShowOpenShift] = useState(false);
+  const [showCloseShift, setShowCloseShift] = useState(false);
   const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
   const [showPayment, setShowPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -228,7 +236,8 @@ const Dashboard = () => {
           tax_amount: saleTax,
           discount_amount: saleDiscount,
           total_amount: saleTotal,
-          payment_status: 'completed'
+          payment_status: 'completed',
+          shift_id: currentShift?.id || null,
         })
         .select()
         .single();
@@ -280,6 +289,13 @@ const Dashboard = () => {
       setCartItems([]);
       setProductRefreshKey(k => k + 1);
       toast.success('Sale completed!');
+      
+      // Audit log
+      log('SALE_COMPLETED', 'sale', saleData.id, undefined, {
+        receiptNumber,
+        total: saleTotal,
+        items: saleItems.length,
+      });
       
       autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
     } catch (error: any) {
@@ -343,6 +359,8 @@ const Dashboard = () => {
         heldSalesCount={heldSales.length}
         onReturnClick={() => setShowReturnModal(true)}
         onReprintClick={() => setShowReprintModal(true)}
+        onOpenShift={() => setShowOpenShift(true)}
+        onCloseShift={() => setShowCloseShift(true)}
         heldSalesPanel={
           <HeldSalesPanel
             heldSales={heldSales}
@@ -511,6 +529,16 @@ const Dashboard = () => {
         onConfirm={handleHoldSale}
         itemCount={cartItems.length}
         total={total}
+      />
+
+      <OpenShiftDialog
+        isOpen={showOpenShift}
+        onClose={() => setShowOpenShift(false)}
+      />
+
+      <CloseShiftDialog
+        isOpen={showCloseShift}
+        onClose={() => setShowCloseShift(false)}
       />
     </div>
   );
