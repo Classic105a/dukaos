@@ -23,7 +23,11 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useCustomerCredit } from '@/hooks/useCustomerCredit';
+import CreditPaymentDialog from '@/components/customers/CreditPaymentDialog';
 import {
   Plus,
   Search,
@@ -37,6 +41,9 @@ import {
   ShoppingBag,
   TrendingUp,
   Edit,
+  CreditCard,
+  Wallet,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -53,6 +60,9 @@ interface Customer {
   segment: string | null;
   notes: string | null;
   created_at: string;
+  credit_enabled: boolean;
+  credit_limit: number;
+  credit_balance: number;
 }
 
 interface CustomerSale {
@@ -66,11 +76,15 @@ interface CustomerSale {
 const Customers = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { permissions } = usePermissions();
+  const { useCreditHistory, enableCredit, recordPayment } = useCustomerCredit();
   const [searchTerm, setSearchTerm] = useState('');
   const [segmentFilter, setSegmentFilter] = useState('all');
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [creditPaymentDialogOpen, setCreditPaymentDialogOpen] = useState(false);
+  const [creditCustomer, setCreditCustomer] = useState<Customer | null>(null);
 
   // Fetch customers
   const { data: customers = [], isLoading } = useQuery({

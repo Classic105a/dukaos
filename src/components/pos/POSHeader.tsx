@@ -2,6 +2,7 @@ import { useState, useEffect, ReactNode } from 'react';
 import { useBranch } from '@/hooks/useBranch';
 import { useAuth } from '@/hooks/useAuth';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useShift } from '@/hooks/useShift';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -22,7 +23,10 @@ import {
   WifiOff,
   User,
   ChevronDown,
-  PauseCircle
+  PauseCircle,
+  Clock,
+  Play,
+  Square
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -32,17 +36,22 @@ interface POSHeaderProps {
   onReturnClick: () => void;
   onReprintClick: () => void;
   heldSalesPanel: ReactNode;
+  onOpenShift?: () => void;
+  onCloseShift?: () => void;
 }
 
 const POSHeader = ({ 
   heldSalesCount, 
   onReturnClick, 
   onReprintClick,
-  heldSalesPanel 
+  heldSalesPanel,
+  onOpenShift,
+  onCloseShift
 }: POSHeaderProps) => {
   const { currentBranch, branches, setCurrentBranch } = useBranch();
   const { user, signOut } = useAuth();
   const { isOnline, pendingSales } = useOfflineSync();
+  const { currentShift, hasOpenShift } = useShift();
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -139,6 +148,34 @@ const POSHeader = ({
 
         {/* Right: Actions & Status */}
         <div className="flex items-center gap-1">
+          {/* Shift Status */}
+          <div className="hidden sm:flex items-center gap-1 mr-2">
+            {hasOpenShift ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1 border-green-500/50 text-green-600"
+                onClick={onCloseShift}
+              >
+                <Clock className="h-3 w-3" />
+                <span className="hidden lg:inline">
+                  {currentShift && format(new Date(currentShift.opened_at), 'h:mm a')}
+                </span>
+                <Square className="h-3 w-3" />
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1 border-amber-500/50 text-amber-600"
+                onClick={onOpenShift}
+              >
+                <Play className="h-3 w-3" />
+                Start Shift
+              </Button>
+            )}
+          </div>
+
           {/* Network Status */}
           <div className="flex items-center gap-1 mr-1">
             {isOnline ? (
