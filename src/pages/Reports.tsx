@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
+import { usePermissions } from '@/hooks/usePermissions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import CreditAgingReport from '@/components/reports/CreditAgingReport';
 import {
   Select,
   SelectContent,
@@ -22,6 +24,7 @@ import {
   Users,
   Calendar,
   Download,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -55,6 +58,7 @@ type DateRange = 'today' | 'week' | 'month' | 'custom';
 
 const Reports = () => {
   const { currentBranch, branches } = useBranch();
+  const { canManageCustomerCredit } = usePermissions();
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
 
@@ -324,11 +328,17 @@ const Reports = () => {
 
         {/* Charts */}
         <Tabs defaultValue="revenue" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="revenue">Revenue Trend</TabsTrigger>
             <TabsTrigger value="products">Top Products</TabsTrigger>
             <TabsTrigger value="categories">By Category</TabsTrigger>
             <TabsTrigger value="payments">Payment Methods</TabsTrigger>
+            {canManageCustomerCredit && (
+              <TabsTrigger value="credit" className="gap-1">
+                <CreditCard className="w-4 h-4" />
+                Credit Aging
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="revenue">
@@ -566,6 +576,12 @@ const Reports = () => {
               </Card>
             </div>
           </TabsContent>
+
+          {canManageCustomerCredit && (
+            <TabsContent value="credit">
+              <CreditAgingReport />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </DashboardLayout>
