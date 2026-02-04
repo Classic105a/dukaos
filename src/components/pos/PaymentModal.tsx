@@ -4,16 +4,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, Smartphone, CreditCard, Split, Plus, X, CheckCircle2 } from 'lucide-react';
+import { Banknote, Smartphone, CreditCard, Split, Plus, X, CheckCircle2, Users, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Payment {
   method: 'cash' | 'mpesa' | 'card' | 'credit';
   amount: number;
   mpesa_reference?: string;
   mpesa_phone?: string;
+  customer_id?: string;
+}
+
+interface CreditCustomer {
+  id: string;
+  name: string;
+  credit_limit: number;
+  credit_balance: number;
+  phone: string | null;
 }
 
 interface SplitPaymentEntry {
@@ -34,11 +46,12 @@ interface PaymentModalProps {
 const quickAmounts = [50, 100, 200, 500, 1000, 2000, 5000];
 
 const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModalProps) => {
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'card' | 'split'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'card' | 'split' | 'credit'>('cash');
   const [cashAmount, setCashAmount] = useState(total);
   const [mpesaPhone, setMpesaPhone] = useState('');
   const [mpesaReference, setMpesaReference] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
   
   // Split payments state
   const [splitPayments, setSplitPayments] = useState<SplitPaymentEntry[]>([]);
@@ -46,6 +59,21 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
   const [splitAmount, setSplitAmount] = useState(0);
   const [splitMpesaPhone, setSplitMpesaPhone] = useState('');
   const [splitMpesaRef, setSplitMpesaRef] = useState('');
+
+  // Fetch credit-enabled customers
+  const { data: creditCustomers = [] } = useQuery({
+    queryKey: ['credit-customers-pos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, name, credit_limit, credit_balance, phone')
+        .eq('credit_enabled', true)
+        .order('name');
+      if (error) throw error;
+      return data as CreditCustomer[];
+    },
+    enabled: isOpen,
+  });
 
   // Reset form when modal opens
   useEffect(() => {
@@ -58,6 +86,7 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
       setSplitMpesaPhone('');
       setSplitMpesaRef('');
       setPaymentMethod('cash');
+      setSelectedCustomerId('');
       setIsProcessing(false);
     }
   }, [isOpen, total]);
@@ -149,6 +178,26 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
       });
     } else if (paymentMethod === 'card') {
       payments.push({ method: 'card', amount: total });
+    } else if (paymentMethod === 'credit') {
+      if (!selectedCustomerId) {
+        toast.error('Please select a customer');
+        return;
+      }
+      const customer = creditCustomers.find(c => c.id === selectedCustomerId);
+      if (!customer) {
+        toast.error('Customer not found');
+        return;
+      }
+      const availableCredit = customer.credit_limit - customer.credit_balance;
+      if (total > availableCredit) {
+        toast.error(`Insufficient credit. Available: KES ${availableCredit.toLocaleString()}`);
+        return;
+      }
+      payments.push({ 
+        method: 'credit', 
+        amount: total,
+        customer_id: selectedCustomerId,
+      });
     } else if (paymentMethod === 'split') {
       if (splitPayments.length === 0) {
         toast.error('Please add at least one payment');
@@ -178,6 +227,12 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
     }
   };
 
+  // Get selected customer info
+  const selectedCustomer = creditCustomers.find(c => c.id === selectedCustomerId);
+  const availableCredit = selectedCustomer 
+    ? selectedCustomer.credit_limit - selectedCustomer.credit_balance 
+    : 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
@@ -191,7 +246,7 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
         </div>
 
         <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as typeof paymentMethod)}>
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="cash" className="gap-1.5">
               <Banknote className="w-4 h-4" />
               <span className="hidden sm:inline">Cash</span>
@@ -203,6 +258,10 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
             <TabsTrigger value="card" className="gap-1.5">
               <CreditCard className="w-4 h-4" />
               <span className="hidden sm:inline">Card</span>
+            </TabsTrigger>
+            <TabsTrigger value="credit" className="gap-1.5">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Credit</span>
             </TabsTrigger>
             <TabsTrigger value="split" className="gap-1.5">
               <Split className="w-4 h-4" />
@@ -280,6 +339,94 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
               </p>
               <p className="text-2xl font-bold mt-2">KES {total.toLocaleString()}</p>
             </div>
+          </TabsContent>
+
+          <TabsContent value="credit" className="space-y-4 mt-4">
+            {creditCustomers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No credit customers available</p>
+                <p className="text-sm mt-1">Enable credit for customers in Customer Management</p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <Label>Select Customer</Label>
+                  <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose customer..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {creditCustomers.map((customer) => {
+                        const available = customer.credit_limit - customer.credit_balance;
+                        const canAfford = available >= total;
+                        return (
+                          <SelectItem 
+                            key={customer.id} 
+                            value={customer.id}
+                            disabled={!canAfford}
+                          >
+                            <div className="flex items-center justify-between w-full gap-4">
+                              <span>{customer.name}</span>
+                              <span className={cn(
+                                "text-xs font-medium",
+                                canAfford ? "text-success" : "text-destructive"
+                              )}>
+                                KES {available.toLocaleString()}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedCustomer && (
+                  <div className="bg-primary/5 rounded-xl p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">{selectedCustomer.name}</span>
+                      {selectedCustomer.phone && (
+                        <span className="text-sm text-muted-foreground">{selectedCustomer.phone}</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Credit Limit</p>
+                        <p className="font-medium">KES {selectedCustomer.credit_limit.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Outstanding</p>
+                        <p className="font-medium text-destructive">KES {selectedCustomer.credit_balance.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Available</p>
+                        <p className={cn(
+                          "font-medium",
+                          availableCredit >= total ? "text-success" : "text-destructive"
+                        )}>
+                          KES {availableCredit.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {availableCredit < total && (
+                      <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg p-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        Insufficient credit for this sale
+                      </div>
+                    )}
+                    
+                    {availableCredit >= total && (
+                      <div className="flex items-center gap-2 text-sm text-success bg-success/10 rounded-lg p-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Credit sale approved
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="split" className="space-y-4 mt-4">

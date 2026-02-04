@@ -195,6 +195,7 @@ const Customers = () => {
   const vipCustomers = customers.filter(c => c.segment === 'vip');
   const regularCustomers = customers.filter(c => c.segment === 'regular' || !c.segment);
   const newCustomers = customers.filter(c => c.segment === 'new');
+  const creditCustomers = customers.filter(c => c.credit_enabled);
 
   // Total stats
   const totalCustomers = customers.length;
@@ -328,7 +329,7 @@ const Customers = () => {
 
         {/* Customer List */}
         <Tabs defaultValue="all" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="all">All ({customers.length})</TabsTrigger>
             <TabsTrigger value="vip" className="gap-2">
               <Crown className="w-3.5 h-3.5" />
@@ -336,6 +337,10 @@ const Customers = () => {
             </TabsTrigger>
             <TabsTrigger value="regular">Regular ({regularCustomers.length})</TabsTrigger>
             <TabsTrigger value="new">New ({newCustomers.length})</TabsTrigger>
+            <TabsTrigger value="credit" className="gap-2">
+              <CreditCard className="w-3.5 h-3.5" />
+              Credit ({creditCustomers.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all">
@@ -349,6 +354,10 @@ const Customers = () => {
               onViewDetails={(customer) => {
                 setSelectedCustomer(customer);
                 setDetailsDialogOpen(true);
+              }}
+              onRecordPayment={(customer) => {
+                setCreditCustomer(customer);
+                setCreditPaymentDialogOpen(true);
               }}
               getSegmentIcon={getSegmentIcon}
               getSegmentColor={getSegmentColor}
@@ -370,6 +379,10 @@ const Customers = () => {
                 setSelectedCustomer(customer);
                 setDetailsDialogOpen(true);
               }}
+              onRecordPayment={(customer) => {
+                setCreditCustomer(customer);
+                setCreditPaymentDialogOpen(true);
+              }}
               getSegmentIcon={getSegmentIcon}
               getSegmentColor={getSegmentColor}
             />
@@ -390,6 +403,10 @@ const Customers = () => {
                 setSelectedCustomer(customer);
                 setDetailsDialogOpen(true);
               }}
+              onRecordPayment={(customer) => {
+                setCreditCustomer(customer);
+                setCreditPaymentDialogOpen(true);
+              }}
               getSegmentIcon={getSegmentIcon}
               getSegmentColor={getSegmentColor}
             />
@@ -409,6 +426,34 @@ const Customers = () => {
               onViewDetails={(customer) => {
                 setSelectedCustomer(customer);
                 setDetailsDialogOpen(true);
+              }}
+              onRecordPayment={(customer) => {
+                setCreditCustomer(customer);
+                setCreditPaymentDialogOpen(true);
+              }}
+              getSegmentIcon={getSegmentIcon}
+              getSegmentColor={getSegmentColor}
+            />
+          </TabsContent>
+
+          <TabsContent value="credit">
+            <CustomerTable 
+              customers={creditCustomers.filter(c => 
+                c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.phone?.includes(searchTerm)
+              )}
+              isLoading={isLoading}
+              onEdit={(customer) => {
+                setSelectedCustomer(customer);
+                setCustomerDialogOpen(true);
+              }}
+              onViewDetails={(customer) => {
+                setSelectedCustomer(customer);
+                setDetailsDialogOpen(true);
+              }}
+              onRecordPayment={(customer) => {
+                setCreditCustomer(customer);
+                setCreditPaymentDialogOpen(true);
               }}
               getSegmentIcon={getSegmentIcon}
               getSegmentColor={getSegmentColor}
@@ -501,6 +546,68 @@ const Customers = () => {
                   </div>
                 </div>
 
+                {/* Credit Section */}
+                {selectedCustomer.credit_enabled ? (
+                  <div className="space-y-3 p-4 bg-muted/50 rounded-lg border">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Wallet className="w-4 h-4 text-primary" />
+                        Credit Account
+                      </h4>
+                      <Badge variant={selectedCustomer.credit_balance > 0 ? 'destructive' : 'secondary'}>
+                        {selectedCustomer.credit_balance > 0 ? 'Outstanding' : 'Clear'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Credit Limit</p>
+                        <p className="text-lg font-bold">KES {selectedCustomer.credit_limit.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Outstanding Balance</p>
+                        <p className={cn("text-lg font-bold", selectedCustomer.credit_balance > 0 && "text-destructive")}>
+                          KES {selectedCustomer.credit_balance.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Available Credit</p>
+                      <p className="text-lg font-bold text-success">
+                        KES {Math.max(0, selectedCustomer.credit_limit - selectedCustomer.credit_balance).toLocaleString()}
+                      </p>
+                    </div>
+                    {selectedCustomer.credit_balance > 0 && (
+                      <Button 
+                        className="w-full"
+                        onClick={() => {
+                          setCreditCustomer(selectedCustomer);
+                          setCreditPaymentDialogOpen(true);
+                          setDetailsDialogOpen(false);
+                        }}
+                      >
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        Record Payment
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-muted/30 rounded-lg border border-dashed text-center">
+                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mb-3">Credit not enabled for this customer</p>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDetailsDialogOpen(false);
+                        setSelectedCustomer(selectedCustomer);
+                        setCustomerDialogOpen(true);
+                      }}
+                    >
+                      Enable Credit
+                    </Button>
+                  </div>
+                )}
+
                 {/* Notes */}
                 {selectedCustomer.notes && (
                   <div>
@@ -512,6 +619,16 @@ const Customers = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Credit Payment Dialog */}
+        <CreditPaymentDialog
+          isOpen={creditPaymentDialogOpen}
+          onClose={() => {
+            setCreditPaymentDialogOpen(false);
+            setCreditCustomer(null);
+          }}
+          customer={creditCustomer}
+        />
       </div>
     </DashboardLayout>
   );
@@ -523,6 +640,7 @@ const CustomerTable = ({
   isLoading,
   onEdit,
   onViewDetails,
+  onRecordPayment,
   getSegmentIcon,
   getSegmentColor,
 }: { 
@@ -530,6 +648,7 @@ const CustomerTable = ({
   isLoading: boolean;
   onEdit: (customer: Customer) => void;
   onViewDetails: (customer: Customer) => void;
+  onRecordPayment: (customer: Customer) => void;
   getSegmentIcon: (segment: string | null) => React.ReactNode;
   getSegmentColor: (segment: string | null) => string;
 }) => {
@@ -561,8 +680,8 @@ const CustomerTable = ({
               <th className="text-left p-4 font-medium text-muted-foreground">Customer</th>
               <th className="text-left p-4 font-medium text-muted-foreground">Contact</th>
               <th className="text-left p-4 font-medium text-muted-foreground">Segment</th>
+              <th className="text-right p-4 font-medium text-muted-foreground">Credit</th>
               <th className="text-right p-4 font-medium text-muted-foreground">Points</th>
-              <th className="text-right p-4 font-medium text-muted-foreground">Visits</th>
               <th className="text-right p-4 font-medium text-muted-foreground">Total Spent</th>
               <th className="text-right p-4 font-medium text-muted-foreground">Actions</th>
             </tr>
@@ -611,27 +730,59 @@ const CustomerTable = ({
                     <span className="ml-1 capitalize">{customer.segment || 'Regular'}</span>
                   </Badge>
                 </td>
+                <td className="p-4 text-right">
+                  {customer.credit_enabled ? (
+                    <div className="text-right">
+                      <p className={cn(
+                        "font-medium tabular-nums",
+                        customer.credit_balance > 0 && "text-destructive"
+                      )}>
+                        KES {customer.credit_balance.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        / {customer.credit_limit.toLocaleString()}
+                      </p>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">—</span>
+                  )}
+                </td>
                 <td className="p-4 text-right font-medium">
                   <span className="flex items-center justify-end gap-1">
                     <Gift className="w-3.5 h-3.5 text-primary" />
                     {customer.loyalty_points || 0}
                   </span>
                 </td>
-                <td className="p-4 text-right">{customer.visit_count || 0}</td>
                 <td className="p-4 text-right font-medium">
                   KES {(customer.total_purchases || 0).toLocaleString()}
                 </td>
                 <td className="p-4 text-right">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(customer);
-                    }}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    {customer.credit_enabled && customer.credit_balance > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRecordPayment(customer);
+                        }}
+                        title="Record Payment"
+                      >
+                        <Wallet className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(customer);
+                      }}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -657,6 +808,8 @@ const CustomerForm = ({
     address: customer?.address || '',
     segment: customer?.segment || 'regular',
     notes: customer?.notes || '',
+    credit_enabled: customer?.credit_enabled || false,
+    credit_limit: customer?.credit_limit || 0,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -668,6 +821,8 @@ const CustomerForm = ({
       address: formData.address || null,
       segment: formData.segment,
       notes: formData.notes || null,
+      credit_enabled: formData.credit_enabled,
+      credit_limit: formData.credit_enabled ? formData.credit_limit : 0,
     });
   };
 
@@ -723,6 +878,37 @@ const CustomerForm = ({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Credit Settings Section */}
+      <div className="space-y-3 p-4 bg-muted/50 rounded-lg border">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="credit_enabled" className="font-medium">Enable Credit Account</Label>
+            <p className="text-xs text-muted-foreground">Allow customer to purchase on credit</p>
+          </div>
+          <Switch
+            id="credit_enabled"
+            checked={formData.credit_enabled}
+            onCheckedChange={(checked) => setFormData({ ...formData, credit_enabled: checked })}
+          />
+        </div>
+        
+        {formData.credit_enabled && (
+          <div>
+            <Label htmlFor="credit_limit">Credit Limit (KES)</Label>
+            <Input
+              id="credit_limit"
+              type="number"
+              min="0"
+              step="100"
+              value={formData.credit_limit}
+              onChange={(e) => setFormData({ ...formData, credit_limit: parseFloat(e.target.value) || 0 })}
+              placeholder="e.g., 10000"
+            />
+          </div>
+        )}
+      </div>
+
       <div>
         <Label htmlFor="notes">Notes</Label>
         <Textarea

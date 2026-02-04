@@ -174,7 +174,7 @@ const Dashboard = () => {
     }
   }, [hasPrinter, currentBranch, printReceipt]);
 
-  const handleConfirmPayment = async (payments: Array<{ method: string; amount: number; mpesa_reference?: string; mpesa_phone?: string }>) => {
+  const handleConfirmPayment = async (payments: Array<{ method: string; amount: number; mpesa_reference?: string; mpesa_phone?: string; customer_id?: string }>) => {
     if (!currentBranch?.id || !user?.id) {
       toast.error('Please select a branch');
       return;
@@ -268,6 +268,42 @@ const Dashboard = () => {
       );
 
       if (movementError) throw movementError;
+
+      // Handle credit payment - record in credit_transactions
+      const creditPayment = payments.find(p => p.method === 'credit');
+      if (creditPayment && creditPayment.customer_id) {
+        // Get customer's current balance
+        const { data: customerData } = await supabase
+          .from('customers')
+          .select('credit_balance')
+          .eq('id', creditPayment.customer_id)
+          .single();
+        
+        const newBalance = (customerData?.credit_balance || 0) + saleTotal;
+        
+        // Record credit transaction
+        await supabase.from('credit_transactions').insert({
+          customer_id: creditPayment.customer_id,
+          sale_id: saleData.id,
+          transaction_type: 'CREDIT_SALE',
+          amount: saleTotal,
+          running_balance: newBalance,
+          processed_by: user.id,
+          notes: `Sale ${receiptNumber}`,
+        });
+
+        // Update customer balance
+        await supabase
+          .from('customers')
+          .update({ credit_balance: newBalance })
+          .eq('id', creditPayment.customer_id);
+
+        // Update sale with customer_id
+        await supabase
+          .from('sales')
+          .update({ customer_id: creditPayment.customer_id })
+          .eq('id', saleData.id);
+      }
 
       await supabase.from('payments').insert(
         payments.map(p => ({
