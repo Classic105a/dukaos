@@ -376,6 +376,7 @@ export type Database = {
           created_at: string
           customer_id: string
           id: string
+          installment_plan_id: string | null
           notes: string | null
           payment_method: string | null
           processed_by: string
@@ -389,6 +390,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           id?: string
+          installment_plan_id?: string | null
           notes?: string | null
           payment_method?: string | null
           processed_by: string
@@ -402,6 +404,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           id?: string
+          installment_plan_id?: string | null
           notes?: string | null
           payment_method?: string | null
           processed_by?: string
@@ -416,6 +419,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transactions_installment_plan_id_fkey"
+            columns: ["installment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "installment_plans"
             referencedColumns: ["id"]
           },
           {
@@ -480,6 +490,72 @@ export type Database = {
           visit_count?: number | null
         }
         Relationships: []
+      }
+      installment_plans: {
+        Row: {
+          created_at: string
+          created_by: string
+          customer_id: string
+          id: string
+          installment_amount: number
+          installments_count: number
+          next_due_date: string
+          paid_installments: number
+          remaining_amount: number
+          sale_id: string | null
+          start_date: string
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          customer_id: string
+          id?: string
+          installment_amount: number
+          installments_count?: number
+          next_due_date: string
+          paid_installments?: number
+          remaining_amount: number
+          sale_id?: string | null
+          start_date?: string
+          status?: string
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          id?: string
+          installment_amount?: number
+          installments_count?: number
+          next_due_date?: string
+          paid_installments?: number
+          remaining_amount?: number
+          sale_id?: string | null
+          start_date?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installment_plans_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "installment_plans_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {

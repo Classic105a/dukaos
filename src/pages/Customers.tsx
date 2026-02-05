@@ -28,6 +28,9 @@ import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCustomerCredit } from '@/hooks/useCustomerCredit';
 import CreditPaymentDialog from '@/components/customers/CreditPaymentDialog';
+import CreditHistoryPanel from '@/components/customers/CreditHistoryPanel';
+import InstallmentPlanDialog from '@/components/customers/InstallmentPlanDialog';
+import InstallmentPlansPanel from '@/components/customers/InstallmentPlansPanel';
 import {
   Plus,
   Search,
@@ -44,6 +47,7 @@ import {
   CreditCard,
   Wallet,
   AlertTriangle,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -85,6 +89,8 @@ const Customers = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [creditPaymentDialogOpen, setCreditPaymentDialogOpen] = useState(false);
   const [creditCustomer, setCreditCustomer] = useState<Customer | null>(null);
+  const [installmentDialogOpen, setInstallmentDialogOpen] = useState(false);
+  const [installmentCustomer, setInstallmentCustomer] = useState<Customer | null>(null);
 
   // Fetch customers
   const { data: customers = [], isLoading } = useQuery({
@@ -577,18 +583,51 @@ const Customers = () => {
                       </p>
                     </div>
                     {selectedCustomer.credit_balance > 0 && (
-                      <Button 
-                        className="w-full"
-                        onClick={() => {
+                      <div className="flex gap-2">
+                        <Button 
+                          className="flex-1"
+                          onClick={() => {
+                            setCreditCustomer(selectedCustomer);
+                            setCreditPaymentDialogOpen(true);
+                            setDetailsDialogOpen(false);
+                          }}
+                        >
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Record Payment
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            setInstallmentCustomer(selectedCustomer);
+                            setInstallmentDialogOpen(true);
+                            setDetailsDialogOpen(false);
+                          }}
+                        >
+                          <Calendar className="w-4 h-4 mr-2" />
+                          Create Plan
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Installment Plans */}
+                    <div className="mt-4">
+                      <h5 className="text-sm font-medium mb-2">Payment Plans</h5>
+                      <InstallmentPlansPanel 
+                        customerId={selectedCustomer.id}
+                        onRecordPayment={() => {
                           setCreditCustomer(selectedCustomer);
                           setCreditPaymentDialogOpen(true);
                           setDetailsDialogOpen(false);
                         }}
-                      >
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Record Payment
-                      </Button>
-                    )}
+                      />
+                    </div>
+                    
+                    {/* Credit History */}
+                    <div className="mt-4">
+                      <h5 className="text-sm font-medium mb-2">Transaction History</h5>
+                      <CreditHistoryPanel customerId={selectedCustomer.id} />
+                    </div>
                   </div>
                 ) : (
                   <div className="p-4 bg-muted/30 rounded-lg border border-dashed text-center">
@@ -628,6 +667,16 @@ const Customers = () => {
             setCreditCustomer(null);
           }}
           customer={creditCustomer}
+        />
+
+        {/* Installment Plan Dialog */}
+        <InstallmentPlanDialog
+          isOpen={installmentDialogOpen}
+          onClose={() => {
+            setInstallmentDialogOpen(false);
+            setInstallmentCustomer(null);
+          }}
+          customer={installmentCustomer}
         />
       </div>
     </DashboardLayout>
