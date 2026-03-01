@@ -201,6 +201,7 @@ export type Database = {
       branches: {
         Row: {
           address: string | null
+          business_id: string | null
           business_registration_number: string | null
           city: string | null
           created_at: string
@@ -223,6 +224,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          business_id?: string | null
           business_registration_number?: string | null
           city?: string | null
           created_at?: string
@@ -245,6 +247,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          business_id?: string | null
           business_registration_number?: string | null
           city?: string | null
           created_at?: string
@@ -264,6 +267,85 @@ export type Database = {
           receipt_footer_message?: string | null
           updated_at?: string
           website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_users: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          is_owner: boolean | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          is_owner?: boolean | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          is_owner?: boolean | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_users_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      businesses: {
+        Row: {
+          created_at: string
+          created_by: string
+          currency: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          currency?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          currency?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          type?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -437,6 +519,83 @@ export type Database = {
           },
         ]
       }
+      custom_permissions: {
+        Row: {
+          business_id: string | null
+          can_access_wallet: boolean | null
+          can_add_delete_staff: boolean | null
+          can_apply_discounts: boolean | null
+          can_approve_withdrawals: boolean | null
+          can_change_prices: boolean | null
+          can_change_settings: boolean | null
+          can_edit_past_sales: boolean | null
+          can_edit_stock_levels: boolean | null
+          can_export_data: boolean | null
+          can_perform_transfers: boolean | null
+          can_see_payables: boolean | null
+          can_see_stock_value: boolean | null
+          can_view_net_profit: boolean | null
+          can_view_purchase_prices: boolean | null
+          can_void_cart_items: boolean | null
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_id?: string | null
+          can_access_wallet?: boolean | null
+          can_add_delete_staff?: boolean | null
+          can_apply_discounts?: boolean | null
+          can_approve_withdrawals?: boolean | null
+          can_change_prices?: boolean | null
+          can_change_settings?: boolean | null
+          can_edit_past_sales?: boolean | null
+          can_edit_stock_levels?: boolean | null
+          can_export_data?: boolean | null
+          can_perform_transfers?: boolean | null
+          can_see_payables?: boolean | null
+          can_see_stock_value?: boolean | null
+          can_view_net_profit?: boolean | null
+          can_view_purchase_prices?: boolean | null
+          can_void_cart_items?: boolean | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string | null
+          can_access_wallet?: boolean | null
+          can_add_delete_staff?: boolean | null
+          can_apply_discounts?: boolean | null
+          can_approve_withdrawals?: boolean | null
+          can_change_prices?: boolean | null
+          can_change_settings?: boolean | null
+          can_edit_past_sales?: boolean | null
+          can_edit_stock_levels?: boolean | null
+          can_export_data?: boolean | null
+          can_perform_transfers?: boolean | null
+          can_see_payables?: boolean | null
+          can_see_stock_value?: boolean | null
+          can_view_net_profit?: boolean | null
+          can_view_purchase_prices?: boolean | null
+          can_void_cart_items?: boolean | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_permissions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -553,6 +712,198 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_cases: {
+        Row: {
+          amount_claimed: number
+          business_id: string | null
+          case_number: string | null
+          court_name: string | null
+          created_at: string
+          created_by: string
+          customer_id: string | null
+          filing_date: string | null
+          id: string
+          next_hearing_date: string | null
+          notes: string | null
+          outcome: string | null
+          party_id: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_claimed?: number
+          business_id?: string | null
+          case_number?: string | null
+          court_name?: string | null
+          created_at?: string
+          created_by: string
+          customer_id?: string | null
+          filing_date?: string | null
+          id?: string
+          next_hearing_date?: string | null
+          notes?: string | null
+          outcome?: string | null
+          party_id?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_claimed?: number
+          business_id?: string | null
+          case_number?: string | null
+          court_name?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string | null
+          filing_date?: string | null
+          id?: string
+          next_hearing_date?: string | null
+          notes?: string | null
+          outcome?: string | null
+          party_id?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_cases_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_cases_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_cases_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parties: {
+        Row: {
+          address: string | null
+          business_id: string | null
+          created_at: string
+          current_balance: number | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          opening_balance: number | null
+          party_type: string
+          phone: string | null
+          pricing_tier: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          business_id?: string | null
+          created_at?: string
+          current_balance?: number | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          opening_balance?: number | null
+          party_type?: string
+          phone?: string | null
+          pricing_tier?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          business_id?: string | null
+          created_at?: string
+          current_balance?: number | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          opening_balance?: number | null
+          party_type?: string
+          phone?: string | null
+          pricing_tier?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parties_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payable_transactions: {
+        Row: {
+          amount: number
+          business_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          party_id: string
+          payment_method: string | null
+          processed_by: string
+          reference: string | null
+          running_balance: number
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          business_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          party_id: string
+          payment_method?: string | null
+          processed_by: string
+          reference?: string | null
+          running_balance?: number
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          business_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          party_id?: string
+          payment_method?: string | null
+          processed_by?: string
+          reference?: string | null
+          running_balance?: number
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payable_transactions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payable_transactions_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
             referencedColumns: ["id"]
           },
         ]

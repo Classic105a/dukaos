@@ -45,6 +45,7 @@ import { BranchDetailsForm } from '@/components/settings/BranchDetailsForm';
 import { ReceiptSettings } from '@/components/settings/ReceiptSettings';
 import { PrinterSettings } from '@/components/settings/PrinterSettings';
 import TaxSettings from '@/components/settings/TaxSettings';
+import PermissionToggles from '@/components/staff/PermissionToggles';
 
 interface Profile {
   id: string;
@@ -505,48 +506,57 @@ const TeamSettings = ({
       <CardContent>
         <div className="space-y-4">
           {users.map(member => (
-            <div 
-              key={member.id} 
-              className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-sm font-medium text-primary">
-                    {member.full_name?.charAt(0) || member.email?.charAt(0) || '?'}
-                  </span>
+            <div key={member.id}>
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-sm font-medium text-primary">
+                      {member.full_name?.charAt(0) || member.email?.charAt(0) || '?'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium flex items-center gap-2">
+                      {member.full_name || 'Unnamed'}
+                      {member.id === currentUserId && (
+                        <Badge variant="outline" className="text-xs">You</Badge>
+                      )}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{member.email}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium flex items-center gap-2">
-                    {member.full_name || 'Unnamed'}
-                    {member.id === currentUserId && (
-                      <Badge variant="outline" className="text-xs">You</Badge>
-                    )}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{member.email}</p>
+                <div className="flex items-center gap-3">
+                  <Select 
+                    value={member.role}
+                    onValueChange={(role) => onUpdateRole(member.id, role)}
+                    disabled={member.id === currentUserId || member.role === 'owner'}
+                  >
+                    <SelectTrigger className={cn('w-32', getRoleColor(member.role))}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">
+                        <div className="flex items-center gap-2">
+                          <Crown className="w-3.5 h-3.5" />
+                          Owner
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="cashier">Cashier</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Select 
-                  value={member.role}
-                  onValueChange={(role) => onUpdateRole(member.id, role)}
-                  disabled={member.id === currentUserId || member.role === 'owner'}
-                >
-                  <SelectTrigger className={cn('w-32', getRoleColor(member.role))}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="owner">
-                      <div className="flex items-center gap-2">
-                        <Crown className="w-3.5 h-3.5" />
-                        Owner
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="cashier">Cashier</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Granular Permission Toggles */}
+              {member.id !== currentUserId && member.role !== 'owner' && (
+                <div className="mt-3 ml-4 p-4 border rounded-lg">
+                  <PermissionToggles
+                    userId={member.id}
+                    userName={member.full_name || member.email}
+                    userRole={member.role}
+                  />
+                </div>
+              )}
             </div>
           ))}
           {users.length === 0 && (
@@ -554,29 +564,6 @@ const TeamSettings = ({
               No team members yet
             </p>
           )}
-        </div>
-        
-        {/* Role Permissions Info */}
-        <div className="mt-6 pt-6 border-t border-border">
-          <h4 className="font-medium mb-3">Role Permissions</h4>
-          <div className="grid gap-2 text-sm">
-            <div className="flex items-start gap-3">
-              <Badge className="bg-primary/10 text-primary">Owner</Badge>
-              <span className="text-muted-foreground">Full access to all features, settings, and team management</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Badge className="bg-warning/10 text-warning">Admin</Badge>
-              <span className="text-muted-foreground">Manage products, inventory, reports, and team members</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Badge className="bg-info/10 text-info">Manager</Badge>
-              <span className="text-muted-foreground">Manage inventory, view reports, process sales</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Badge className="bg-muted text-muted-foreground">Cashier</Badge>
-              <span className="text-muted-foreground">Process sales and view own transactions</span>
-            </div>
-          </div>
         </div>
       </CardContent>
     </Card>

@@ -22,6 +22,8 @@ import Branches from "./pages/Branches";
 import Reports from "./pages/Reports";
 import Customers from "./pages/Customers";
 import Settings from "./pages/Settings";
+import Parties from "./pages/Parties";
+import DebtDashboard from "./pages/DebtDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,6 +80,8 @@ const App = () => (
                 <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
                 <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+                <Route path="/parties" element={<ProtectedRoute><Parties /></ProtectedRoute>} />
+                <Route path="/debts" element={<ProtectedRoute><DebtDashboard /></ProtectedRoute>} />
                 <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />

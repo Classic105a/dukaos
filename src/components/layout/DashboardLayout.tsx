@@ -25,7 +25,9 @@ import {
   Wifi,
   WifiOff,
   RefreshCw,
-  Store
+  Store,
+  Truck,
+  Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -39,6 +41,8 @@ const navItems = [
   { path: '/inventory', label: 'Inventory', icon: Package },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/customers', label: 'Customers', icon: Users },
+  { path: '/parties', label: 'Parties', icon: Truck },
+  { path: '/debts', label: 'Debts', icon: Wallet },
   { path: '/branches', label: 'Branches', icon: Building2 },
 ];
 
