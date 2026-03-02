@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useStockMovements } from '@/hooks/useStockMovements';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StockHistoryDialog from '@/components/inventory/StockHistoryDialog';
+import BarcodeGenerator from '@/components/inventory/BarcodeGenerator';
+import ProfitIntelligence from '@/components/inventory/ProfitIntelligence';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -96,6 +98,7 @@ const Inventory = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
   const [barcodeInput, setBarcodeInput] = useState('');
+  const [showBarcodeGenerator, setShowBarcodeGenerator] = useState(false);
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -406,6 +409,10 @@ const Inventory = () => {
                 <CategoryForm onSubmit={(data) => createCategory.mutate(data)} />
               </DialogContent>
             </Dialog>
+            <Button variant="outline" onClick={() => setShowBarcodeGenerator(true)}>
+              <Barcode className="w-4 h-4 mr-2" />
+              Labels
+            </Button>
             <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
               <DialogTrigger asChild>
                 <Button disabled={!currentBranch}>
@@ -516,6 +523,7 @@ const Inventory = () => {
                 )}
               </TabsTrigger>
               <TabsTrigger value="categories">Categories</TabsTrigger>
+              <TabsTrigger value="profit">Profit Intel</TabsTrigger>
             </TabsList>
             <div className="flex gap-2">
               <div className="relative">
@@ -595,6 +603,10 @@ const Inventory = () => {
               ))}
             </div>
           </TabsContent>
+
+          <TabsContent value="profit">
+            <ProfitIntelligence />
+          </TabsContent>
         </Tabs>
 
         {/* Stock Update Dialog */}
@@ -648,6 +660,19 @@ const Inventory = () => {
             branchName={currentBranch.name}
           />
         )}
+
+        {/* Barcode Generator */}
+        <BarcodeGenerator
+          isOpen={showBarcodeGenerator}
+          onClose={() => setShowBarcodeGenerator(false)}
+          products={inventory.map(i => ({
+            id: i.product_id,
+            name: i.products.name,
+            sku: i.products.sku,
+            barcode: i.products.barcode,
+            unit_price: i.products.unit_price,
+          }))}
+        />
       </div>
     </DashboardLayout>
   );

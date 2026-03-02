@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { BranchProvider } from "@/hooks/useBranch";
+import { BusinessProvider } from "@/hooks/useBusiness";
 import { TaxProvider } from "@/hooks/useTaxSettings";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { ShiftProvider } from "@/hooks/useShift";
@@ -49,6 +50,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   return (
+    <BusinessProvider>
     <BranchProvider>
       <TaxProvider>
         <ShiftProvider>
@@ -59,6 +61,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         </ShiftProvider>
       </TaxProvider>
     </BranchProvider>
+    </BusinessProvider>
   );
 };
 
