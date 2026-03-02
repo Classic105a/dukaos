@@ -46,6 +46,7 @@ import { ReceiptSettings } from '@/components/settings/ReceiptSettings';
 import { PrinterSettings } from '@/components/settings/PrinterSettings';
 import TaxSettings from '@/components/settings/TaxSettings';
 import PermissionToggles from '@/components/staff/PermissionToggles';
+import ApprovalSettings from '@/components/settings/ApprovalSettings';
 
 interface Profile {
   id: string;
@@ -227,6 +228,10 @@ const Settings = () => {
                   <Calculator className="w-4 h-4" />
                   <span className="hidden sm:inline">Tax</span>
                 </TabsTrigger>
+                <TabsTrigger value="approvals" className="gap-2">
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden sm:inline">Approvals</span>
+                </TabsTrigger>
               </>
             )}
             <TabsTrigger value="preferences" className="gap-2">
@@ -286,6 +291,13 @@ const Settings = () => {
           {isAdmin && (
             <TabsContent value="tax">
               <TaxSettings />
+            </TabsContent>
+          )}
+
+          {/* Approvals Tab */}
+          {isAdmin && (
+            <TabsContent value="approvals">
+              <ApprovalSettings />
             </TabsContent>
           )}
 

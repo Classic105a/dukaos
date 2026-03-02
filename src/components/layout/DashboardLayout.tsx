@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import BusinessSwitcher from '@/components/layout/BusinessSwitcher';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -78,6 +79,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               </div>
               <span className="font-bold text-base hidden sm:block">DukaOS</span>
             </Link>
+            <div className="hidden sm:block">
+              <BusinessSwitcher />
+            </div>
           </div>
 
           {/* Center: Desktop Navigation */}
