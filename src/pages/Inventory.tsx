@@ -8,6 +8,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import StockHistoryDialog from '@/components/inventory/StockHistoryDialog';
 import BarcodeGenerator from '@/components/inventory/BarcodeGenerator';
 import ProfitIntelligence from '@/components/inventory/ProfitIntelligence';
+import StockTransferDialog from '@/components/inventory/StockTransferDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,7 @@ import {
   History,
   Share2,
   Trash2,
+  Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
@@ -99,6 +101,7 @@ const Inventory = () => {
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [showBarcodeGenerator, setShowBarcodeGenerator] = useState(false);
+  const [showTransfers, setShowTransfers] = useState(false);
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -413,6 +416,10 @@ const Inventory = () => {
               <Barcode className="w-4 h-4 mr-2" />
               Labels
             </Button>
+            <Button variant="outline" onClick={() => setShowTransfers(true)}>
+              <Truck className="w-4 h-4 mr-2" />
+              Transfers
+            </Button>
             <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
               <DialogTrigger asChild>
                 <Button disabled={!currentBranch}>
@@ -672,6 +679,12 @@ const Inventory = () => {
             barcode: i.products.barcode,
             unit_price: i.products.unit_price,
           }))}
+        />
+
+        {/* Stock Transfer Dialog */}
+        <StockTransferDialog
+          isOpen={showTransfers}
+          onClose={() => setShowTransfers(false)}
         />
       </div>
     </DashboardLayout>
