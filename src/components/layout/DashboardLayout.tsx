@@ -27,7 +27,8 @@ import {
   RefreshCw,
   Store,
   Truck,
-  Wallet
+  Wallet,
+  Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -44,6 +45,7 @@ const navItems = [
   { path: '/customers', label: 'Customers', icon: Users },
   { path: '/parties', label: 'Parties', icon: Truck },
   { path: '/debts', label: 'Debts', icon: Wallet },
+  { path: '/audit-log', label: 'Audit', icon: Shield },
   { path: '/branches', label: 'Branches', icon: Building2 },
 ];
 

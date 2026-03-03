@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,11 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Banknote, Smartphone, CreditCard, Split, Plus, X, CheckCircle2, Users, AlertTriangle } from 'lucide-react';
+import { Banknote, Smartphone, CreditCard, Split, Plus, X, CheckCircle2, Users, AlertTriangle, QrCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import QRCode from 'qrcode';
 
 export interface Payment {
   method: 'cash' | 'mpesa' | 'card' | 'credit';
@@ -46,7 +47,8 @@ interface PaymentModalProps {
 const quickAmounts = [50, 100, 200, 500, 1000, 2000, 5000];
 
 const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModalProps) => {
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'card' | 'split' | 'credit'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'mpesa' | 'card' | 'split' | 'credit' | 'qr'>('cash');
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const [cashAmount, setCashAmount] = useState(total);
   const [mpesaPhone, setMpesaPhone] = useState('');
   const [mpesaReference, setMpesaReference] = useState('');
@@ -90,6 +92,24 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
       setIsProcessing(false);
     }
   }, [isOpen, total]);
+
+  // Generate QR code when QR tab is selected
+  useEffect(() => {
+    if (paymentMethod === 'qr' && qrCanvasRef.current && total > 0) {
+      const qrData = JSON.stringify({
+        merchant: 'DukaOS',
+        amount: total,
+        currency: 'KES',
+        reference: `PAY-${Date.now().toString(36).toUpperCase()}`,
+        timestamp: new Date().toISOString(),
+      });
+      QRCode.toCanvas(qrCanvasRef.current, qrData, {
+        width: 220,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+    }
+  }, [paymentMethod, total]);
 
   const change = Math.max(0, cashAmount - total);
   
@@ -178,6 +198,8 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
       });
     } else if (paymentMethod === 'card') {
       payments.push({ method: 'card', amount: total });
+    } else if (paymentMethod === 'qr') {
+      payments.push({ method: 'card', amount: total }); // QR treated as digital payment
     } else if (paymentMethod === 'credit') {
       if (!selectedCustomerId) {
         toast.error('Please select a customer');
@@ -246,26 +268,30 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
         </div>
 
         <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as typeof paymentMethod)}>
-          <TabsList className="grid grid-cols-5 w-full">
-            <TabsTrigger value="cash" className="gap-1.5">
+          <TabsList className="grid grid-cols-6 w-full">
+            <TabsTrigger value="cash" className="gap-1">
               <Banknote className="w-4 h-4" />
-              <span className="hidden sm:inline">Cash</span>
+              <span className="hidden sm:inline text-xs">Cash</span>
             </TabsTrigger>
-            <TabsTrigger value="mpesa" className="gap-1.5">
+            <TabsTrigger value="mpesa" className="gap-1">
               <Smartphone className="w-4 h-4" />
-              <span className="hidden sm:inline">M-Pesa</span>
+              <span className="hidden sm:inline text-xs">M-Pesa</span>
             </TabsTrigger>
-            <TabsTrigger value="card" className="gap-1.5">
+            <TabsTrigger value="card" className="gap-1">
               <CreditCard className="w-4 h-4" />
-              <span className="hidden sm:inline">Card</span>
+              <span className="hidden sm:inline text-xs">Card</span>
             </TabsTrigger>
-            <TabsTrigger value="credit" className="gap-1.5">
+            <TabsTrigger value="qr" className="gap-1">
+              <QrCode className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs">QR</span>
+            </TabsTrigger>
+            <TabsTrigger value="credit" className="gap-1">
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Credit</span>
+              <span className="hidden sm:inline text-xs">Credit</span>
             </TabsTrigger>
-            <TabsTrigger value="split" className="gap-1.5">
+            <TabsTrigger value="split" className="gap-1">
               <Split className="w-4 h-4" />
-              <span className="hidden sm:inline">Split</span>
+              <span className="hidden sm:inline text-xs">Split</span>
             </TabsTrigger>
           </TabsList>
 
@@ -338,6 +364,21 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
                 Process card payment on your POS terminal
               </p>
               <p className="text-2xl font-bold mt-2">KES {total.toLocaleString()}</p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="qr" className="space-y-4 mt-4">
+            <div className="bg-muted rounded-xl p-6 text-center">
+              <p className="text-sm text-muted-foreground mb-4">
+                Customer scans this QR code to pay
+              </p>
+              <div className="inline-block bg-white p-3 rounded-xl shadow-soft">
+                <canvas ref={qrCanvasRef} />
+              </div>
+              <p className="text-2xl font-bold mt-4">KES {total.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Compatible with M-Pesa, Airtel Money, and other e-wallets
+              </p>
             </div>
           </TabsContent>
 

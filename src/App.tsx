@@ -25,6 +25,7 @@ import Customers from "./pages/Customers";
 import Settings from "./pages/Settings";
 import Parties from "./pages/Parties";
 import DebtDashboard from "./pages/DebtDashboard";
+import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -87,6 +88,7 @@ const App = () => (
                 <Route path="/debts" element={<ProtectedRoute><DebtDashboard /></ProtectedRoute>} />
                 <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ErrorBoundary>
