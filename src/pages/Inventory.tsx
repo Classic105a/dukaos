@@ -1082,6 +1082,16 @@ const CategoryForm = ({ onSubmit }: { onSubmit: (data: Partial<Category>) => voi
 };
 
 // Stock Update Form Component
+const ADJUSTMENT_REASONS = [
+  { value: 'recount', label: 'Physical Recount' },
+  { value: 'damage', label: 'Damaged / Broken' },
+  { value: 'expired', label: 'Expired' },
+  { value: 'theft', label: 'Theft / Shrinkage' },
+  { value: 'restock', label: 'Restock / Purchase' },
+  { value: 'correction', label: 'Data Correction' },
+  { value: 'other', label: 'Other' },
+];
+
 const StockUpdateForm = ({ 
   product, 
   currentStock,
@@ -1099,16 +1109,21 @@ const StockUpdateForm = ({
     newQuantity: currentStock.quantity.toString(),
     expiryDate: currentStock.expiry_date || '',
     batchNumber: currentStock.batch_number || '',
+    reason: '',
     notes: '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const reasonLabel = ADJUSTMENT_REASONS.find(r => r.value === formData.reason)?.label || formData.reason;
+    const fullNotes = reasonLabel 
+      ? `[${reasonLabel}] ${formData.notes}`.trim()
+      : formData.notes;
     onSubmit({
       newQuantity: parseInt(formData.newQuantity),
       expiryDate: formData.expiryDate || undefined,
       batchNumber: formData.batchNumber || undefined,
-      notes: formData.notes || undefined,
+      notes: fullNotes || undefined,
     });
   };
 
@@ -1141,6 +1156,23 @@ const StockUpdateForm = ({
         )}
       </div>
       <div>
+        <Label htmlFor="reason">Reason for Change *</Label>
+        <Select 
+          value={formData.reason} 
+          onValueChange={(v) => setFormData({ ...formData, reason: v })}
+          disabled={isLoading}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select reason..." />
+          </SelectTrigger>
+          <SelectContent>
+            {ADJUSTMENT_REASONS.map(r => (
+              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
         <Label htmlFor="batchNumber">Batch Number</Label>
         <Input
           id="batchNumber"
@@ -1160,17 +1192,17 @@ const StockUpdateForm = ({
         />
       </div>
       <div>
-        <Label htmlFor="notes">Notes (for audit trail)</Label>
+        <Label htmlFor="notes">Additional Notes</Label>
         <Textarea
           id="notes"
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           rows={2}
-          placeholder="Reason for stock change..."
+          placeholder="Any additional details..."
           disabled={isLoading}
         />
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button type="submit" className="w-full" disabled={isLoading || !formData.reason}>
         {isLoading ? 'Updating...' : 'Update Stock'}
       </Button>
     </form>

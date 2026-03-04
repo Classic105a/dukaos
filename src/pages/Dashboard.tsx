@@ -21,6 +21,7 @@ import POSHeader from '@/components/pos/POSHeader';
 import MobileCartSheet from '@/components/pos/MobileCartSheet';
 import OpenShiftDialog from '@/components/shift/OpenShiftDialog';
 import CloseShiftDialog from '@/components/shift/CloseShiftDialog';
+import ZReport from '@/components/shift/ZReport';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -41,6 +42,7 @@ const Dashboard = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showOpenShift, setShowOpenShift] = useState(false);
   const [showCloseShift, setShowCloseShift] = useState(false);
+  const [showZReport, setShowZReport] = useState(false);
   const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
   const [showPayment, setShowPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -397,6 +399,7 @@ const Dashboard = () => {
         onReprintClick={() => setShowReprintModal(true)}
         onOpenShift={() => setShowOpenShift(true)}
         onCloseShift={() => setShowCloseShift(true)}
+        onViewZReport={() => setShowZReport(true)}
         heldSalesPanel={
           <HeldSalesPanel
             heldSales={heldSales}
@@ -575,6 +578,11 @@ const Dashboard = () => {
       <CloseShiftDialog
         isOpen={showCloseShift}
         onClose={() => setShowCloseShift(false)}
+      />
+
+      <ZReport
+        isOpen={showZReport}
+        onClose={() => setShowZReport(false)}
       />
     </div>
   );

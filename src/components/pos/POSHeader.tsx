@@ -26,7 +26,8 @@ import {
   PauseCircle,
   Clock,
   Play,
-  Square
+  Square,
+  FileText
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -38,6 +39,7 @@ interface POSHeaderProps {
   heldSalesPanel: ReactNode;
   onOpenShift?: () => void;
   onCloseShift?: () => void;
+  onViewZReport?: () => void;
 }
 
 const POSHeader = ({ 
@@ -46,7 +48,8 @@ const POSHeader = ({
   onReprintClick,
   heldSalesPanel,
   onOpenShift,
-  onCloseShift
+  onCloseShift,
+  onViewZReport
 }: POSHeaderProps) => {
   const { currentBranch, branches, setCurrentBranch } = useBranch();
   const { user, signOut } = useAuth();
@@ -151,18 +154,29 @@ const POSHeader = ({
           {/* Shift Status */}
           <div className="hidden sm:flex items-center gap-1 mr-2">
             {hasOpenShift ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs gap-1 border-green-500/50 text-green-600"
-                onClick={onCloseShift}
-              >
-                <Clock className="h-3 w-3" />
-                <span className="hidden lg:inline">
-                  {currentShift && format(new Date(currentShift.opened_at), 'h:mm a')}
-                </span>
-                <Square className="h-3 w-3" />
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1 border-green-500/50 text-green-600"
+                  onClick={onCloseShift}
+                >
+                  <Clock className="h-3 w-3" />
+                  <span className="hidden lg:inline">
+                    {currentShift && format(new Date(currentShift.opened_at), 'h:mm a')}
+                  </span>
+                  <Square className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={onViewZReport}
+                  title="View Z-Report"
+                >
+                  <FileText className="h-3 w-3" />
+                </Button>
+              </>
             ) : (
               <Button
                 variant="outline"
