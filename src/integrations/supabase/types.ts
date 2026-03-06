@@ -1614,6 +1614,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      verify_manager_credentials: {
+        Args: { p_user_id: string }
+        Returns: {
+          user_email: string
+          user_role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      verify_manager_pin: {
+        Args: { p_pin: string }
+        Returns: {
+          user_email: string
+          user_id: string
+          user_role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "manager" | "cashier"

@@ -55,78 +55,30 @@ const ManagerApprovalDialog = ({
     onClose();
   };
 
-  const verifyWithPassword = async () => {
-    // Attempt to sign in as manager (in the background)
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: managerEmail,
-      password: managerPassword,
+  const verifyViaEdgeFunction = async (method: 'pin' | 'password') => {
+    const payload: Record<string, string> = { method };
+    if (method === 'pin') {
+      if (managerPin.length !== 4) throw new Error('PIN must be 4 digits');
+      payload.pin = managerPin;
+    } else {
+      if (!managerEmail || !managerPassword) throw new Error('Email and password required');
+      payload.email = managerEmail;
+      payload.password = managerPassword;
+    }
+
+    const { data, error } = await supabase.functions.invoke('verify-manager', {
+      body: payload,
     });
 
-    if (authError) {
-      throw new Error('Invalid credentials');
+    if (error) {
+      throw new Error(data?.error || 'Verification failed');
     }
 
-    // Check if user has manager or higher role
-    const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', authData.user.id)
-      .single();
-
-    if (roleError || !roleData) {
-      throw new Error('Could not verify role');
+    if (!data?.id) {
+      throw new Error(data?.error || 'Invalid response from verification');
     }
 
-    const approverRole = roleData.role;
-    if (!['owner', 'admin', 'manager'].includes(approverRole)) {
-      throw new Error('Insufficient permissions. Manager or higher required.');
-    }
-
-    return {
-      id: authData.user.id,
-      email: managerEmail,
-      role: approverRole,
-    };
-  };
-
-  const verifyWithPin = async () => {
-    if (managerPin.length !== 4) {
-      throw new Error('PIN must be 4 digits');
-    }
-
-    // Find manager with matching PIN
-    const { data: profiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, email, manager_pin')
-      .eq('manager_pin', managerPin);
-
-    if (profileError || !profiles || profiles.length === 0) {
-      throw new Error('Invalid manager PIN');
-    }
-
-    const profile = profiles[0];
-
-    // Verify they have manager role
-    const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', profile.id)
-      .single();
-
-    if (roleError || !roleData) {
-      throw new Error('Could not verify role');
-    }
-
-    const approverRole = roleData.role;
-    if (!['owner', 'admin', 'manager'].includes(approverRole)) {
-      throw new Error('Insufficient permissions. Manager or higher required.');
-    }
-
-    return {
-      id: profile.id,
-      email: profile.email || 'Unknown',
-      role: approverRole,
-    };
+    return { id: data.id, email: data.email, role: data.role };
   };
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -134,15 +86,8 @@ const ManagerApprovalDialog = ({
     setIsVerifying(true);
 
     try {
-      let approverInfo;
-      
-      if (authMethod === 'password') {
-        approverInfo = await verifyWithPassword();
-      } else {
-        approverInfo = await verifyWithPin();
-      }
+      const approverInfo = await verifyViaEdgeFunction(authMethod);
 
-      // Log the approval action
       log('APPROVAL_GRANTED', (entityType || 'approval') as any, entityId, undefined, {
         action_type: actionType,
         action_description: actionDescription,
@@ -157,8 +102,7 @@ const ManagerApprovalDialog = ({
       onClose();
     } catch (error: any) {
       toast.error(error.message || 'Verification failed');
-      
-      // Log failed approval attempt
+
       log('APPROVAL_DENIED', (entityType || 'approval') as any, entityId, undefined, {
         action_type: actionType,
         action_description: actionDescription,
@@ -261,9 +205,9 @@ const ManagerApprovalDialog = ({
               <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                disabled={isVerifying || (authMethod === 'pin' ? managerPin.length !== 4 : !managerEmail || !managerPassword)} 
+              <Button
+                type="submit"
+                disabled={isVerifying || (authMethod === 'pin' ? managerPin.length !== 4 : !managerEmail || !managerPassword)}
                 className="flex-1"
               >
                 {isVerifying ? 'Verifying...' : (
