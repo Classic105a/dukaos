@@ -147,10 +147,10 @@ const Auth = () => {
             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-glow">
               <Store className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold text-white">DukaOS</span>
+            <span className="text-2xl font-display font-bold text-white">DukaOS</span>
           </div>
           
-          <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight mb-6">
+          <h1 className="text-4xl xl:text-5xl font-display font-bold text-white leading-tight mb-6">
             Sell Smarter.<br />
             <span className="text-primary">Grow Faster.</span>
           </h1>

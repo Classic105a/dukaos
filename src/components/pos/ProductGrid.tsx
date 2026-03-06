@@ -124,7 +124,7 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search products..."
+            placeholder="Search products or scan barcode..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -132,7 +132,7 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                 handleBarcodeSearch(e.target.value);
               }
             }}
-            className="pl-9 h-11 bg-card border-border rounded-xl text-sm"
+            className="pl-10 h-11 bg-card border-border rounded-xl text-sm"
           />
         </div>
         <Button variant="secondary" size="icon" className="shrink-0 h-11 w-11 rounded-xl">
@@ -140,15 +140,15 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
         </Button>
       </div>
 
-      {/* Category Filter - Scrollable pills */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+      {/* Category Filter — Scrollable pills */}
+      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
         <button
           onClick={() => setSelectedCategory(null)}
           className={cn(
-            'shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap',
+            'shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap',
             selectedCategory === null 
-              ? 'bg-primary text-primary-foreground shadow-md' 
-              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              ? 'bg-primary text-primary-foreground shadow-soft' 
+              : 'bg-secondary text-secondary-foreground hover:bg-secondary/70'
           )}
         >
           All Items
@@ -158,10 +158,10 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
             key={category.id}
             onClick={() => setSelectedCategory(category.id)}
             className={cn(
-              'shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap',
+              'shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap',
               selectedCategory === category.id 
-                ? 'text-white shadow-md' 
-                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                ? 'text-white shadow-soft' 
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/70'
             )}
             style={{
               backgroundColor: selectedCategory === category.id ? category.color : undefined,
@@ -176,25 +176,23 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
       <ScrollArea className="flex-1 -mx-3 px-3">
         {loading ? (
           <>
-            {/* Mobile loading skeleton */}
             <div className="flex flex-col gap-2 lg:hidden">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="bg-secondary animate-pulse rounded-xl h-20" />
               ))}
             </div>
-            {/* Desktop loading skeleton */}
             <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {[...Array(12)].map((_, i) => (
-                <div key={i} className="bg-secondary animate-pulse rounded-xl h-32" />
+                <div key={i} className="bg-secondary animate-pulse rounded-xl h-36" />
               ))}
             </div>
           </>
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mb-3">
-              <Package className="w-8 h-8 opacity-40" />
+              <Package className="w-8 h-8 opacity-30" />
             </div>
-            <p className="text-sm font-medium text-foreground">No products found</p>
+            <p className="text-sm font-semibold text-foreground">No products found</p>
             <p className="text-xs text-muted-foreground mt-1">Try a different search or category</p>
           </div>
         ) : (
@@ -205,12 +203,11 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                 <div
                   key={product.id}
                   className={cn(
-                    'bg-card rounded-xl border border-border flex items-center gap-3 p-3 transition-all',
-                    product.stock === 0 ? 'opacity-50' : 'active:scale-[0.99]'
+                    'bg-card rounded-xl border border-border/60 flex items-center gap-3 p-3 transition-all',
+                    product.stock === 0 ? 'opacity-40' : 'active:scale-[0.99] hover:shadow-soft'
                   )}
                 >
-                  {/* Product Image */}
-                  <div className="w-14 h-14 rounded-lg bg-secondary flex-shrink-0 overflow-hidden">
+                  <div className="w-14 h-14 rounded-xl bg-secondary flex-shrink-0 overflow-hidden">
                     {product.image_url ? (
                       <img 
                         src={product.image_url} 
@@ -219,12 +216,11 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Package className="w-6 h-6 text-muted-foreground/40" />
+                        <Package className="w-6 h-6 text-muted-foreground/30" />
                       </div>
                     )}
                   </div>
 
-                  {/* Product Info */}
                   <button
                     onClick={() => onProductSelect(product)}
                     className="flex-1 min-w-0 text-left"
@@ -244,18 +240,17 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                         'text-xs',
                         product.stock === 0 ? 'text-destructive font-medium' : 'text-muted-foreground'
                       )}>
-                        {product.stock === 0 ? 'Out of stock' : `${product.stock} in stock`}
+                        {product.stock === 0 ? 'Out of stock' : `${product.stock} left`}
                       </span>
                     </div>
                   </button>
 
-                  {/* Price & Add Button */}
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2.5 shrink-0">
                     <div className="text-right">
-                      <span className="font-bold text-primary text-base tabular-nums">
+                      <span className="font-bold text-primary text-sm tabular-nums">
                         {product.unit_price.toLocaleString()}
                       </span>
-                      <span className="text-xs text-muted-foreground block">KES</span>
+                      <span className="text-2xs text-muted-foreground block">KES</span>
                     </div>
                     <Button
                       size="icon"
@@ -282,21 +277,21 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                   onClick={() => onProductSelect(product)}
                   disabled={product.stock === 0}
                   className={cn(
-                    'bg-card rounded-xl p-3 text-left transition-all border border-border hover:shadow-elevated hover:border-primary/30 active:scale-[0.98] group',
-                    product.stock === 0 && 'opacity-50 cursor-not-allowed'
+                    'bg-card rounded-xl p-3.5 text-left transition-all border border-border/60 hover:shadow-elevated hover:border-primary/20 active:scale-[0.98] group',
+                    product.stock === 0 && 'opacity-40 cursor-not-allowed'
                   )}
                 >
                   {product.image_url ? (
-                    <div className="w-full aspect-square rounded-lg mb-2 overflow-hidden bg-secondary">
+                    <div className="w-full aspect-square rounded-xl mb-2.5 overflow-hidden bg-secondary">
                       <img 
                         src={product.image_url} 
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                   ) : (
-                    <div className="w-full aspect-square rounded-lg mb-2 bg-secondary flex items-center justify-center">
-                      <Package className="w-10 h-10 text-muted-foreground/30" />
+                    <div className="w-full aspect-square rounded-xl mb-2.5 bg-gradient-subtle flex items-center justify-center">
+                      <Package className="w-10 h-10 text-muted-foreground/20" />
                     </div>
                   )}
                   <h3 className="font-semibold text-sm line-clamp-2 mb-1.5 leading-tight">{product.name}</h3>
@@ -306,16 +301,16 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                     </span>
                     <Badge 
                       variant={product.stock && product.stock > 0 ? 'secondary' : 'destructive'}
-                      className="text-xs"
+                      className="text-xs rounded-lg"
                     >
                       {product.stock || 0}
                     </Badge>
                   </div>
                   {product.category && (
                     <div 
-                      className="mt-2 text-xs px-2 py-1 rounded-md inline-block font-medium"
+                      className="mt-2 text-xs px-2 py-1 rounded-lg inline-block font-medium"
                       style={{ 
-                        backgroundColor: `${product.category.color}15`,
+                        backgroundColor: `${product.category.color}12`,
                         color: product.category.color
                       }}
                     >

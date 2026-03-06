@@ -113,13 +113,13 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-card/90 backdrop-blur-xl border-b border-border">
+      <nav className="sticky top-0 z-50 bg-card/95 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-gradient-hero flex items-center justify-center shadow-soft">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-hero flex items-center justify-center shadow-soft">
               <Store className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">DukaOS</span>
+            <span className="text-xl font-display font-bold text-foreground">DukaOS</span>
           </div>
           <div className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Features</a>
@@ -151,7 +151,7 @@ export default function Index() {
               <span>Built for Kenyan Retailers</span>
             </div>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground mb-5 leading-[1.1] animate-slide-up tracking-tight">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-foreground mb-5 leading-[1.08] animate-slide-up tracking-tight">
               Sell Smarter.{" "}
               <span className="text-gradient">Grow Faster.</span>
             </h1>
@@ -278,7 +278,7 @@ export default function Index() {
       <section id="features" className="py-16 md:py-20">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-3">
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-3">
               Everything You Need to Run Your{" "}
               <span className="text-gradient">Duka</span>
             </h2>
