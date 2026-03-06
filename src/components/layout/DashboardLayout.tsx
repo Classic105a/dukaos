@@ -64,22 +64,22 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Navigation - Professional header */}
-      <header className="sticky top-0 z-50 bg-card border-b border-border">
-        <div className="flex items-center justify-between h-14 px-3 lg:px-4">
+      {/* Top Navigation */}
+      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
+        <div className="flex items-center justify-between h-14 px-3 lg:px-5">
           {/* Left: Logo + Mobile Menu */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary"
+              className="lg:hidden p-2 -ml-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <Link to="/dashboard" className="flex items-center gap-2">
+            <Link to="/dashboard" className="flex items-center gap-2.5">
               <div className="w-8 h-8 bg-gradient-hero rounded-lg flex items-center justify-center shadow-soft">
                 <Store className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-base hidden sm:block">DukaOS</span>
+              <span className="font-display font-bold text-base hidden sm:block">DukaOS</span>
             </Link>
             <div className="hidden sm:block">
               <BusinessSwitcher />
@@ -87,7 +87,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
 
           {/* Center: Desktop Navigation */}
-          <nav className="hidden lg:flex items-center bg-secondary rounded-lg p-1">
+          <nav className="hidden lg:flex items-center bg-secondary/70 rounded-xl p-1 gap-0.5">
             {navItems.map(item => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -96,13 +96,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
                     isActive 
                       ? 'bg-card text-foreground shadow-soft' 
-                      : 'text-muted-foreground hover:text-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
                   )}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   {item.label}
                 </Link>
               );
@@ -110,13 +110,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </nav>
 
           {/* Right: Status + Branch + User */}
-          <div className="flex items-center gap-2">
-            {/* Status Indicators - Combined */}
+          <div className="flex items-center gap-1.5">
+            {/* Status Indicators */}
             <div className="flex items-center gap-1">
-              {/* Sync Status */}
               {pendingCount > 0 && (
                 <div className={cn(
-                  'flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium',
+                  'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium',
                   isSyncing ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'
                 )}>
                   <RefreshCw className={cn('w-3 h-3', isSyncing && 'animate-spin')} />
@@ -124,9 +123,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 </div>
               )}
               
-              {/* Online Status */}
               <div className={cn(
-                'flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium',
+                'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium',
                 isOnline 
                   ? 'bg-success/10 text-success' 
                   : 'bg-warning/10 text-warning'
@@ -140,7 +138,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             {branches.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5 h-8 px-2 sm:px-3">
+                  <Button variant="outline" size="sm" className="gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg">
                     <Building2 className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline max-w-[80px] truncate text-xs">
                       {currentBranch?.name || 'Branch'}
@@ -168,25 +166,24 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               </DropdownMenu>
             )}
 
-            {/* Theme Toggle */}
             <ThemeToggle />
 
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-1 h-8 px-2">
-                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                    <span className="text-2xs font-bold text-primary-foreground">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-hero flex items-center justify-center">
+                    <span className="text-xs font-bold text-primary-foreground">
                       {user?.email?.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <ChevronDown className="w-3 h-3 opacity-50 hidden sm:block" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <div className="px-3 py-2 border-b border-border">
-                  <p className="text-sm font-medium truncate">{user?.email}</p>
-                  <p className="text-xs text-muted-foreground">Logged in</p>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-3 py-2.5 border-b border-border">
+                  <p className="text-sm font-semibold truncate">{user?.email}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Logged in</p>
                 </div>
                 <DropdownMenuItem onClick={() => navigate('/settings')} className="text-sm">
                   <Settings className="w-4 h-4 mr-2" />
@@ -202,10 +199,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation — slide-down drawer */}
         {mobileMenuOpen && (
-          <nav className="lg:hidden border-t border-border bg-card animate-fade-in">
-            <div className="p-2 space-y-1">
+          <div className="lg:hidden border-t border-border bg-card animate-fade-in">
+            <nav className="p-2 space-y-0.5">
               {navItems.map(item => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
@@ -215,9 +212,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                       isActive 
-                        ? 'bg-primary text-primary-foreground' 
+                        ? 'bg-primary text-primary-foreground shadow-soft' 
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                     )}
                   >
@@ -230,22 +227,22 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 to="/settings"
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                   location.pathname === '/settings'
-                    ? 'bg-primary text-primary-foreground' 
+                    ? 'bg-primary text-primary-foreground shadow-soft' 
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                 )}
               >
                 <Settings className="w-5 h-5" />
                 Settings
               </Link>
-            </div>
-          </nav>
+            </nav>
+          </div>
         )}
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-3 lg:p-4">
+      <main className="flex-1 p-3 lg:p-5">
         {children}
       </main>
     </div>

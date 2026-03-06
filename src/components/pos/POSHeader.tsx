@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface POSHeaderProps {
   heldSalesCount: number;
@@ -69,13 +70,13 @@ const POSHeader = ({
   };
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50">
-      <div className="flex items-center justify-between h-14 px-3 lg:px-4">
+    <header className="bg-card/95 backdrop-blur-md border-b border-border sticky top-0 z-50">
+      <div className="flex items-center justify-between h-14 px-3 lg:px-5">
         {/* Left: Menu & Brand */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
                 <Menu className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
@@ -117,8 +118,8 @@ const POSHeader = ({
           </DropdownMenu>
 
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-foreground leading-tight">DukaOS</span>
-            <span className="text-[10px] text-muted-foreground leading-tight">
+            <span className="font-display text-sm font-bold text-foreground leading-tight">DukaOS</span>
+            <span className="text-[10px] text-muted-foreground leading-tight tabular-nums">
               {format(currentTime, 'h:mm a')}
             </span>
           </div>
@@ -127,8 +128,10 @@ const POSHeader = ({
         {/* Center: Branch Selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 gap-1 max-w-[160px]">
-              <Store className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 max-w-[180px] rounded-lg">
+              <div className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center">
+                <Store className="h-3 w-3 shrink-0 text-primary" />
+              </div>
               <span className="truncate text-xs font-medium">
                 {currentBranch?.name || 'Select Branch'}
               </span>
@@ -140,7 +143,7 @@ const POSHeader = ({
               <DropdownMenuItem
                 key={branch.id}
                 onClick={() => setCurrentBranch(branch)}
-                className={currentBranch?.id === branch.id ? 'bg-primary/10' : ''}
+                className={cn(currentBranch?.id === branch.id ? 'bg-primary/10 font-medium' : '')}
               >
                 <Store className="h-4 w-4 mr-2" />
                 {branch.name}
@@ -152,17 +155,17 @@ const POSHeader = ({
         {/* Right: Actions & Status */}
         <div className="flex items-center gap-1">
           {/* Shift Status */}
-          <div className="hidden sm:flex items-center gap-1 mr-2">
+          <div className="hidden sm:flex items-center gap-1 mr-1">
             {hasOpenShift ? (
               <>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs gap-1 border-green-500/50 text-green-600"
+                  className="h-7 text-xs gap-1 border-success/40 text-success rounded-lg"
                   onClick={onCloseShift}
                 >
                   <Clock className="h-3 w-3" />
-                  <span className="hidden lg:inline">
+                  <span className="hidden lg:inline tabular-nums">
                     {currentShift && format(new Date(currentShift.opened_at), 'h:mm a')}
                   </span>
                   <Square className="h-3 w-3" />
@@ -170,7 +173,7 @@ const POSHeader = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs gap-1"
+                  className="h-7 text-xs gap-1 rounded-lg"
                   onClick={onViewZReport}
                   title="View Z-Report"
                 >
@@ -181,7 +184,7 @@ const POSHeader = ({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs gap-1 border-amber-500/50 text-amber-600"
+                className="h-7 text-xs gap-1 border-warning/40 text-warning rounded-lg"
                 onClick={onOpenShift}
               >
                 <Play className="h-3 w-3" />
@@ -193,12 +196,16 @@ const POSHeader = ({
           {/* Network Status */}
           <div className="flex items-center gap-1 mr-1">
             {isOnline ? (
-              <Wifi className="h-4 w-4 text-green-500" />
+              <div className="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center">
+                <Wifi className="h-3.5 w-3.5 text-success" />
+              </div>
             ) : (
               <div className="flex items-center gap-1">
-                <WifiOff className="h-4 w-4 text-destructive" />
+                <div className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center">
+                  <WifiOff className="h-3.5 w-3.5 text-destructive" />
+                </div>
                 {pendingSales.length > 0 && (
-                  <Badge variant="destructive" className="h-5 text-[10px] px-1.5">
+                  <Badge variant="destructive" className="h-5 text-[10px] px-1.5 rounded-md">
                     {pendingSales.length}
                   </Badge>
                 )}
@@ -207,11 +214,11 @@ const POSHeader = ({
           </div>
 
           {/* Quick Actions - Desktop */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-0.5">
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-8 text-xs gap-1"
+              className="h-8 text-xs gap-1.5 rounded-lg"
               onClick={onReturnClick}
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -220,7 +227,7 @@ const POSHeader = ({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-8 text-xs gap-1"
+              className="h-8 text-xs gap-1.5 rounded-lg"
               onClick={onReprintClick}
             >
               <Printer className="h-3.5 w-3.5" />
@@ -231,12 +238,12 @@ const POSHeader = ({
           {/* Held Sales */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 relative">
+              <Button variant="ghost" size="icon" className="h-9 w-9 relative rounded-lg">
                 <PauseCircle className="h-5 w-5" />
                 {heldSalesCount > 0 && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
+                    className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
                   >
                     {heldSalesCount}
                   </Badge>
@@ -251,7 +258,7 @@ const POSHeader = ({
           {/* Mobile Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
                 <Settings className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>

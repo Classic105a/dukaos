@@ -10,12 +10,13 @@ const cardVariants = cva(
       variant: {
         default: "bg-card shadow-soft border-border",
         elevated: "bg-card shadow-elevated border-transparent hover:shadow-strong",
-        glass: "bg-card/70 backdrop-blur-xl border-border/40",
-        feature: "bg-card shadow-soft hover:shadow-elevated hover:-translate-y-0.5 border-border",
-        pricing: "bg-card shadow-elevated border-2 border-border hover:border-primary",
+        glass: "bg-card/70 backdrop-blur-xl border-border/40 shadow-soft",
+        feature: "bg-card shadow-soft hover:shadow-elevated hover:-translate-y-0.5 border-border/60",
+        pricing: "bg-card shadow-elevated border-2 border-border hover:border-primary/40",
         "pricing-featured": "bg-gradient-hero text-primary-foreground shadow-strong border-0",
-        outline: "bg-transparent border-2 border-border hover:border-primary hover:shadow-soft",
+        outline: "bg-transparent border-2 border-border hover:border-primary/40 hover:shadow-soft",
         filled: "bg-secondary border-transparent",
+        stat: "bg-card shadow-soft border-border/60 hover:shadow-elevated",
       },
     },
     defaultVariants: {
@@ -48,7 +49,7 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-lg font-bold leading-tight tracking-tight", className)} {...props} />
+    <h3 ref={ref} className={cn("font-display text-lg font-bold leading-tight tracking-tight", className)} {...props} />
   )
 );
 CardTitle.displayName = "CardTitle";
