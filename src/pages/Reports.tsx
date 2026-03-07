@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import CreditAgingReport from '@/components/reports/CreditAgingReport';
+import EnhancedCreditAging from '@/components/reports/EnhancedCreditAging';
 import {
   Select,
   SelectContent,
@@ -579,7 +579,7 @@ const Reports = () => {
 
           {canManageCustomerCredit && (
             <TabsContent value="credit">
-              <CreditAgingReport />
+              <EnhancedCreditAging />
             </TabsContent>
           )}
         </Tabs>
