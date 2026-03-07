@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ import {
   Wallet,
   AlertTriangle,
   Calendar,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -79,6 +81,7 @@ interface CustomerSale {
 
 const Customers = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { permissions } = usePermissions();
   const { useCreditHistory, enableCredit, recordPayment } = useCustomerCredit();
@@ -701,6 +704,7 @@ const CustomerTable = ({
   getSegmentIcon: (segment: string | null) => React.ReactNode;
   getSegmentColor: (segment: string | null) => string;
 }) => {
+  const navigate = useNavigate();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -807,6 +811,20 @@ const CustomerTable = ({
                 </td>
                 <td className="p-4 text-right">
                   <div className="flex items-center justify-end gap-1">
+                    {customer.credit_enabled && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/customers/${customer.id}/statement`);
+                        }}
+                        title="View Statement"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </Button>
+                    )}
                     {customer.credit_enabled && customer.credit_balance > 0 && (
                       <Button 
                         variant="ghost" 

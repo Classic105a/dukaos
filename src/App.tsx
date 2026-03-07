@@ -26,6 +26,8 @@ import Settings from "./pages/Settings";
 import Parties from "./pages/Parties";
 import DebtDashboard from "./pages/DebtDashboard";
 import AuditLog from "./pages/AuditLog";
+import Analytics from "./pages/Analytics";
+import CustomerStatement from "./pages/CustomerStatement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -89,6 +91,8 @@ const App = () => (
                 <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
+                <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+                <Route path="/customers/:customerId/statement" element={<ProtectedRoute><CustomerStatement /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ErrorBoundary>
