@@ -703,6 +703,7 @@ const CustomerTable = ({
   getSegmentIcon: (segment: string | null) => React.ReactNode;
   getSegmentColor: (segment: string | null) => string;
 }) => {
+  const navigate = useNavigate();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -809,6 +810,20 @@ const CustomerTable = ({
                 </td>
                 <td className="p-4 text-right">
                   <div className="flex items-center justify-end gap-1">
+                    {customer.credit_enabled && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/customers/${customer.id}/statement`);
+                        }}
+                        title="View Statement"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </Button>
+                    )}
                     {customer.credit_enabled && customer.credit_balance > 0 && (
                       <Button 
                         variant="ghost" 
