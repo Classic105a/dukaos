@@ -402,11 +402,8 @@ const CustomerStatement = () => {
           customer={customer ? {
             id: customer.id,
             name: customer.name,
-            phone: customer.phone,
-            email: customer.email,
             credit_limit: Number(customer.credit_limit),
             credit_balance: Number(customer.credit_balance),
-            credit_enabled: customer.credit_enabled || false,
           } : null}
         />
       </div>
