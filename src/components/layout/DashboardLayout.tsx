@@ -28,7 +28,8 @@ import {
   Store,
   Truck,
   Wallet,
-  Shield
+  Shield,
+  LayoutDashboard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -40,6 +41,7 @@ interface DashboardLayoutProps {
 
 const navItems = [
   { path: '/dashboard', label: 'POS', icon: ShoppingCart },
+  { path: '/analytics', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/inventory', label: 'Inventory', icon: Package },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/customers', label: 'Customers', icon: Users },
