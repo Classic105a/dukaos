@@ -49,6 +49,7 @@ import {
   Wallet,
   AlertTriangle,
   Calendar,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
