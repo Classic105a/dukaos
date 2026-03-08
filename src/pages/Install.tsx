@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, CheckCircle2, Smartphone, Wifi, WifiOff, Shield, Zap } from 'lucide-react';
+import { Download, CheckCircle2, Smartphone, Wifi, WifiOff, Shield, Zap, Chrome, Share2, MoreVertical, PlusSquare, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -13,10 +13,33 @@ const Install = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('desktop');
+  const [swReady, setSwReady] = useState(false);
 
   useEffect(() => {
-    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches);
+    // Detect standalone mode
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as any).standalone === true;
+    setIsStandalone(standalone);
 
+    // Detect platform
+    const ua = navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) {
+      setPlatform('ios');
+    } else if (/android/.test(ua)) {
+      setPlatform('android');
+    } else {
+      setPlatform('desktop');
+    }
+
+    // Check SW registration
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) setSwReady(true);
+      });
+    }
+
+    // Listen for install prompt
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -25,7 +48,9 @@ const Install = () => {
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', () => setInstalled(true));
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
   }, []);
 
   const handleInstall = async () => {
@@ -63,9 +88,17 @@ const Install = () => {
       </div>
 
       <h1 className="text-2xl font-bold text-foreground mb-2">Install DukaOS</h1>
-      <p className="text-muted-foreground text-center max-w-sm mb-8">
+      <p className="text-muted-foreground text-center max-w-sm mb-6">
         Install the app on your device for offline access, faster loading, and a native app experience.
       </p>
+
+      {/* Status indicators */}
+      <div className="flex items-center gap-2 mb-6">
+        <span className={cn("w-2 h-2 rounded-full", swReady ? "bg-success" : "bg-muted")} />
+        <span className="text-xs text-muted-foreground">
+          {swReady ? "Service Worker active" : "Service Worker loading…"}
+        </span>
+      </div>
 
       {deferredPrompt ? (
         <Button size="lg" onClick={handleInstall} className="w-full max-w-sm mb-8 gap-2">
@@ -73,11 +106,92 @@ const Install = () => {
           Install Now
         </Button>
       ) : (
-        <Card className="w-full max-w-sm mb-8 border-dashed">
-          <CardContent className="p-4 text-center text-sm text-muted-foreground">
-            <p className="font-medium mb-1">Manual Install</p>
-            <p><strong>Android:</strong> Tap browser menu → "Add to Home Screen"</p>
-            <p><strong>iPhone:</strong> Tap Share → "Add to Home Screen"</p>
+        <Card className="w-full max-w-sm mb-8 border-border">
+          <CardContent className="p-5">
+            <p className="font-semibold text-foreground text-sm mb-4 text-center">How to Install</p>
+
+            {platform === 'ios' ? (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-primary">1</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Open in Safari</p>
+                    <p className="text-xs text-muted-foreground">This must be done in Safari browser</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-primary">2</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">Tap the Share button</p>
+                    <Share2 className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-primary">3</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">Tap "Add to Home Screen"</p>
+                    <PlusSquare className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+            ) : platform === 'android' ? (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-primary">1</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Open in Chrome</p>
+                    <p className="text-xs text-muted-foreground">Use Chrome or Edge browser</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-primary">2</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">Tap the menu</p>
+                    <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-primary">3</span>
+                  </div>
+                  <p className="text-sm font-medium text-foreground">Tap "Install app" or "Add to Home Screen"</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Chrome className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Use Chrome or Edge</p>
+                    <p className="text-xs text-muted-foreground">Click the install icon in the address bar</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Open in browser button for iframe contexts */}
+            {window.self !== window.top && (
+              <Button
+                variant="outline"
+                className="w-full mt-4 gap-2"
+                onClick={() => window.open(window.location.href, '_blank')}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open in Browser to Install
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
