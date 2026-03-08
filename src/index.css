@@ -121,11 +121,17 @@
     font-family: 'DM Sans', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     @apply font-bold tracking-tight;
+  }
+
+  /* Smooth transitions on all interactive elements */
+  button, a, input, select, textarea {
+    @apply transition-colors duration-150;
   }
 }
 
