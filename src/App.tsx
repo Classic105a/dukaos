@@ -28,6 +28,9 @@ import DebtDashboard from "./pages/DebtDashboard";
 import AuditLog from "./pages/AuditLog";
 import Analytics from "./pages/Analytics";
 import CustomerStatement from "./pages/CustomerStatement";
+import Warehouse from "./pages/Warehouse";
+import Promotions from "./pages/Promotions";
+import SmartInventory from "./pages/SmartInventory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

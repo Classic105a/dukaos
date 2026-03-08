@@ -264,10 +264,64 @@ const Reports = () => {
                 <SelectItem value="month">This Month</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
+            <Select onValueChange={(v) => {
+              const period = dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : 'This Month';
+              const topProds = getTopProducts();
+              const payBreakdown = getPaymentBreakdown();
+              const costOfGoods = salesData.reduce((s, sale) => s + Number(sale.cost_total || 0), 0);
+              const grossProfit = totalRevenue - costOfGoods;
+
+              if (v === 'csv') {
+                exportToCSV(salesData.map(s => ({
+                  Receipt: s.receipt_number,
+                  Date: format(new Date(s.created_at), 'dd MMM yyyy HH:mm'),
+                  Subtotal: Number(s.subtotal),
+                  Tax: Number(s.tax_amount),
+                  Discount: Number(s.discount_amount),
+                  Total: Number(s.total_amount),
+                  Profit: Number(s.profit_total || 0),
+                })), `Sales_Report_${period}`);
+                toast.success('CSV exported');
+              } else if (v === 'excel') {
+                exportToExcel(salesData.map(s => ({
+                  Receipt: s.receipt_number,
+                  Date: format(new Date(s.created_at), 'dd MMM yyyy HH:mm'),
+                  Subtotal: Number(s.subtotal),
+                  Tax: Number(s.tax_amount),
+                  Discount: Number(s.discount_amount),
+                  Total: Number(s.total_amount),
+                  Cost: Number(s.cost_total || 0),
+                  Profit: Number(s.profit_total || 0),
+                })), `Sales_Report_${period}`, `Sales Report — ${period}`);
+                toast.success('Excel exported');
+              } else if (v === 'pdf') {
+                const content = generatePLReport({
+                  revenue: totalRevenue,
+                  costOfGoods,
+                  grossProfit,
+                  transactionCount: totalTransactions,
+                  avgOrderValue: averageOrderValue,
+                  dateRange: period,
+                  topProducts: topProds,
+                  paymentBreakdown: payBreakdown.map(p => ({
+                    method: p.name,
+                    amount: p.value,
+                    count: paymentsData.filter(pay => pay.payment_method.toLowerCase() === p.name.toLowerCase()).length,
+                  })),
+                });
+                exportToPDF(content, `P&L Report — ${period}`);
+              }
+            }}>
+              <SelectTrigger className="w-[130px]">
+                <Download className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Export" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="csv">Export CSV</SelectItem>
+                <SelectItem value="excel">Export Excel</SelectItem>
+                <SelectItem value="pdf">P&L Report (PDF)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
