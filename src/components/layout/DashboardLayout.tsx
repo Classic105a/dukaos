@@ -58,7 +58,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, signOut } = useAuth();
   const { branches, currentBranch, setCurrentBranch } = useBranch();
   const { isOnline, pendingCount, isSyncing } = useOfflineSync();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -72,12 +72,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <div className="flex items-center justify-between h-14 px-3 lg:px-5">
           {/* Left: Logo + Mobile Menu */}
           <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 -ml-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+            {/* Logo */}
             <Link to="/dashboard" className="flex items-center gap-2.5">
               <div className="w-8 h-8 bg-gradient-hero rounded-lg flex items-center justify-center shadow-soft">
                 <Store className="w-4 h-4 text-primary-foreground" />
