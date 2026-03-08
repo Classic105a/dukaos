@@ -1,6 +1,7 @@
 import { useState, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import BottomNav from '@/components/layout/BottomNav';
 import { useBranch } from '@/hooks/useBranch';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { Button } from '@/components/ui/button';
@@ -57,7 +58,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, signOut } = useAuth();
   const { branches, currentBranch, setCurrentBranch } = useBranch();
   const { isOnline, pendingCount, isSyncing } = useOfflineSync();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -71,12 +72,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <div className="flex items-center justify-between h-14 px-3 lg:px-5">
           {/* Left: Logo + Mobile Menu */}
           <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 -ml-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+            {/* Logo */}
             <Link to="/dashboard" className="flex items-center gap-2.5">
               <div className="w-8 h-8 bg-gradient-hero rounded-lg flex items-center justify-center shadow-soft">
                 <Store className="w-4 h-4 text-primary-foreground" />
@@ -201,52 +197,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
         </div>
 
-        {/* Mobile Navigation — slide-down drawer */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-border bg-card animate-fade-in">
-            <nav className="p-2 space-y-0.5">
-              {navItems.map(item => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-                      isActive 
-                        ? 'bg-primary text-primary-foreground shadow-soft' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <Link
-                to="/settings"
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-                  location.pathname === '/settings'
-                    ? 'bg-primary text-primary-foreground shadow-soft' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                )}
-              >
-                <Settings className="w-5 h-5" />
-                Settings
-              </Link>
-            </nav>
-          </div>
-        )}
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-3 lg:p-5">
+      <main className="flex-1 p-3 lg:p-5 pb-bottom-nav lg:pb-5">
         {children}
       </main>
+
+      {/* Bottom Navigation — Mobile */}
+      <BottomNav />
     </div>
   );
 };

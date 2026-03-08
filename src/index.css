@@ -186,6 +186,15 @@
   }
 
   /* Scrollbar styling */
+  /* Safe area for bottom nav */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pb-bottom-nav {
+    padding-bottom: 5rem;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
