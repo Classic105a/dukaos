@@ -321,7 +321,7 @@ const Dashboard = () => {
         {/* Product Grid - Full width on mobile, 2/3 on desktop */}
         <div className="flex-1 lg:w-2/3 overflow-hidden flex flex-col">
           <div className="flex-1 p-3 lg:p-4 overflow-hidden">
-            <ProductGrid key={productRefreshKey} onProductSelect={handleProductSelect} />
+            <ProductGrid refreshKey={productRefreshKey} onProductSelect={handleProductSelect} />
           </div>
         </div>
 
