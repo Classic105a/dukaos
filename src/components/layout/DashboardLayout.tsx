@@ -1,4 +1,4 @@
-import { useState, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import BottomNav from '@/components/layout/BottomNav';
@@ -13,6 +13,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import { 
   ShoppingCart, 
@@ -22,8 +24,6 @@ import {
   Building2, 
   Settings, 
   LogOut,
-  Menu,
-  X,
   ChevronDown,
   Wifi,
   WifiOff,
@@ -32,7 +32,13 @@ import {
   Truck,
   Wallet,
   Shield,
-  LayoutDashboard
+  LayoutDashboard,
+  TrendingUp,
+  FileText,
+  Gavel,
+  Tag,
+  Warehouse,
+  PieChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -42,19 +48,41 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
-  { path: '/dashboard', label: 'POS', icon: ShoppingCart },
-  { path: '/analytics', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/inventory', label: 'Inventory', icon: Package },
-  { path: '/smart-inventory', label: 'Forecasting', icon: BarChart3 },
-  { path: '/warehouse', label: 'Warehouse', icon: Truck },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/promotions', label: 'Promos', icon: Store },
-  { path: '/customers', label: 'Customers', icon: Users },
-  { path: '/parties', label: 'Parties', icon: Truck },
-  { path: '/debts', label: 'Debts', icon: Wallet },
-  { path: '/audit-log', label: 'Audit', icon: Shield },
-  { path: '/branches', label: 'Branches', icon: Building2 },
+// Grouped navigation for desktop mega-menu style
+const navGroups = [
+  {
+    label: 'Sales',
+    items: [
+      { path: '/dashboard', label: 'Point of Sale', icon: ShoppingCart },
+      { path: '/analytics', label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/promotions', label: 'Promotions', icon: Tag },
+    ],
+  },
+  {
+    label: 'Inventory',
+    items: [
+      { path: '/inventory', label: 'Products', icon: Package },
+      { path: '/smart-inventory', label: 'Forecasting', icon: TrendingUp },
+      { path: '/warehouse', label: 'Warehouse & GRN', icon: Warehouse },
+    ],
+  },
+  {
+    label: 'Finance',
+    items: [
+      { path: '/reports', label: 'Reports', icon: PieChart },
+      { path: '/customers', label: 'Customers', icon: Users },
+      { path: '/parties', label: 'Suppliers & Parties', icon: Truck },
+      { path: '/debts', label: 'Debt Dashboard', icon: Wallet },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { path: '/branches', label: 'Branches', icon: Building2 },
+      { path: '/audit-log', label: 'Audit Log', icon: Shield },
+      { path: '/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ];
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
@@ -63,24 +91,24 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, signOut } = useAuth();
   const { branches, currentBranch, setCurrentBranch } = useBranch();
   const { isOnline, pendingCount, isSyncing } = useOfflineSync();
-  const [mobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
   };
 
+  const isActive = (path: string) => location.pathname === path;
+  const isGroupActive = (items: { path: string }[]) => items.some(i => isActive(i.path));
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* System Health Bar */}
       <SystemHealthBar />
 
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
         <div className="flex items-center justify-between h-14 px-3 lg:px-5">
-          {/* Left: Logo + Mobile Menu */}
+          {/* Left: Logo */}
           <div className="flex items-center gap-2.5">
-            {/* Logo */}
             <Link to="/dashboard" className="flex items-center gap-2.5">
               <div className="w-8 h-8 bg-gradient-hero rounded-lg flex items-center justify-center shadow-soft">
                 <Store className="w-4 h-4 text-primary-foreground" />
@@ -92,27 +120,52 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </div>
           </div>
 
-          {/* Center: Desktop Navigation */}
-          <nav className="hidden lg:flex items-center bg-secondary/70 rounded-xl p-1 gap-0.5">
-            {navItems.map(item => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
-                    isActive 
-                      ? 'bg-card text-foreground shadow-soft' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
-                  )}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {item.label}
-                </Link>
-              );
-            })}
+          {/* Center: Grouped Navigation — Desktop */}
+          <nav className="hidden lg:flex items-center gap-0.5">
+            {navGroups.map(group => (
+              <DropdownMenu key={group.label}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-9 px-3 gap-1 text-sm font-medium rounded-lg transition-all',
+                      isGroupActive(group.items)
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {group.label}
+                    <ChevronDown className="w-3 h-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-52">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                    {group.label}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    {group.items.map(item => {
+                      const Icon = item.icon;
+                      return (
+                        <DropdownMenuItem key={item.path} asChild>
+                          <Link
+                            to={item.path}
+                            className={cn(
+                              'flex items-center gap-2.5 cursor-pointer',
+                              isActive(item.path) && 'bg-primary/10 text-primary font-medium'
+                            )}
+                          >
+                            <Icon className="w-4 h-4" />
+                            {item.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ))}
           </nav>
 
           {/* Right: Status + Branch + User */}
@@ -204,7 +257,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </DropdownMenu>
           </div>
         </div>
-
       </header>
 
       {/* Main Content */}
