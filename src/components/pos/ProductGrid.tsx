@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useBranch } from '@/hooks/useBranch';
+import { useState, useEffect, useCallback } from 'react';
+import { useOfflineDB, type OfflineProduct } from '@/hooks/useOfflineDB';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Barcode, Package, Plus, ScanLine } from 'lucide-react';
+import { Search, Package, Plus, ScanLine, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -19,96 +18,30 @@ interface Product {
   stock?: number;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-}
-
 interface ProductGridProps {
   onProductSelect: (product: Product) => void;
+  refreshKey?: number;
 }
 
-const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
-  const { currentBranch } = useBranch();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
+  const { products, categories, loading, dataSource, refreshLocalData, reloadData } = useOfflineDB();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
 
+  // Refresh local data when refreshKey changes (after a sale)
   useEffect(() => {
-    fetchCategories();
-    fetchProducts();
-  }, [currentBranch?.id]);
-
-  const fetchCategories = async () => {
-    const { data } = await supabase
-      .from('categories')
-      .select('id, name, color')
-      .eq('is_active', true)
-      .order('name');
-    
-    setCategories(data || []);
-  };
-
-  const fetchProducts = async () => {
-    if (!currentBranch?.id) return;
-
-    setLoading(true);
-    try {
-      const { data: productsData, error: productsError } = await supabase
-        .from('products')
-        .select(`
-          id,
-          name,
-          barcode,
-          unit_price,
-          image_url,
-          category_id,
-          is_shared_product,
-          branch_id,
-          categories (name, color)
-        `)
-        .eq('is_active', true)
-        .or(`branch_id.eq.${currentBranch.id},is_shared_product.eq.true`)
-        .order('name');
-
-      if (productsError) throw productsError;
-
-      const { data: stockData, error: stockError } = await supabase
-        .from('current_stock')
-        .select('product_id, quantity')
-        .eq('branch_id', currentBranch.id);
-
-      if (stockError) throw stockError;
-
-      const stockMap = new Map(
-        (stockData || []).map(s => [s.product_id, s.quantity ?? 0])
-      );
-
-      const productsWithStock =
-        (productsData as any[])?.map((product) => ({
-          ...product,
-          category: product.categories,
-          stock: stockMap.get(product.id) ?? 0,
-        })) || [];
-
-      setProducts(productsWithStock);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    } finally {
-      setLoading(false);
+    if (refreshKey && refreshKey > 0) {
+      refreshLocalData();
     }
-  };
+  }, [refreshKey, refreshLocalData]);
 
-  const handleBarcodeSearch = (barcode: string) => {
+  const handleBarcodeSearch = useCallback((barcode: string) => {
     const product = products.find(p => p.barcode === barcode);
     if (product) {
-      onProductSelect(product);
+      onProductSelect(product as Product);
       setSearchQuery('');
     }
-  };
+  }, [products, onProductSelect]);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -140,7 +73,15 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
         </Button>
       </div>
 
-      {/* Category Filter — Scrollable pills */}
+      {/* Data source indicator */}
+      {dataSource === 'cache' && (
+        <div className="flex items-center gap-1.5 mb-2 px-1">
+          <WifiOff className="w-3 h-3 text-warning" />
+          <span className="text-xs text-warning font-medium">Using cached data</span>
+        </div>
+      )}
+
+      {/* Category Filter */}
       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
         <button
           onClick={() => setSelectedCategory(null)}
@@ -222,7 +163,7 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                   </div>
 
                   <button
-                    onClick={() => onProductSelect(product)}
+                    onClick={() => onProductSelect(product as Product)}
                     className="flex-1 min-w-0 text-left"
                     disabled={product.stock === 0}
                   >
@@ -258,7 +199,7 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
                       className="h-10 w-10 rounded-xl shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onProductSelect(product);
+                        onProductSelect(product as Product);
                       }}
                       disabled={product.stock === 0}
                     >
@@ -274,7 +215,7 @@ const ProductGrid = ({ onProductSelect }: ProductGridProps) => {
               {filteredProducts.map(product => (
                 <button
                   key={product.id}
-                  onClick={() => onProductSelect(product)}
+                  onClick={() => onProductSelect(product as Product)}
                   disabled={product.stock === 0}
                   className={cn(
                     'bg-card rounded-xl p-3.5 text-left transition-all border border-border/60 hover:shadow-elevated hover:border-primary/20 active:scale-[0.98] group',

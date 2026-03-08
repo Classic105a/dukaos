@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useOfflineDB } from '@/hooks/useOfflineDB';
 import { usePrinter } from '@/hooks/usePrinter';
 import { useTaxSettings } from '@/hooks/useTaxSettings';
 import { useHoldSale } from '@/hooks/useHoldSale';
@@ -33,7 +34,8 @@ import SystemHealthBar from '@/components/SystemHealthBar';
 const Dashboard = () => {
   const { user } = useAuth();
   const { currentBranch } = useBranch();
-  const { isOnline, saveSaleOffline } = useOfflineSync();
+  const { isOnline, saveSaleOffline, syncPendingSales } = useOfflineSync();
+  const { refreshLocalData } = useOfflineDB();
   const { printReceipt, hasPrinter } = usePrinter();
   const { calculateTax } = useTaxSettings();
   const { heldSales, holdSale, resumeSale, deleteHeldSale } = useHoldSale();
@@ -192,165 +194,65 @@ const Dashboard = () => {
     const saleDiscount = discount;
     const saleTotal = total;
 
-    if (!isOnline) {
-      saveSaleOffline({
-        branch_id: currentBranch.id,
-        items: saleItems.map(item => ({
-          product_id: item.product_id,
-          product_name: item.name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_amount: item.total
-        })),
-        payments: payments.map(p => ({
-          payment_method: p.method,
-          amount: p.amount,
-          mpesa_reference: p.mpesa_reference,
-          mpesa_phone: p.mpesa_phone
-        })),
-        subtotal: saleSubtotal,
-        tax_amount: saleTax,
-        discount_amount: saleDiscount,
-        total_amount: saleTotal,
-        created_at: new Date().toISOString()
-      });
-      
-      lastSaleItemsRef.current = saleItems;
-      setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: saleDiscount, total: saleTotal });
-      setLastSale({ receiptNumber, payments });
-      setShowPayment(false);
-      setShowMobileCart(false);
-      setShowReceipt(true);
-      setCartItems([]);
-      setProductRefreshKey(k => k + 1);
-      toast.success('Sale saved offline. Will sync when online.');
-      
-      autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
-      return;
-    }
+    // LOCAL-FIRST: Always save to IndexedDB first
+    const creditPayment = payments.find(p => p.method === 'credit');
+    await saveSaleOffline({
+      branch_id: currentBranch.id,
+      cashier_id: user.id,
+      receipt_number: receiptNumber,
+      customer_id: creditPayment?.customer_id || null,
+      items: saleItems.map(item => ({
+        product_id: item.product_id,
+        product_name: item.name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_amount: item.total
+      })),
+      payments: payments.map(p => ({
+        payment_method: p.method,
+        amount: p.amount,
+        mpesa_reference: p.mpesa_reference,
+        mpesa_phone: p.mpesa_phone,
+        customer_id: p.customer_id,
+      })),
+      subtotal: saleSubtotal,
+      tax_amount: saleTax,
+      discount_amount: saleDiscount,
+      total_amount: saleTotal,
+      shift_id: currentShift?.id || null,
+      status: 'completed',
+      created_at: new Date().toISOString(),
+    });
 
-    try {
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .insert({
-          branch_id: currentBranch.id,
-          cashier_id: user.id,
-          receipt_number: receiptNumber,
-          subtotal: saleSubtotal,
-          tax_amount: saleTax,
-          discount_amount: saleDiscount,
-          total_amount: saleTotal,
-          payment_status: 'completed',
-          shift_id: currentShift?.id || null,
-        })
-        .select()
-        .single();
+    // Update UI immediately (optimistic)
+    lastSaleItemsRef.current = saleItems;
+    setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: saleDiscount, total: saleTotal });
+    setLastSale({ receiptNumber, payments });
+    setShowPayment(false);
+    setShowMobileCart(false);
+    setShowReceipt(true);
+    setCartItems([]);
+    setProductRefreshKey(k => k + 1);
 
-      if (saleError) throw saleError;
+    // Refresh local product data (stock deducted)
+    refreshLocalData();
 
-      await supabase.from('sale_items').insert(
-        saleItems.map(item => ({
-          sale_id: saleData.id,
-          product_id: item.product_id,
-          product_name: item.name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_amount: item.total
-        }))
-      );
+    // Auto-print receipt
+    autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
 
-      const { error: movementError } = await supabase.from('stock_movements').insert(
-        saleItems.map(item => ({
-          product_id: item.product_id,
-          branch_id: currentBranch.id,
-          quantity_change: -item.quantity,
-          movement_type: 'SALE',
-          reference_id: saleData.id,
-          created_by: user.id,
-          notes: `Sale ${receiptNumber}`,
-        }))
-      );
-
-      if (movementError) throw movementError;
-
-      // Handle credit payment - record in credit_transactions
-      const creditPayment = payments.find(p => p.method === 'credit');
-      if (creditPayment && creditPayment.customer_id) {
-        // Get customer's current balance
-        const { data: customerData } = await supabase
-          .from('customers')
-          .select('credit_balance')
-          .eq('id', creditPayment.customer_id)
-          .single();
-        
-        const newBalance = (customerData?.credit_balance || 0) + saleTotal;
-        
-        // Record credit transaction
-        await supabase.from('credit_transactions').insert({
-          customer_id: creditPayment.customer_id,
-          sale_id: saleData.id,
-          transaction_type: 'CREDIT_SALE',
-          amount: saleTotal,
-          running_balance: newBalance,
-          processed_by: user.id,
-          notes: `Sale ${receiptNumber}`,
-        });
-
-        // Update customer balance
-        await supabase
-          .from('customers')
-          .update({ credit_balance: newBalance })
-          .eq('id', creditPayment.customer_id);
-
-        // Update sale with customer_id
-        await supabase
-          .from('sales')
-          .update({ customer_id: creditPayment.customer_id })
-          .eq('id', saleData.id);
-      }
-
-      await supabase.from('payments').insert(
-        payments.map(p => ({
-          sale_id: saleData.id,
-          payment_method: p.method,
-          amount: p.amount,
-          mpesa_reference: p.mpesa_reference || null,
-          mpesa_phone: p.mpesa_phone || null,
-          status: 'completed'
-        }))
-      );
-
-      lastSaleItemsRef.current = saleItems;
-      setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: saleDiscount, total: saleTotal });
-      setLastSale({ receiptNumber, payments });
-      setShowPayment(false);
-      setShowMobileCart(false);
-      setShowReceipt(true);
-      setCartItems([]);
-      setProductRefreshKey(k => k + 1);
+    if (isOnline) {
+      // Trigger background sync immediately
       toast.success('Sale completed!');
+      syncPendingSales();
       
-      // Audit log
-      log('SALE_COMPLETED', 'sale', saleData.id, undefined, {
+      // Audit log (best-effort, non-blocking)
+      log('SALE_COMPLETED', 'sale', receiptNumber, undefined, {
         receiptNumber,
         total: saleTotal,
         items: saleItems.length,
       });
-      
-      autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
-    } catch (error: any) {
-      console.error('Sale error:', error);
-      
-      // Provide user-friendly error messages
-      if (error.code === '42501' || error.message?.includes('row-level security')) {
-        toast.error('Access denied. Please log out and back in.');
-      } else if (error.code === '23503') {
-        toast.error('Product or branch not found. Please refresh.');
-      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        toast.error('Network error. Check your connection.');
-      } else {
-        toast.error('Failed to complete sale. Please try again.');
-      }
+    } else {
+      toast.success('Sale saved offline. Will sync when online.');
     }
   };
 
@@ -419,7 +321,7 @@ const Dashboard = () => {
         {/* Product Grid - Full width on mobile, 2/3 on desktop */}
         <div className="flex-1 lg:w-2/3 overflow-hidden flex flex-col">
           <div className="flex-1 p-3 lg:p-4 overflow-hidden">
-            <ProductGrid key={productRefreshKey} onProductSelect={handleProductSelect} />
+            <ProductGrid refreshKey={productRefreshKey} onProductSelect={handleProductSelect} />
           </div>
         </div>
 
