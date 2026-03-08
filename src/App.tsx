@@ -104,6 +104,9 @@ const App = () => (
                 <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
                 <Route path="/customers/:customerId/statement" element={<ProtectedRoute><CustomerStatement /></ProtectedRoute>} />
+                <Route path="/warehouse" element={<ProtectedRoute><Warehouse /></ProtectedRoute>} />
+                <Route path="/promotions" element={<ProtectedRoute><Promotions /></ProtectedRoute>} />
+                <Route path="/smart-inventory" element={<ProtectedRoute><SmartInventory /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ErrorBoundary>
