@@ -32,6 +32,7 @@ import Warehouse from "./pages/Warehouse";
 import Promotions from "./pages/Promotions";
 import SmartInventory from "./pages/SmartInventory";
 import More from "./pages/More";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
