@@ -20,6 +20,13 @@ import {
   ChevronRight,
   Store,
   RotateCcw,
+  User,
+  Key,
+  Receipt,
+  Printer,
+  Calculator,
+  Palette,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,8 +34,8 @@ interface NavBoxItem {
   path: string;
   label: string;
   icon: React.ElementType;
-  color: string; // tailwind text color token
-  bg: string;    // tailwind bg color token
+  color: string;
+  bg: string;
 }
 
 interface NavGroup {
@@ -65,11 +72,23 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    label: 'Settings',
+    items: [
+      { path: '/settings?tab=profile', label: 'Profile', icon: User, color: 'text-primary', bg: 'bg-primary/10' },
+      { path: '/settings?tab=security', label: 'Security', icon: Key, color: 'text-warning', bg: 'bg-warning/10' },
+      { path: '/settings?tab=team', label: 'Team', icon: UserCog, color: 'text-info', bg: 'bg-info/10' },
+      { path: '/settings?tab=approvals', label: 'Approvals', icon: Shield, color: 'text-destructive', bg: 'bg-destructive/10' },
+      { path: '/settings?tab=receipts', label: 'Receipts', icon: Receipt, color: 'text-accent', bg: 'bg-accent/10' },
+      { path: '/settings?tab=printers', label: 'Printers', icon: Printer, color: 'text-primary', bg: 'bg-primary/10' },
+      { path: '/settings?tab=tax', label: 'Tax', icon: Calculator, color: 'text-warning', bg: 'bg-warning/10' },
+      { path: '/settings?tab=preferences', label: 'Preferences', icon: Palette, color: 'text-muted-foreground', bg: 'bg-muted' },
+    ],
+  },
+  {
     label: 'System',
     items: [
       { path: '/branches', label: 'Branches', icon: Building2, color: 'text-primary', bg: 'bg-primary/10' },
       { path: '/audit-log', label: 'Audit Log', icon: Shield, color: 'text-warning', bg: 'bg-warning/10' },
-      { path: '/settings', label: 'Settings', icon: Settings, color: 'text-muted-foreground', bg: 'bg-muted' },
     ],
   },
 ];
@@ -80,7 +99,7 @@ const More = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto space-y-6 pb-6">
         {/* Page Header */}
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">More</h1>

@@ -197,7 +197,7 @@ const Settings = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="profile" className="space-y-6">
+        <Tabs defaultValue={new URLSearchParams(window.location.search).get('tab') || 'profile'} className="space-y-6">
           <TabsList className="flex flex-wrap gap-1 h-auto p-1 w-full max-w-2xl">
             <TabsTrigger value="profile" className="gap-2">
               <User className="w-4 h-4" />
