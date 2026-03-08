@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { ReceiptData } from '@/lib/escpos';
 import { RotateCcw, Printer, XCircle, PauseCircle, ShoppingCart } from 'lucide-react';
+import BottomNav from '@/components/layout/BottomNav';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -584,6 +585,9 @@ const Dashboard = () => {
         isOpen={showZReport}
         onClose={() => setShowZReport(false)}
       />
+
+      {/* Bottom Navigation — Mobile */}
+      <BottomNav />
     </div>
   );
 };
