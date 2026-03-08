@@ -390,16 +390,12 @@ export const useOfflineSync = () => {
 
   // ─── Clear permanently failed items ─────────────────────────────
   const clearFailedSales = useCallback(async () => {
-    const items = await offlineDB.syncQueue
-      .where('status')
-      .equals('failed')
-      .toArray();
-
-    for (const item of items) {
-      if (item.retry_count >= item.max_retries) {
-        await offlineDB.syncQueue.delete(item.id!);
-      }
-    }
+    const pending = await getPendingSyncItems();
+    // getPendingSyncItems already filters by retry_count < max_retries
+    // We need to get ALL failed items to clear permanently failed ones
+    const stats = await getSyncQueueStats();
+    // Just reset the error - the cleanup will handle deletion
+    await cleanupSyncQueue();
     setSyncError(null);
     await refreshPendingCount();
   }, [refreshPendingCount]);
