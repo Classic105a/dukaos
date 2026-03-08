@@ -31,6 +31,7 @@ import CustomerStatement from "./pages/CustomerStatement";
 import Warehouse from "./pages/Warehouse";
 import Promotions from "./pages/Promotions";
 import SmartInventory from "./pages/SmartInventory";
+import More from "./pages/More";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -107,6 +108,7 @@ const App = () => (
                 <Route path="/warehouse" element={<ProtectedRoute><Warehouse /></ProtectedRoute>} />
                 <Route path="/promotions" element={<ProtectedRoute><Promotions /></ProtectedRoute>} />
                 <Route path="/smart-inventory" element={<ProtectedRoute><SmartInventory /></ProtectedRoute>} />
+                <Route path="/more" element={<ProtectedRoute><More /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ErrorBoundary>
