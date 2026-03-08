@@ -462,8 +462,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Mobile Floating Cart Button */}
-      <div className="lg:hidden fixed bottom-4 right-4 z-40">
+      {/* Mobile Floating Cart Button — above bottom nav */}
+      <div className="lg:hidden fixed bottom-20 right-4 z-40">
         <Button
           size="lg"
           className="h-14 w-14 rounded-full shadow-elevated relative"
@@ -481,9 +481,9 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      {/* Mobile Cart Total Bar */}
+      {/* Mobile Cart Total Bar — above bottom nav */}
       {cartItems.length > 0 && (
-        <div className="lg:hidden fixed bottom-20 left-4 right-4 z-30">
+        <div className="lg:hidden fixed bottom-36 left-4 right-4 z-30">
           <Button
             variant="accent"
             className="w-full h-12 rounded-xl shadow-elevated justify-between px-4"
