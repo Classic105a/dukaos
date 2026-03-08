@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import type { ReceiptData } from '@/lib/escpos';
 import { RotateCcw, Printer, XCircle, PauseCircle, ShoppingCart } from 'lucide-react';
 import BottomNav from '@/components/layout/BottomNav';
+import SystemHealthBar from '@/components/SystemHealthBar';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -393,8 +394,11 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* System Health Bar */}
+      <SystemHealthBar />
+
       {/* POS Header */}
-      <POSHeader 
+      <POSHeader
         heldSalesCount={heldSales.length}
         onReturnClick={() => setShowReturnModal(true)}
         onReprintClick={() => setShowReprintModal(true)}
