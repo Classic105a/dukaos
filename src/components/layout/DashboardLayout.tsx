@@ -2,6 +2,8 @@ import { useState, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import BottomNav from '@/components/layout/BottomNav';
+import SystemHealthBar from '@/components/SystemHealthBar';
+import PageTransition from '@/components/PageTransition';
 import { useBranch } from '@/hooks/useBranch';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { Button } from '@/components/ui/button';
@@ -67,6 +69,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* System Health Bar */}
+      <SystemHealthBar />
+
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
         <div className="flex items-center justify-between h-14 px-3 lg:px-5">
@@ -201,7 +206,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
       {/* Main Content */}
       <main className="flex-1 p-3 lg:p-5 pb-bottom-nav lg:pb-5">
-        {children}
+        <PageTransition>
+          {children}
+        </PageTransition>
       </main>
 
       {/* Bottom Navigation — Mobile */}
