@@ -1,4 +1,56 @@
-import Dexie, { type Table } from 'dexie';
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+
+// ─── Database Schema ───────────────────────────────────────────────
+
+interface DukaOSDB extends DBSchema {
+  products: {
+    key: string;
+    value: LocalProduct;
+    indexes: {
+      'by-branch': string;
+      'by-category': string;
+      'by-barcode': string;
+    };
+  };
+  stock: {
+    key: string;
+    value: LocalStock;
+    indexes: {
+      'by-branch': string;
+    };
+  };
+  customers: {
+    key: string;
+    value: LocalCustomer;
+    indexes: {
+      'by-name': string;
+    };
+  };
+  categories: {
+    key: string;
+    value: LocalCategory;
+  };
+  settings: {
+    key: string;
+    value: LocalSettings;
+  };
+  transactions: {
+    key: string;
+    value: LocalTransaction;
+    indexes: {
+      'by-synced': number;
+      'by-branch': string;
+    };
+  };
+  syncQueue: {
+    key: number;
+    value: SyncQueueItem;
+    indexes: {
+      'by-status': string;
+      'by-entity': string;
+    };
+  };
+}
 
 // ─── Local cached data types ───────────────────────────────────────
 
@@ -20,11 +72,11 @@ export interface LocalProduct {
   unit_of_measure: string | null;
   track_inventory: boolean;
   low_stock_threshold: number | null;
-  _synced_at: number; // timestamp of last server sync
+  _synced_at: number;
 }
 
 export interface LocalStock {
-  id: string; // composite: `${product_id}_${branch_id}`
+  id: string;
   product_id: string;
   branch_id: string;
   quantity: number;
@@ -52,21 +104,19 @@ export interface LocalCategory {
 }
 
 export interface LocalSettings {
-  key: string; // e.g. 'tax_settings', 'receipt_settings', 'branch_info'
+  key: string;
   value: any;
   branch_id: string;
   _synced_at: number;
 }
 
-// ─── Sync Queue types ──────────────────────────────────────────────
-
 export type SyncStatus = 'pending' | 'syncing' | 'synced' | 'failed';
 
 export interface SyncQueueItem {
-  id?: number; // auto-incremented
+  id?: number;
   entity_type: 'sale' | 'payment' | 'stock_movement' | 'credit_transaction' | 'customer_update';
-  entity_id: string; // local reference ID
-  payload: any; // the full data to send
+  entity_id: string;
+  payload: any;
   status: SyncStatus;
   retry_count: number;
   max_retries: number;
@@ -78,10 +128,8 @@ export interface SyncQueueItem {
   user_id: string;
 }
 
-// ─── Offline Transactions (complete sale records) ──────────────────
-
 export interface LocalTransaction {
-  id: string; // offline receipt ID
+  id: string;
   branch_id: string;
   cashier_id: string;
   receipt_number: string;
@@ -107,125 +155,163 @@ export interface LocalTransaction {
   shift_id: string | null;
   status: 'completed' | 'voided';
   is_synced: boolean;
-  server_id: string | null; // filled after sync
+  server_id: string | null;
   created_at: string;
   synced_at: string | null;
 }
 
-// ─── Dexie Database ────────────────────────────────────────────────
+// ─── Database initialization ───────────────────────────────────────
 
-class OfflineDatabase extends Dexie {
-  products!: Table<LocalProduct, string>;
-  stock!: Table<LocalStock, string>;
-  customers!: Table<LocalCustomer, string>;
-  categories!: Table<LocalCategory, string>;
-  settings!: Table<LocalSettings, string>;
-  transactions!: Table<LocalTransaction, string>;
-  syncQueue!: Table<SyncQueueItem, number>;
+let dbInstance: IDBPDatabase<DukaOSDB> | null = null;
 
-  constructor() {
-    super('DukaOS_OfflineDB');
+async function getDB(): Promise<IDBPDatabase<DukaOSDB>> {
+  if (dbInstance) return dbInstance;
 
-    this.version(1).stores({
-      products: 'id, name, barcode, category_id, branch_id, is_shared_product, _synced_at',
-      stock: 'id, product_id, branch_id, _synced_at',
-      customers: 'id, name, phone, credit_enabled, _synced_at',
-      categories: 'id, name, is_active, _synced_at',
-      settings: 'key, branch_id, _synced_at',
-      transactions: 'id, branch_id, receipt_number, is_synced, created_at, status',
-      syncQueue: '++id, entity_type, entity_id, status, created_at, branch_id',
-    });
-  }
+  dbInstance = await openDB<DukaOSDB>('DukaOS_OfflineDB', 1, {
+    upgrade(db) {
+      // Products store
+      const productStore = db.createObjectStore('products', { keyPath: 'id' });
+      productStore.createIndex('by-branch', 'branch_id');
+      productStore.createIndex('by-category', 'category_id');
+      productStore.createIndex('by-barcode', 'barcode');
+
+      // Stock store
+      const stockStore = db.createObjectStore('stock', { keyPath: 'id' });
+      stockStore.createIndex('by-branch', 'branch_id');
+
+      // Customers store
+      const customerStore = db.createObjectStore('customers', { keyPath: 'id' });
+      customerStore.createIndex('by-name', 'name');
+
+      // Categories store
+      db.createObjectStore('categories', { keyPath: 'id' });
+
+      // Settings store
+      db.createObjectStore('settings', { keyPath: 'key' });
+
+      // Transactions store
+      const txStore = db.createObjectStore('transactions', { keyPath: 'id' });
+      txStore.createIndex('by-synced', 'is_synced' as any);
+      txStore.createIndex('by-branch', 'branch_id');
+
+      // Sync queue
+      const syncStore = db.createObjectStore('syncQueue', { keyPath: 'id', autoIncrement: true });
+      syncStore.createIndex('by-status', 'status');
+      syncStore.createIndex('by-entity', 'entity_id');
+    },
+  });
+
+  return dbInstance;
 }
 
-export const offlineDB = new OfflineDatabase();
+// ─── Helper functions ──────────────────────────────────────────────
 
-// ─── Helper utilities ──────────────────────────────────────────────
-
-/** Bulk upsert products into local cache */
 export async function cacheProducts(products: LocalProduct[]) {
-  await offlineDB.products.bulkPut(products);
+  const db = await getDB();
+  const tx = db.transaction('products', 'readwrite');
+  for (const p of products) {
+    await tx.store.put(p);
+  }
+  await tx.done;
 }
 
-/** Bulk upsert stock data */
 export async function cacheStock(stockItems: LocalStock[]) {
-  await offlineDB.stock.bulkPut(stockItems);
+  const db = await getDB();
+  const tx = db.transaction('stock', 'readwrite');
+  for (const s of stockItems) {
+    await tx.store.put(s);
+  }
+  await tx.done;
 }
 
-/** Bulk upsert customers */
 export async function cacheCustomers(customers: LocalCustomer[]) {
-  await offlineDB.customers.bulkPut(customers);
+  const db = await getDB();
+  const tx = db.transaction('customers', 'readwrite');
+  for (const c of customers) {
+    await tx.store.put(c);
+  }
+  await tx.done;
 }
 
-/** Bulk upsert categories */
 export async function cacheCategories(categories: LocalCategory[]) {
-  await offlineDB.categories.bulkPut(categories);
+  const db = await getDB();
+  const tx = db.transaction('categories', 'readwrite');
+  for (const c of categories) {
+    await tx.store.put(c);
+  }
+  await tx.done;
 }
 
-/** Get products for a branch (includes shared) */
 export async function getLocalProducts(branchId: string): Promise<LocalProduct[]> {
-  return offlineDB.products
-    .filter(p => p.is_active && (p.branch_id === branchId || p.is_shared_product))
-    .toArray();
+  const db = await getDB();
+  const all = await db.getAll('products');
+  return all.filter(p => p.is_active && (p.branch_id === branchId || p.is_shared_product));
 }
 
-/** Get stock for a branch */
 export async function getLocalStock(branchId: string): Promise<Map<string, number>> {
-  const items = await offlineDB.stock.where('branch_id').equals(branchId).toArray();
+  const db = await getDB();
+  const items = await db.getAllFromIndex('stock', 'by-branch', branchId);
   return new Map(items.map(s => [s.product_id, s.quantity]));
 }
 
-/** Get local categories */
 export async function getLocalCategories(): Promise<LocalCategory[]> {
-  return offlineDB.categories.where('is_active').equals(1).toArray();
+  const db = await getDB();
+  const all = await db.getAll('categories');
+  return all.filter(c => c.is_active);
 }
 
-/** Get local customers */
 export async function getLocalCustomers(): Promise<LocalCustomer[]> {
-  return offlineDB.customers.toArray();
+  const db = await getDB();
+  return db.getAll('customers');
 }
 
-/** Save a transaction locally */
 export async function saveLocalTransaction(tx: LocalTransaction) {
-  await offlineDB.transactions.put(tx);
+  const db = await getDB();
+  await db.put('transactions', tx);
 }
 
-/** Get unsynced transactions */
 export async function getUnsyncedTransactions(): Promise<LocalTransaction[]> {
-  return offlineDB.transactions.where('is_synced').equals(0).toArray();
+  const db = await getDB();
+  const all = await db.getAll('transactions');
+  return all.filter(t => !t.is_synced);
 }
 
-/** Mark transaction as synced */
 export async function markTransactionSynced(localId: string, serverId: string) {
-  await offlineDB.transactions.update(localId, {
-    is_synced: true,
-    server_id: serverId,
-    synced_at: new Date().toISOString(),
-  });
+  const db = await getDB();
+  const tx = await db.get('transactions', localId);
+  if (tx) {
+    tx.is_synced = true;
+    tx.server_id = serverId;
+    tx.synced_at = new Date().toISOString();
+    await db.put('transactions', tx);
+  }
 }
 
-/** Add item to sync queue */
 export async function addToSyncQueue(item: Omit<SyncQueueItem, 'id'>) {
-  await offlineDB.syncQueue.add(item);
+  const db = await getDB();
+  await db.add('syncQueue', item as SyncQueueItem);
 }
 
-/** Get pending sync queue items */
 export async function getPendingSyncItems(): Promise<SyncQueueItem[]> {
-  return offlineDB.syncQueue
-    .where('status')
-    .anyOf('pending', 'failed')
-    .filter(item => item.retry_count < item.max_retries)
-    .sortBy('created_at');
+  const db = await getDB();
+  const all = await db.getAll('syncQueue');
+  return all
+    .filter(item => (item.status === 'pending' || item.status === 'failed') && item.retry_count < item.max_retries)
+    .sort((a, b) => a.created_at - b.created_at);
 }
 
-/** Update sync queue item status */
 export async function updateSyncQueueItem(id: number, updates: Partial<SyncQueueItem>) {
-  await offlineDB.syncQueue.update(id, { ...updates, updated_at: Date.now() });
+  const db = await getDB();
+  const item = await db.get('syncQueue', id);
+  if (item) {
+    Object.assign(item, updates, { updated_at: Date.now() });
+    await db.put('syncQueue', item);
+  }
 }
 
-/** Get sync queue stats */
 export async function getSyncQueueStats() {
-  const all = await offlineDB.syncQueue.toArray();
+  const db = await getDB();
+  const all = await db.getAll('syncQueue');
   return {
     pending: all.filter(i => i.status === 'pending').length,
     syncing: all.filter(i => i.status === 'syncing').length,
@@ -236,25 +322,29 @@ export async function getSyncQueueStats() {
   };
 }
 
-/** Deduct stock locally after an offline sale */
 export async function deductLocalStock(branchId: string, items: Array<{ product_id: string; quantity: number }>) {
+  const db = await getDB();
+  const tx = db.transaction('stock', 'readwrite');
   for (const item of items) {
     const key = `${item.product_id}_${branchId}`;
-    const existing = await offlineDB.stock.get(key);
+    const existing = await tx.store.get(key);
     if (existing) {
-      await offlineDB.stock.update(key, {
-        quantity: Math.max(0, existing.quantity - item.quantity),
-      });
+      existing.quantity = Math.max(0, existing.quantity - item.quantity);
+      await tx.store.put(existing);
     }
   }
+  await tx.done;
 }
 
-/** Clean up old synced queue items (older than 7 days) */
 export async function cleanupSyncQueue() {
+  const db = await getDB();
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  await offlineDB.syncQueue
-    .where('status')
-    .equals('synced')
-    .filter(item => item.synced_at !== null && item.synced_at < cutoff)
-    .delete();
+  const all = await db.getAll('syncQueue');
+  const tx = db.transaction('syncQueue', 'readwrite');
+  for (const item of all) {
+    if (item.status === 'synced' && item.synced_at !== null && item.synced_at < cutoff) {
+      await tx.store.delete(item.id!);
+    }
+  }
+  await tx.done;
 }
