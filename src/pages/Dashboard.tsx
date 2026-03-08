@@ -34,7 +34,8 @@ import SystemHealthBar from '@/components/SystemHealthBar';
 const Dashboard = () => {
   const { user } = useAuth();
   const { currentBranch } = useBranch();
-  const { isOnline, saveSaleOffline } = useOfflineSync();
+  const { isOnline, saveSaleOffline, syncPendingSales } = useOfflineSync();
+  const { refreshLocalData } = useOfflineDB();
   const { printReceipt, hasPrinter } = usePrinter();
   const { calculateTax } = useTaxSettings();
   const { heldSales, holdSale, resumeSale, deleteHeldSale } = useHoldSale();
