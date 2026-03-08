@@ -28,6 +28,9 @@ import DebtDashboard from "./pages/DebtDashboard";
 import AuditLog from "./pages/AuditLog";
 import Analytics from "./pages/Analytics";
 import CustomerStatement from "./pages/CustomerStatement";
+import Warehouse from "./pages/Warehouse";
+import Promotions from "./pages/Promotions";
+import SmartInventory from "./pages/SmartInventory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -101,6 +104,9 @@ const App = () => (
                 <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
                 <Route path="/customers/:customerId/statement" element={<ProtectedRoute><CustomerStatement /></ProtectedRoute>} />
+                <Route path="/warehouse" element={<ProtectedRoute><Warehouse /></ProtectedRoute>} />
+                <Route path="/promotions" element={<ProtectedRoute><Promotions /></ProtectedRoute>} />
+                <Route path="/smart-inventory" element={<ProtectedRoute><SmartInventory /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ErrorBoundary>

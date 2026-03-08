@@ -29,6 +29,9 @@ const primaryTabs = [
 
 const moreTabs = [
   { path: '/customers', label: 'Customers', icon: Users },
+  { path: '/smart-inventory', label: 'Forecasting', icon: Shield },
+  { path: '/warehouse', label: 'Warehouse', icon: Truck },
+  { path: '/promotions', label: 'Promos', icon: Building2 },
   { path: '/parties', label: 'Parties', icon: Truck },
   { path: '/debts', label: 'Debts', icon: Wallet },
   { path: '/audit-log', label: 'Audit', icon: Shield },
