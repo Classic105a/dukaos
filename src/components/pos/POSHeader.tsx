@@ -204,9 +204,9 @@ const POSHeader = ({
                 <div className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center">
                   <WifiOff className="h-3.5 w-3.5 text-destructive" />
                 </div>
-                {pendingSales.length > 0 && (
+                {pendingCount > 0 && (
                   <Badge variant="destructive" className="h-5 text-[10px] px-1.5 rounded-md">
-                    {pendingSales.length}
+                    {pendingCount}
                   </Badge>
                 )}
               </div>
