@@ -108,6 +108,7 @@ const App = () => (
                 <Route path="/warehouse" element={<ProtectedRoute><Warehouse /></ProtectedRoute>} />
                 <Route path="/promotions" element={<ProtectedRoute><Promotions /></ProtectedRoute>} />
                 <Route path="/smart-inventory" element={<ProtectedRoute><SmartInventory /></ProtectedRoute>} />
+                <Route path="/more" element={<ProtectedRoute><More /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ErrorBoundary>
