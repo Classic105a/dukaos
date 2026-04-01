@@ -6,27 +6,23 @@ import { useOfflineDB } from '@/hooks/useOfflineDB';
 import { usePrinter } from '@/hooks/usePrinter';
 import { useTaxSettings } from '@/hooks/useTaxSettings';
 import { useShift } from '@/hooks/useShift';
-import { useAuditLog } from '@/hooks/useAuditLog';
 import { useTransactionRecovery } from '@/hooks/useTransactionRecovery';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart, { CartItem } from '@/components/pos/Cart';
-import PaymentModal from '@/components/pos/PaymentModal';
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import MobileCartSheet from '@/components/pos/MobileCartSheet';
+import MpesaDialog from '@/components/pos/MpesaDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { ReceiptData } from '@/lib/escpos';
-import { ShoppingCart, Wifi, WifiOff, RefreshCw, Menu, Store, LogOut, Settings } from 'lucide-react';
+import { ShoppingCart, WifiOff, RefreshCw, Menu, LogOut, Settings } from 'lucide-react';
 import BottomNav from '@/components/layout/BottomNav';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { playBeep } from '@/lib/audio';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
@@ -36,16 +32,16 @@ const Dashboard = () => {
   const { printReceipt, hasPrinter } = usePrinter();
   const { calculateTax } = useTaxSettings();
   const { currentShift } = useShift();
-  const { log } = useAuditLog();
-  const { saveCheckpoint, clearCheckpoint } = useTransactionRecovery();
+  const { clearCheckpoint } = useTransactionRecovery();
   const navigate = useNavigate();
   const lastSaleItemsRef = useRef<CartItem[]>([]);
+  const completingRef = useRef(false);
   const [productRefreshKey, setProductRefreshKey] = useState(0);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
-  const [showPayment, setShowPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const [showMpesa, setShowMpesa] = useState(false);
   const [lastSale, setLastSale] = useState<{
     receiptNumber: string;
     payments: Array<{ method: string; amount: number; mpesa_reference?: string }>;
@@ -53,9 +49,9 @@ const Dashboard = () => {
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
   const { tax, total: calculatedTotal } = calculateTax(subtotal);
-  const discount = 0;
-  const total = calculatedTotal - discount;
+  const total = calculatedTotal;
 
+  // === PRODUCT TAP — with audio feedback ===
   const handleProductSelect = useCallback((product: { id: string; name: string; unit_price: number; stock?: number }) => {
     setCartItems(prev => {
       const existing = prev.find(item => item.product_id === product.id);
@@ -63,14 +59,16 @@ const Dashboard = () => {
       const availableStock = product.stock ?? 0;
 
       if (availableStock <= 0) {
-        toast.error('Out of stock');
+        toast.error('OUT OF STOCK', { duration: 1500 });
+        return prev;
+      }
+      if (currentQtyInCart >= availableStock) {
+        toast.error(`Only ${availableStock} in stock`, { duration: 1500 });
         return prev;
       }
 
-      if (currentQtyInCart >= availableStock) {
-        toast.error(`Only ${availableStock} in stock`);
-        return prev;
-      }
+      // Audio feedback
+      playBeep();
 
       if (existing) {
         return prev.map(item =>
@@ -80,7 +78,7 @@ const Dashboard = () => {
         );
       }
       return [...prev, {
-        id: `cart_${Date.now()}`,
+        id: `c${Date.now()}`,
         product_id: product.id,
         name: product.name,
         unit_price: product.unit_price,
@@ -95,11 +93,9 @@ const Dashboard = () => {
     if (quantity < 1) {
       setCartItems(prev => prev.filter(item => item.id !== itemId));
     } else {
-      setCartItems(prev =>
-        prev.map(item =>
-          item.id === itemId ? { ...item, quantity, total: quantity * item.unit_price } : item
-        )
-      );
+      setCartItems(prev => prev.map(item =>
+        item.id === itemId ? { ...item, quantity, total: quantity * item.unit_price } : item
+      ));
     }
   }, []);
 
@@ -107,160 +103,125 @@ const Dashboard = () => {
     setCartItems(prev => prev.filter(item => item.id !== itemId));
   }, []);
 
-  const handleClearCart = useCallback(() => {
-    setCartItems([]);
-  }, []);
+  const handleClearCart = useCallback(() => setCartItems([]), []);
 
-  const handleCheckout = useCallback(() => {
-    if (cartItems.length === 0) {
-      toast.error('Cart is empty');
-      return;
-    }
-    // Save checkpoint for crash recovery
-    if (currentBranch?.id && user?.id) {
-      saveCheckpoint({
-        id: `txn_${Date.now()}`,
-        stage: 'payment_started',
-        cartItems,
-        branchId: currentBranch.id,
-        cashierId: user.id,
-      });
-    }
-    setShowPayment(true);
-  }, [cartItems, currentBranch?.id, user?.id, saveCheckpoint]);
-
-  const autoPrintReceipt = useCallback(async (
-    receiptNumber: string,
-    items: CartItem[],
-    saleSubtotal: number,
-    saleTax: number,
-    saleDiscount: number,
-    saleTotal: number,
-    payments: Array<{ method: string; amount: number; mpesa_reference?: string }>
+  // === COMPLETE SALE — single function, no modal for cash/card ===
+  const completeSale = useCallback(async (
+    payments: Array<{ method: string; amount: number; mpesa_reference?: string; mpesa_phone?: string }>
   ) => {
-    if (!hasPrinter || !currentBranch) return;
-    const receiptData: ReceiptData = {
-      header: {
-        businessName: 'DukaOS',
-        branchName: currentBranch.name,
-        address: currentBranch.address || undefined,
-        city: currentBranch.city || undefined,
-        phone: currentBranch.phone || undefined,
-        email: currentBranch.email || undefined,
-        mpesaTill: currentBranch.mpesa_till_number || undefined,
-        mpesaPaybill: currentBranch.mpesa_paybill_number || undefined,
-        mpesaAccount: currentBranch.mpesa_account_number || undefined,
-        kraPin: currentBranch.kra_pin || undefined,
-      },
-      receiptNumber,
-      date: new Date(),
-      items: items.map(item => ({ name: item.name, quantity: item.quantity, unitPrice: item.unit_price, totalPrice: item.total })),
-      subtotal: saleSubtotal,
-      taxAmount: saleTax,
-      discountAmount: saleDiscount,
-      totalAmount: saleTotal,
-      payments: payments.map(p => ({ method: p.method.toUpperCase(), amount: p.amount, reference: p.mpesa_reference })),
-      footer: { message: currentBranch.receipt_footer_message || 'Thank you!' },
-    };
-    const success = await printReceipt(receiptData);
-    if (success) toast.success('Receipt printed');
-  }, [hasPrinter, currentBranch, printReceipt]);
+    if (completingRef.current) return; // prevent double-tap
+    if (cartItems.length === 0) return;
+    if (!currentBranch?.id || !user?.id) { toast.error('Select a branch'); return; }
 
-  const handleConfirmPayment = async (payments: Array<{ method: string; amount: number; mpesa_reference?: string; mpesa_phone?: string; customer_id?: string }>) => {
-    if (!currentBranch?.id || !user?.id) {
-      toast.error('Please select a branch');
-      return;
-    }
-
+    completingRef.current = true;
     const receiptNumber = `RCP-${Date.now().toString(36).toUpperCase()}`;
     const saleItems = [...cartItems];
     const saleSubtotal = subtotal;
     const saleTax = tax;
-    const saleDiscount = discount;
     const saleTotal = total;
 
-    const creditPayment = payments.find(p => p.method === 'credit');
-    await saveSaleOffline({
-      branch_id: currentBranch.id,
-      cashier_id: user.id,
-      receipt_number: receiptNumber,
-      customer_id: creditPayment?.customer_id || null,
-      items: saleItems.map(item => ({
-        product_id: item.product_id,
-        product_name: item.name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total_amount: item.total
-      })),
-      payments: payments.map(p => ({
-        payment_method: p.method,
-        amount: p.amount,
-        mpesa_reference: p.mpesa_reference,
-        mpesa_phone: p.mpesa_phone,
-        customer_id: p.customer_id,
-      })),
-      subtotal: saleSubtotal,
-      tax_amount: saleTax,
-      discount_amount: saleDiscount,
-      total_amount: saleTotal,
-      shift_id: currentShift?.id || null,
-      status: 'completed',
-      created_at: new Date().toISOString(),
-    });
+    try {
+      await saveSaleOffline({
+        branch_id: currentBranch.id,
+        cashier_id: user.id,
+        receipt_number: receiptNumber,
+        customer_id: null,
+        items: saleItems.map(item => ({
+          product_id: item.product_id, product_name: item.name,
+          quantity: item.quantity, unit_price: item.unit_price, total_amount: item.total
+        })),
+        payments: payments.map(p => ({
+          payment_method: p.method, amount: p.amount,
+          mpesa_reference: p.mpesa_reference, mpesa_phone: p.mpesa_phone,
+        })),
+        subtotal: saleSubtotal, tax_amount: saleTax, discount_amount: 0,
+        total_amount: saleTotal, shift_id: currentShift?.id || null,
+        status: 'completed', created_at: new Date().toISOString(),
+      });
 
-    lastSaleItemsRef.current = saleItems;
-    setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: saleDiscount, total: saleTotal });
-    setLastSale({ receiptNumber, payments });
-    setShowPayment(false);
-    setShowMobileCart(false);
-    setShowReceipt(true);
-    setCartItems([]);
-    setProductRefreshKey(k => k + 1);
-    clearCheckpoint();
-    refreshLocalData();
-    autoPrintReceipt(receiptNumber, saleItems, saleSubtotal, saleTax, saleDiscount, saleTotal, payments);
+      // Optimistic update
+      lastSaleItemsRef.current = saleItems;
+      setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: 0, total: saleTotal });
+      setLastSale({ receiptNumber, payments });
+      setShowMobileCart(false);
+      setShowMpesa(false);
+      setShowReceipt(true);
+      setCartItems([]);
+      setProductRefreshKey(k => k + 1);
+      clearCheckpoint();
+      refreshLocalData();
 
-    if (isOnline) {
-      toast.success('Sale completed!');
-      syncPendingSales();
-      log('SALE_COMPLETED', 'sale', receiptNumber, undefined, { receiptNumber, total: saleTotal, items: saleItems.length });
-    } else {
-      toast.success('Sale saved offline');
+      // Auto-print
+      if (hasPrinter && currentBranch) {
+        const receiptData: ReceiptData = {
+          header: {
+            businessName: 'DukaOS', branchName: currentBranch.name,
+            address: currentBranch.address || undefined, city: currentBranch.city || undefined,
+            phone: currentBranch.phone || undefined, mpesaTill: currentBranch.mpesa_till_number || undefined,
+            mpesaPaybill: currentBranch.mpesa_paybill_number || undefined,
+            kraPin: currentBranch.kra_pin || undefined,
+          },
+          receiptNumber, date: new Date(),
+          items: saleItems.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, totalPrice: i.total })),
+          subtotal: saleSubtotal, taxAmount: saleTax, discountAmount: 0, totalAmount: saleTotal,
+          payments: payments.map(p => ({ method: p.method.toUpperCase(), amount: p.amount, reference: p.mpesa_reference })),
+          footer: { message: currentBranch.receipt_footer_message || 'Thank you!' },
+        };
+        printReceipt(receiptData);
+      }
+
+      toast.success(isOnline ? 'Sale completed!' : 'Saved offline', { duration: 1500 });
+      if (isOnline) syncPendingSales();
+    } finally {
+      completingRef.current = false;
     }
-  };
+  }, [cartItems, subtotal, tax, total, currentBranch, user, currentShift, saveSaleOffline, clearCheckpoint, refreshLocalData, hasPrinter, printReceipt, isOnline, syncPendingSales]);
+
+  // === INSTANT CASH — one tap, no modal ===
+  const handleCashPayment = useCallback((cashAmount?: number) => {
+    const amt = cashAmount ?? total;
+    if (amt < total) { toast.error('Insufficient amount'); return; }
+    const change = amt - total;
+    completeSale([{ method: 'cash', amount: total }]);
+    if (change > 0) {
+      toast.info(`Change: KES ${change.toLocaleString()}`, { duration: 4000 });
+    }
+  }, [total, completeSale]);
+
+  const handleCardPayment = useCallback(() => {
+    completeSale([{ method: 'card', amount: total }]);
+  }, [total, completeSale]);
+
+  const handleMpesaComplete = useCallback((phone: string, reference: string) => {
+    completeSale([{ method: 'mpesa', amount: total, mpesa_phone: phone, mpesa_reference: reference }]);
+  }, [total, completeSale]);
 
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Minimal Status Bar */}
+      {/* Offline/sync bar */}
       {(!isOnline || pendingCount > 0) && (
-        <div className={`flex items-center justify-between px-3 py-1.5 text-xs font-medium text-white ${!isOnline ? 'bg-destructive' : 'bg-warning'}`}>
-          <div className="flex items-center gap-2">
-            {!isOnline ? (
-              <><WifiOff className="w-3.5 h-3.5" /><span>OFFLINE — sales saved locally</span></>
-            ) : isSyncing ? (
-              <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Syncing {pendingCount} transactions...</span></>
-            ) : (
-              <><RefreshCw className="w-3.5 h-3.5" /><span>{pendingCount} pending sync</span></>
-            )}
+        <div className={`flex items-center justify-between px-3 py-1 text-xs font-medium text-white ${!isOnline ? 'bg-destructive' : 'bg-warning'}`}>
+          <div className="flex items-center gap-1.5">
+            {!isOnline ? <><WifiOff className="w-3 h-3" /><span>OFFLINE</span></> :
+              isSyncing ? <><RefreshCw className="w-3 h-3 animate-spin" /><span>Syncing...</span></> :
+              <><RefreshCw className="w-3 h-3" /><span>{pendingCount} pending</span></>}
           </div>
           {isOnline && pendingCount > 0 && !isSyncing && (
-            <button onClick={() => syncPendingSales()} className="text-xs underline">Sync Now</button>
+            <button onClick={() => syncPendingSales()} className="underline">Sync</button>
           )}
         </div>
       )}
 
-      {/* Compact Header */}
-      <header className="bg-card border-b border-border flex items-center justify-between h-12 px-3 shrink-0">
+      {/* Header — minimal */}
+      <header className="bg-card border-b border-border flex items-center justify-between h-11 px-3 shrink-0">
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Menu className="h-4 w-4" />
-              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7"><Menu className="h-4 w-4" /></Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuContent align="start" className="w-44">
               <DropdownMenuItem asChild><Link to="/inventory">Inventory</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to="/customers">Customers</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to="/reports">Reports</Link></DropdownMenuItem>
@@ -273,31 +234,22 @@ const Dashboard = () => {
             </DropdownMenuContent>
           </DropdownMenu>
           <span className="font-bold text-sm">DukaOS</span>
-          {currentBranch && (
-            <span className="text-xs text-muted-foreground hidden sm:inline">• {currentBranch.name}</span>
-          )}
+          {currentBranch && <span className="text-[10px] text-muted-foreground hidden sm:inline">• {currentBranch.name}</span>}
         </div>
-        <div className="flex items-center gap-2">
-          {isOnline ? (
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          ) : (
-            <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-          )}
-        </div>
+        {isOnline ? <div className="w-2 h-2 rounded-full bg-success" /> : <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />}
       </header>
 
-      {/* Main Split Layout */}
+      {/* Split layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* LEFT: Products (60% on desktop, full on mobile) */}
         <div className="flex-1 lg:w-[60%] overflow-hidden flex flex-col">
-          <div className="flex-1 p-3 overflow-hidden">
+          <div className="flex-1 p-2 lg:p-3 overflow-hidden">
             <ProductGrid refreshKey={productRefreshKey} onProductSelect={handleProductSelect} />
           </div>
         </div>
 
-        {/* RIGHT: Cart (40% on desktop, hidden on mobile) */}
+        {/* Desktop cart — always visible */}
         <div className="hidden lg:flex lg:w-[40%] max-w-[480px] border-l border-border bg-card flex-col">
-          <div className="flex-1 p-4 overflow-hidden flex flex-col">
+          <div className="flex-1 p-3 overflow-hidden flex flex-col">
             <Cart
               items={cartItems}
               onUpdateQuantity={handleUpdateQuantity}
@@ -305,43 +257,32 @@ const Dashboard = () => {
               onClearCart={handleClearCart}
               subtotal={subtotal}
               tax={tax}
-              discount={discount}
               total={total}
-              onCheckout={handleCheckout}
+              onCashPayment={handleCashPayment}
+              onCardPayment={handleCardPayment}
+              onMpesaPayment={() => setShowMpesa(true)}
             />
           </div>
         </div>
       </div>
 
-      {/* Mobile: Floating cart button + total bar */}
-      <div className="lg:hidden fixed bottom-20 right-4 z-40">
-        <Button
-          size="lg"
-          className="h-14 w-14 rounded-full shadow-lg relative"
-          onClick={() => setShowMobileCart(true)}
-        >
-          <ShoppingCart className="w-6 h-6" />
-          {cartItemCount > 0 && (
-            <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
-              {cartItemCount}
-            </Badge>
-          )}
-        </Button>
-      </div>
-
+      {/* Mobile floating cart */}
       {cartItems.length > 0 && (
-        <div className="lg:hidden fixed bottom-36 left-4 right-4 z-30">
+        <div className="lg:hidden fixed bottom-20 left-3 right-3 z-40">
           <Button
-            className="w-full h-12 rounded-xl shadow-lg justify-between px-4 bg-primary text-primary-foreground"
+            className="w-full h-14 rounded-xl shadow-lg justify-between px-5 bg-primary text-primary-foreground"
             onClick={() => setShowMobileCart(true)}
           >
-            <span className="font-medium">{cartItemCount} items</span>
-            <span className="font-bold text-lg">KES {total.toLocaleString()}</span>
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              <Badge variant="secondary" className="bg-primary-foreground/20 text-primary-foreground text-xs">{cartItemCount}</Badge>
+            </div>
+            <span className="font-black text-xl tabular-nums">KES {total.toLocaleString()}</span>
           </Button>
         </div>
       )}
 
-      {/* Mobile Cart Sheet */}
+      {/* Mobile cart sheet */}
       <MobileCartSheet
         isOpen={showMobileCart}
         onClose={() => setShowMobileCart(false)}
@@ -351,20 +292,21 @@ const Dashboard = () => {
         onClearCart={handleClearCart}
         subtotal={subtotal}
         tax={tax}
-        discount={discount}
         total={total}
-        onCheckout={handleCheckout}
+        onCashPayment={handleCashPayment}
+        onCardPayment={handleCardPayment}
+        onMpesaPayment={() => setShowMpesa(true)}
       />
 
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPayment}
-        onClose={() => setShowPayment(false)}
+      {/* M-Pesa dialog — only modal left */}
+      <MpesaDialog
+        isOpen={showMpesa}
+        onClose={() => setShowMpesa(false)}
         total={total}
-        onConfirmPayment={handleConfirmPayment}
+        onComplete={handleMpesaComplete}
       />
 
-      {/* Receipt Modal */}
+      {/* Receipt */}
       {lastSale && (
         <ReceiptModal
           isOpen={showReceipt}

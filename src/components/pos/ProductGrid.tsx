@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useOfflineDB, type OfflineProduct } from '@/hooks/useOfflineDB';
 import { Input } from '@/components/ui/input';
 import { Search, Package, ScanLine, WifiOff } from 'lucide-react';
@@ -20,6 +20,42 @@ interface ProductGridProps {
   refreshKey?: number;
 }
 
+// Memoized product card to prevent re-renders
+const ProductCard = memo(({ product, onSelect }: { product: OfflineProduct; onSelect: (p: Product) => void }) => {
+  const outOfStock = (product.stock ?? 0) <= 0;
+  return (
+    <button
+      onClick={() => onSelect(product as Product)}
+      disabled={outOfStock}
+      className={cn(
+        'bg-card rounded-lg p-2 text-left border border-border/40 active:scale-[0.95] transition-transform relative',
+        outOfStock && 'opacity-30 cursor-not-allowed'
+      )}
+    >
+      {outOfStock && (
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          <span className="bg-destructive text-destructive-foreground text-[10px] font-black px-2 py-0.5 rounded uppercase">Out of Stock</span>
+        </div>
+      )}
+      {product.image_url ? (
+        <div className="w-full aspect-square rounded-md mb-1 overflow-hidden bg-secondary">
+          <img src={product.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      ) : (
+        <div className="w-full aspect-square rounded-md mb-1 bg-secondary/40 flex items-center justify-center">
+          <Package className="w-5 h-5 text-muted-foreground/15" />
+        </div>
+      )}
+      <p className="font-medium text-[11px] line-clamp-1 leading-tight">{product.name}</p>
+      <div className="flex items-center justify-between mt-0.5">
+        <span className="font-bold text-primary text-xs tabular-nums">{product.unit_price.toLocaleString()}</span>
+        {!outOfStock && <span className="text-[9px] text-muted-foreground tabular-nums">{product.stock}</span>}
+      </div>
+    </button>
+  );
+});
+ProductCard.displayName = 'ProductCard';
+
 const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
   const { products, categories, loading, dataSource, refreshLocalData } = useOfflineDB();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -30,10 +66,7 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
     if (refreshKey && refreshKey > 0) refreshLocalData();
   }, [refreshKey, refreshLocalData]);
 
-  // Auto-focus search on mount
-  useEffect(() => {
-    searchRef.current?.focus();
-  }, []);
+  useEffect(() => { searchRef.current?.focus(); }, []);
 
   const handleBarcodeSearch = useCallback((barcode: string) => {
     const product = products.find(p => p.barcode === barcode);
@@ -43,127 +76,82 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
     }
   }, [products, onProductSelect]);
 
+  // Fast filter — runs synchronously, no debounce needed for <1000 items
+  const query = searchQuery.toLowerCase();
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.barcode?.includes(searchQuery);
-    const matchesCategory = !selectedCategory || product.category_id === selectedCategory;
-    return matchesSearch && matchesCategory;
+    if (selectedCategory && product.category_id !== selectedCategory) return false;
+    if (!query) return true;
+    return product.name.toLowerCase().includes(query) || (product.barcode && product.barcode.includes(searchQuery));
   });
 
   return (
     <div className="flex flex-col h-full">
-      {/* Search — auto-focused, instant results */}
-      <div className="flex gap-2 mb-2">
+      {/* Search */}
+      <div className="flex gap-1.5 mb-1.5">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             ref={searchRef}
-            placeholder="Search or scan barcode..."
+            placeholder="Search or scan..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              if (/^\d{8,13}$/.test(e.target.value)) {
-                handleBarcodeSearch(e.target.value);
-              }
+              if (/^\d{8,13}$/.test(e.target.value)) handleBarcodeSearch(e.target.value);
             }}
-            className="pl-10 h-10 bg-card border-border rounded-lg text-sm"
+            className="pl-9 h-9 bg-card border-border rounded-lg text-sm"
           />
         </div>
-        <button className="shrink-0 h-10 w-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-          <ScanLine className="w-5 h-5" />
+        <button className="shrink-0 h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center active:scale-95">
+          <ScanLine className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Offline indicator */}
+      {/* Offline badge */}
       {dataSource === 'cache' && (
-        <div className="flex items-center gap-1.5 mb-1 px-1">
-          <WifiOff className="w-3 h-3 text-destructive" />
-          <span className="text-[10px] text-destructive font-medium">OFFLINE MODE</span>
+        <div className="flex items-center gap-1 mb-1">
+          <WifiOff className="w-2.5 h-2.5 text-destructive" />
+          <span className="text-[9px] text-destructive font-bold uppercase">Offline</span>
         </div>
       )}
 
-      {/* Category tabs — horizontal scroll */}
-      <div className="flex gap-1 mb-2 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Categories */}
+      <div className="flex gap-1 mb-1.5 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setSelectedCategory(null)}
           className={cn(
-            'shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap',
-            selectedCategory === null
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary text-secondary-foreground'
+            'shrink-0 px-2.5 py-1 rounded text-[11px] font-medium',
+            !selectedCategory ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
           )}
-        >
-          All
-        </button>
-        {categories.map(category => (
+        >All</button>
+        {categories.map(c => (
           <button
-            key={category.id}
-            onClick={() => setSelectedCategory(category.id)}
+            key={c.id}
+            onClick={() => setSelectedCategory(c.id)}
             className={cn(
-              'shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap',
-              selectedCategory === category.id
-                ? 'text-white'
-                : 'bg-secondary text-secondary-foreground'
+              'shrink-0 px-2.5 py-1 rounded text-[11px] font-medium whitespace-nowrap',
+              selectedCategory === c.id ? 'text-white' : 'bg-secondary text-secondary-foreground'
             )}
-            style={{ backgroundColor: selectedCategory === category.id ? category.color : undefined }}
-          >
-            {category.name}
-          </button>
+            style={{ backgroundColor: selectedCategory === c.id ? c.color : undefined }}
+          >{c.name}</button>
         ))}
       </div>
 
-      {/* Product grid */}
-      <div className="flex-1 overflow-y-auto -mx-3 px-3">
+      {/* Grid */}
+      <div className="flex-1 overflow-y-auto -mx-2 px-2">
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-secondary/50 rounded-lg h-24 animate-pulse" />
-            ))}
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5">
+            {Array.from({ length: 12 }, (_, i) => <div key={i} className="bg-secondary/40 rounded-lg aspect-square animate-pulse" />)}
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-            <Package className="w-10 h-10 opacity-20 mb-2" />
-            <p className="text-sm font-medium">No products found</p>
+          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+            <Package className="w-8 h-8 opacity-15 mb-1" />
+            <p className="text-xs">No products found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 pb-32 lg:pb-4">
-            {filteredProducts.map(product => {
-              const outOfStock = (product.stock ?? 0) <= 0;
-              return (
-                <button
-                  key={product.id}
-                  onClick={() => onProductSelect(product as Product)}
-                  disabled={outOfStock}
-                  className={cn(
-                    'bg-card rounded-lg p-2.5 text-left border border-border/50 active:scale-[0.97] transition-transform',
-                    outOfStock && 'opacity-40 cursor-not-allowed'
-                  )}
-                >
-                  {/* Product image */}
-                  {product.image_url ? (
-                    <div className="w-full aspect-[4/3] rounded-md mb-1.5 overflow-hidden bg-secondary">
-                      <img src={product.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                    </div>
-                  ) : (
-                    <div className="w-full aspect-[4/3] rounded-md mb-1.5 bg-secondary/50 flex items-center justify-center">
-                      <Package className="w-6 h-6 text-muted-foreground/20" />
-                    </div>
-                  )}
-                  <h3 className="font-medium text-xs line-clamp-1 leading-tight">{product.name}</h3>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="font-bold text-primary text-sm tabular-nums">
-                      {product.unit_price.toLocaleString()}
-                    </span>
-                    <span className={cn(
-                      'text-[10px] tabular-nums',
-                      outOfStock ? 'text-destructive font-bold' : 'text-muted-foreground'
-                    )}>
-                      {outOfStock ? 'OUT' : product.stock}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 pb-32 lg:pb-2">
+            {filteredProducts.map(product => (
+              <ProductCard key={product.id} product={product} onSelect={onProductSelect} />
+            ))}
           </div>
         )}
       </div>
