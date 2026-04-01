@@ -104,7 +104,7 @@ const Cart = ({ items, onUpdateQuantity, onRemoveItem, onClearCart, subtotal, ta
           </div>
         )}
         {discount > 0 && (
-          <div className="flex justify-between text-xs text-emerald-600">
+          <div className="flex justify-between text-xs text-success">
             <span>Discount</span>
             <span className="tabular-nums">-KES {discount.toLocaleString()}</span>
           </div>

@@ -139,9 +139,9 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
                 </button>
               </div>
               {change > 0 && (
-                <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3 text-center">
+                <div className="bg-success/10 rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground">Change</p>
-                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  <p className="text-2xl font-black text-success tabular-nums">
                     KES {change.toLocaleString()}
                   </p>
                 </div>
