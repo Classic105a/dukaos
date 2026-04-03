@@ -525,7 +525,71 @@ const Analytics = () => {
           </Card>
         </div>
 
-        {/* Credit Risk Alerts */}
+        {/* Top Sellers + Low Stock */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-success" />
+                Top Selling Products
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[340px] overflow-y-auto">
+                {(topProducts || []).map((p, i) => (
+                  <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40">
+                    <span className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">#{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{p.qty} units sold</p>
+                    </div>
+                    <span className="text-sm font-bold tabular-nums text-primary">KES {p.revenue.toLocaleString()}</span>
+                  </div>
+                ))}
+                {(!topProducts || topProducts.length === 0) && (
+                  <p className="text-center text-sm text-muted-foreground py-8">No sales data yet</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={(lowStockItems || []).length > 0 ? 'border-warning/30' : ''}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-warning" />
+                  Low Stock Alerts
+                </CardTitle>
+                {(lowStockItems || []).length > 0 && (
+                  <Badge variant="outline" className="text-warning border-warning">{(lowStockItems || []).length}</Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[340px] overflow-y-auto">
+                {(lowStockItems || []).map(item => (
+                  <div key={`${item.id}-${item.branch_id}`} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40">
+                    <div className={cn(
+                      'w-6 h-6 rounded flex items-center justify-center text-xs font-bold',
+                      item.quantity === 0 ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'
+                    )}>
+                      {item.quantity}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">Threshold: {item.threshold}</p>
+                    </div>
+                    {item.quantity === 0 && <Badge variant="destructive" className="text-[10px]">OUT</Badge>}
+                  </div>
+                ))}
+                {(!lowStockItems || lowStockItems.length === 0) && (
+                  <p className="text-center text-sm text-muted-foreground py-8">All stock levels healthy</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {customersWithDebt.filter(c => Number(c.credit_balance) > Number(c.credit_limit) * 0.9).length > 0 && (
           <Card className="border-destructive/30 bg-destructive/5">
             <CardHeader className="pb-2">
