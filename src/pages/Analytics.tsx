@@ -241,7 +241,8 @@ const Analytics = () => {
             label="Total Revenue"
             value={`KES ${totalRevenue.toLocaleString()}`}
             icon={DollarSign}
-            trend={12.5}
+            trend={revenueTrend}
+            trendLabel="vs prev period"
             color="text-primary"
             bgColor="bg-primary/10"
           />
@@ -249,7 +250,7 @@ const Analytics = () => {
             label="Gross Profit"
             value={`KES ${totalProfit.toLocaleString()}`}
             icon={TrendingUp}
-            trend={profitMargin}
+            trend={profitTrend}
             trendLabel={`${profitMargin.toFixed(1)}% margin`}
             color="text-success"
             bgColor="bg-success/10"
@@ -258,7 +259,7 @@ const Analytics = () => {
             label="Credit Exposure"
             value={`KES ${totalExposure.toLocaleString()}`}
             icon={CreditCard}
-            trend={-8.2}
+            trendLabel={`${customersWithDebt.length} debtors`}
             color="text-destructive"
             bgColor="bg-destructive/10"
           />
