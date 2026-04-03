@@ -191,14 +191,20 @@ const Analytics = () => {
     dailyCreditData.push({ date: label, credited: dayCredited, collected: dayCollected });
   }
 
-  // Overdue ratio (rough: customers > 30 days / total with debt)
-  const overdueRatio = customersWithDebt.length > 0
-    ? (customersWithDebt.filter(() => Math.random() > 0.7).length / customersWithDebt.length) * 100 // placeholder
-    : 0;
-
   const totalRevenue = sales.reduce((s, sale) => s + Number(sale.total_amount), 0);
   const totalProfit = sales.reduce((s, sale) => s + Number(sale.profit_total || 0), 0);
   const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+  // Compare with previous period for real trends
+  const prevStartDate = subDays(startDate, parseInt(period));
+  const prevSales = (branchSales || []).filter(s => {
+    const d = new Date(s.created_at);
+    return d >= prevStartDate && d < startDate;
+  });
+  const prevRevenue = prevSales.reduce((s, sale) => s + Number(sale.total_amount), 0);
+  const revenueTrend = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+  const prevProfit = prevSales.reduce((s, sale) => s + Number(sale.profit_total || 0), 0);
+  const profitTrend = prevProfit > 0 ? ((totalProfit - prevProfit) / prevProfit) * 100 : 0;
 
   return (
     <DashboardLayout>
