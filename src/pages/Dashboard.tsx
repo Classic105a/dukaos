@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
@@ -37,7 +37,17 @@ const Dashboard = () => {
   const lastSaleItemsRef = useRef<CartItem[]>([]);
   const completingRef = useRef(false);
   const [productRefreshKey, setProductRefreshKey] = useState(0);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  // Cart persistence — survive crashes & refreshes
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('pos_cart');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
   const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
   const [showReceipt, setShowReceipt] = useState(false);
   const [showMobileCart, setShowMobileCart] = useState(false);
@@ -46,6 +56,17 @@ const Dashboard = () => {
     receiptNumber: string;
     payments: Array<{ method: string; amount: number; mpesa_reference?: string }>;
   } | null>(null);
+
+  // Persist cart to localStorage on every change
+  useEffect(() => {
+    try {
+      if (cartItems.length > 0) {
+        localStorage.setItem('pos_cart', JSON.stringify(cartItems));
+      } else {
+        localStorage.removeItem('pos_cart');
+      }
+    } catch {}
+  }, [cartItems]);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
   const { tax, total: calculatedTotal } = calculateTax(subtotal);

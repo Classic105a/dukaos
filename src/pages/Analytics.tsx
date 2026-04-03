@@ -55,6 +55,58 @@ const Analytics = () => {
 
   const startDate = subDays(new Date(), parseInt(period));
 
+  // Top-selling products
+  const { data: topProducts } = useQuery({
+    queryKey: ['analytics-top-products', period],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sale_items')
+        .select('product_id, product_name, quantity, total_amount, sales!inner(created_at, payment_status)')
+        .gte('sales.created_at', startDate.toISOString())
+        .eq('sales.payment_status', 'completed');
+      if (error) throw error;
+      // Aggregate by product
+      const map = new Map<string, { name: string; qty: number; revenue: number }>();
+      (data || []).forEach((item: any) => {
+        const existing = map.get(item.product_id) || { name: item.product_name, qty: 0, revenue: 0 };
+        existing.qty += item.quantity;
+        existing.revenue += Number(item.total_amount);
+        map.set(item.product_id, existing);
+      });
+      return Array.from(map.entries())
+        .map(([id, v]) => ({ id, ...v }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 10);
+    },
+  });
+
+  // Low stock alerts
+  const { data: lowStockItems } = useQuery({
+    queryKey: ['analytics-low-stock'],
+    queryFn: async () => {
+      const { data: products, error: pErr } = await supabase
+        .from('products')
+        .select('id, name, low_stock_threshold')
+        .eq('is_active', true)
+        .eq('track_inventory', true);
+      if (pErr) throw pErr;
+      const { data: stockRows, error: sErr } = await supabase
+        .from('current_stock')
+        .select('product_id, branch_id, quantity');
+      if (sErr) throw sErr;
+      const alerts: Array<{ id: string; name: string; quantity: number; threshold: number; branch_id: string }> = [];
+      (products || []).forEach(p => {
+        const threshold = p.low_stock_threshold ?? 10;
+        (stockRows || []).filter(s => s.product_id === p.id).forEach(s => {
+          if ((s.quantity ?? 0) <= threshold) {
+            alerts.push({ id: p.id, name: p.name, quantity: s.quantity ?? 0, threshold, branch_id: s.branch_id! });
+          }
+        });
+      });
+      return alerts.sort((a, b) => a.quantity - b.quantity).slice(0, 20);
+    },
+  });
+
   // Total credit exposure
   const { data: creditData, isLoading: creditLoading } = useQuery({
     queryKey: ['analytics-credit'],
@@ -191,14 +243,20 @@ const Analytics = () => {
     dailyCreditData.push({ date: label, credited: dayCredited, collected: dayCollected });
   }
 
-  // Overdue ratio (rough: customers > 30 days / total with debt)
-  const overdueRatio = customersWithDebt.length > 0
-    ? (customersWithDebt.filter(() => Math.random() > 0.7).length / customersWithDebt.length) * 100 // placeholder
-    : 0;
-
   const totalRevenue = sales.reduce((s, sale) => s + Number(sale.total_amount), 0);
   const totalProfit = sales.reduce((s, sale) => s + Number(sale.profit_total || 0), 0);
   const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+  // Compare with previous period for real trends
+  const prevStartDate = subDays(startDate, parseInt(period));
+  const prevSales = (branchSales || []).filter(s => {
+    const d = new Date(s.created_at);
+    return d >= prevStartDate && d < startDate;
+  });
+  const prevRevenue = prevSales.reduce((s, sale) => s + Number(sale.total_amount), 0);
+  const revenueTrend = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+  const prevProfit = prevSales.reduce((s, sale) => s + Number(sale.profit_total || 0), 0);
+  const profitTrend = prevProfit > 0 ? ((totalProfit - prevProfit) / prevProfit) * 100 : 0;
 
   return (
     <DashboardLayout>
@@ -235,7 +293,8 @@ const Analytics = () => {
             label="Total Revenue"
             value={`KES ${totalRevenue.toLocaleString()}`}
             icon={DollarSign}
-            trend={12.5}
+            trend={revenueTrend}
+            trendLabel="vs prev period"
             color="text-primary"
             bgColor="bg-primary/10"
           />
@@ -243,7 +302,7 @@ const Analytics = () => {
             label="Gross Profit"
             value={`KES ${totalProfit.toLocaleString()}`}
             icon={TrendingUp}
-            trend={profitMargin}
+            trend={profitTrend}
             trendLabel={`${profitMargin.toFixed(1)}% margin`}
             color="text-success"
             bgColor="bg-success/10"
@@ -252,7 +311,7 @@ const Analytics = () => {
             label="Credit Exposure"
             value={`KES ${totalExposure.toLocaleString()}`}
             icon={CreditCard}
-            trend={-8.2}
+            trendLabel={`${customersWithDebt.length} debtors`}
             color="text-destructive"
             bgColor="bg-destructive/10"
           />
@@ -466,7 +525,71 @@ const Analytics = () => {
           </Card>
         </div>
 
-        {/* Credit Risk Alerts */}
+        {/* Top Sellers + Low Stock */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-success" />
+                Top Selling Products
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[340px] overflow-y-auto">
+                {(topProducts || []).map((p, i) => (
+                  <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40">
+                    <span className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">#{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{p.qty} units sold</p>
+                    </div>
+                    <span className="text-sm font-bold tabular-nums text-primary">KES {p.revenue.toLocaleString()}</span>
+                  </div>
+                ))}
+                {(!topProducts || topProducts.length === 0) && (
+                  <p className="text-center text-sm text-muted-foreground py-8">No sales data yet</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={(lowStockItems || []).length > 0 ? 'border-warning/30' : ''}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-warning" />
+                  Low Stock Alerts
+                </CardTitle>
+                {(lowStockItems || []).length > 0 && (
+                  <Badge variant="outline" className="text-warning border-warning">{(lowStockItems || []).length}</Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[340px] overflow-y-auto">
+                {(lowStockItems || []).map(item => (
+                  <div key={`${item.id}-${item.branch_id}`} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40">
+                    <div className={cn(
+                      'w-6 h-6 rounded flex items-center justify-center text-xs font-bold',
+                      item.quantity === 0 ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'
+                    )}>
+                      {item.quantity}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">Threshold: {item.threshold}</p>
+                    </div>
+                    {item.quantity === 0 && <Badge variant="destructive" className="text-[10px]">OUT</Badge>}
+                  </div>
+                ))}
+                {(!lowStockItems || lowStockItems.length === 0) && (
+                  <p className="text-center text-sm text-muted-foreground py-8">All stock levels healthy</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {customersWithDebt.filter(c => Number(c.credit_balance) > Number(c.credit_limit) * 0.9).length > 0 && (
           <Card className="border-destructive/30 bg-destructive/5">
             <CardHeader className="pb-2">
