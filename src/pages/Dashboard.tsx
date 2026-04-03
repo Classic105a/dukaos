@@ -57,6 +57,17 @@ const Dashboard = () => {
     payments: Array<{ method: string; amount: number; mpesa_reference?: string }>;
   } | null>(null);
 
+  // Persist cart to localStorage on every change
+  useEffect(() => {
+    try {
+      if (cartItems.length > 0) {
+        localStorage.setItem('pos_cart', JSON.stringify(cartItems));
+      } else {
+        localStorage.removeItem('pos_cart');
+      }
+    } catch {}
+  }, [cartItems]);
+
   const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
   const { tax, total: calculatedTotal } = calculateTax(subtotal);
   const total = calculatedTotal;
