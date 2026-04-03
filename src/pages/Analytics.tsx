@@ -55,6 +55,58 @@ const Analytics = () => {
 
   const startDate = subDays(new Date(), parseInt(period));
 
+  // Top-selling products
+  const { data: topProducts } = useQuery({
+    queryKey: ['analytics-top-products', period],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sale_items')
+        .select('product_id, product_name, quantity, total_amount, sales!inner(created_at, payment_status)')
+        .gte('sales.created_at', startDate.toISOString())
+        .eq('sales.payment_status', 'completed');
+      if (error) throw error;
+      // Aggregate by product
+      const map = new Map<string, { name: string; qty: number; revenue: number }>();
+      (data || []).forEach((item: any) => {
+        const existing = map.get(item.product_id) || { name: item.product_name, qty: 0, revenue: 0 };
+        existing.qty += item.quantity;
+        existing.revenue += Number(item.total_amount);
+        map.set(item.product_id, existing);
+      });
+      return Array.from(map.entries())
+        .map(([id, v]) => ({ id, ...v }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 10);
+    },
+  });
+
+  // Low stock alerts
+  const { data: lowStockItems } = useQuery({
+    queryKey: ['analytics-low-stock'],
+    queryFn: async () => {
+      const { data: products, error: pErr } = await supabase
+        .from('products')
+        .select('id, name, low_stock_threshold')
+        .eq('is_active', true)
+        .eq('track_inventory', true);
+      if (pErr) throw pErr;
+      const { data: stockRows, error: sErr } = await supabase
+        .from('current_stock')
+        .select('product_id, branch_id, quantity');
+      if (sErr) throw sErr;
+      const alerts: Array<{ id: string; name: string; quantity: number; threshold: number; branch_id: string }> = [];
+      (products || []).forEach(p => {
+        const threshold = p.low_stock_threshold ?? 10;
+        (stockRows || []).filter(s => s.product_id === p.id).forEach(s => {
+          if ((s.quantity ?? 0) <= threshold) {
+            alerts.push({ id: p.id, name: p.name, quantity: s.quantity ?? 0, threshold, branch_id: s.branch_id! });
+          }
+        });
+      });
+      return alerts.sort((a, b) => a.quantity - b.quantity).slice(0, 20);
+    },
+  });
+
   // Total credit exposure
   const { data: creditData, isLoading: creditLoading } = useQuery({
     queryKey: ['analytics-credit'],
