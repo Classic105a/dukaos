@@ -199,114 +199,48 @@ export const useOfflineSync = () => {
     return tx;
   }, [refreshPendingCount]);
 
-  // ─── Sync a single sale to server ────────────────────────────────
+  // ─── Sync a single sale to server (atomic via complete_sale RPC) ──
   const syncSaleToServer = useCallback(async (queueItem: SyncQueueItem): Promise<boolean> => {
     const sale = queueItem.payload as LocalTransaction;
 
     try {
-      // Conflict check: already synced?
-      const { data: existing } = await supabase
-        .from('sales')
-        .select('id')
-        .eq('offline_id', sale.id)
-        .maybeSingle();
-
-      if (existing) {
-        await markTransactionSynced(sale.id, existing.id);
-        return true;
-      }
-
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Insert sale
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .insert({
-          branch_id: sale.branch_id,
-          cashier_id: user.id,
-          customer_id: sale.customer_id || null,
-          receipt_number: sale.receipt_number,
-          subtotal: sale.subtotal,
-          tax_amount: sale.tax_amount,
-          discount_amount: sale.discount_amount,
-          total_amount: sale.total_amount,
-          payment_status: 'completed',
-          is_synced: true,
-          offline_id: sale.id,
-          shift_id: sale.shift_id || null,
-        })
-        .select()
-        .single();
-
-      if (saleError) throw saleError;
-
-      // Insert sale items
-      await supabase.from('sale_items').insert(
-        sale.items.map(item => ({
-          sale_id: saleData.id,
+      // Use the atomic complete_sale DB function — handles idempotency,
+      // row-level stock locking, and all inserts in a single transaction.
+      const { data, error } = await supabase.rpc('complete_sale', {
+        p_branch_id: sale.branch_id,
+        p_cashier_id: sale.cashier_id,
+        p_receipt_number: sale.receipt_number,
+        p_customer_id: sale.customer_id || null,
+        p_shift_id: sale.shift_id || null,
+        p_subtotal: sale.subtotal,
+        p_tax_amount: sale.tax_amount,
+        p_discount_amount: sale.discount_amount,
+        p_total_amount: sale.total_amount,
+        p_cost_total: 0,
+        p_profit_total: 0,
+        p_notes: null,
+        p_items: sale.items.map(item => ({
           product_id: item.product_id,
           product_name: item.product_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
           total_amount: item.total_amount,
-        }))
-      );
-
-      // Insert stock movements
-      await supabase.from('stock_movements').insert(
-        sale.items.map(item => ({
-          product_id: item.product_id,
-          branch_id: sale.branch_id,
-          quantity_change: -item.quantity,
-          movement_type: 'SALE',
-          reference_id: saleData.id,
-          created_by: user.id,
-          notes: `Offline sale sync ${sale.receipt_number}`,
-        }))
-      );
-
-      // Insert payments
-      await supabase.from('payments').insert(
-        sale.payments.map(p => ({
-          sale_id: saleData.id,
+          discount_amount: 0,
+          tax_amount: 0,
+        })),
+        p_payments: sale.payments.map(p => ({
           payment_method: p.payment_method,
           amount: p.amount,
           mpesa_reference: p.mpesa_reference || null,
           mpesa_phone: p.mpesa_phone || null,
-          status: 'completed',
-        }))
-      );
+        })),
+        p_offline_id: sale.id,
+      });
 
-      // Handle credit payments
-      const creditPayment = sale.payments.find(p => p.payment_method === 'credit');
-      if (creditPayment?.customer_id) {
-        const { data: customerData } = await supabase
-          .from('customers')
-          .select('credit_balance')
-          .eq('id', creditPayment.customer_id)
-          .single();
+      if (error) throw error;
 
-        const newBalance = (customerData?.credit_balance || 0) + sale.total_amount;
-
-        await supabase.from('credit_transactions').insert({
-          customer_id: creditPayment.customer_id,
-          sale_id: saleData.id,
-          transaction_type: 'CREDIT_SALE',
-          amount: sale.total_amount,
-          running_balance: newBalance,
-          processed_by: user.id,
-          notes: `Offline sale sync ${sale.receipt_number}`,
-        });
-
-        await supabase
-          .from('customers')
-          .update({ credit_balance: newBalance })
-          .eq('id', creditPayment.customer_id);
-      }
-
-      await markTransactionSynced(sale.id, saleData.id);
+      const result = data as { sale_id: string; status: string };
+      await markTransactionSynced(sale.id, result.sale_id);
       return true;
     } catch (error: any) {
       console.error('[OfflineSync] Failed to sync sale:', sale.id, error);
