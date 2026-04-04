@@ -76,31 +76,23 @@ const Analytics = () => {
     enabled: branches.length > 0,
   });
 
-  // Low stock alerts
+  // Low stock alerts (via DB function)
   const { data: lowStockItems } = useQuery({
     queryKey: ['analytics-low-stock'],
     queryFn: async () => {
-      const { data: products, error: pErr } = await supabase
-        .from('products')
-        .select('id, name, low_stock_threshold')
-        .eq('is_active', true)
-        .eq('track_inventory', true);
-      if (pErr) throw pErr;
-      const { data: stockRows, error: sErr } = await supabase
-        .from('current_stock')
-        .select('product_id, branch_id, quantity');
-      if (sErr) throw sErr;
-      const alerts: Array<{ id: string; name: string; quantity: number; threshold: number; branch_id: string }> = [];
-      (products || []).forEach(p => {
-        const threshold = p.low_stock_threshold ?? 10;
-        (stockRows || []).filter(s => s.product_id === p.id).forEach(s => {
-          if ((s.quantity ?? 0) <= threshold) {
-            alerts.push({ id: p.id, name: p.name, quantity: s.quantity ?? 0, threshold, branch_id: s.branch_id! });
-          }
-        });
+      const { data, error } = await supabase.rpc('get_low_stock_alerts', {
+        p_branch_id: branches[0]?.id || '00000000-0000-0000-0000-000000000000',
       });
-      return alerts.sort((a, b) => a.quantity - b.quantity).slice(0, 20);
+      if (error) throw error;
+      return ((data as any[]) || []).map((item: any) => ({
+        id: item.product_id,
+        name: item.product_name,
+        quantity: Number(item.current_stock),
+        threshold: Number(item.low_stock_threshold),
+        branch_id: branches[0]?.id || '',
+      }));
     },
+    enabled: branches.length > 0,
   });
 
   // Total credit exposure
