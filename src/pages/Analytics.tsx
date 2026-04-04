@@ -59,25 +59,21 @@ const Analytics = () => {
   const { data: topProducts } = useQuery({
     queryKey: ['analytics-top-products', period],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sale_items')
-        .select('product_id, product_name, quantity, total_amount, sales!inner(created_at, payment_status)')
-        .gte('sales.created_at', startDate.toISOString())
-        .eq('sales.payment_status', 'completed');
-      if (error) throw error;
-      // Aggregate by product
-      const map = new Map<string, { name: string; qty: number; revenue: number }>();
-      (data || []).forEach((item: any) => {
-        const existing = map.get(item.product_id) || { name: item.product_name, qty: 0, revenue: 0 };
-        existing.qty += item.quantity;
-        existing.revenue += Number(item.total_amount);
-        map.set(item.product_id, existing);
+      const { data, error } = await supabase.rpc('get_top_products', {
+        p_branch_id: branches[0]?.id || '00000000-0000-0000-0000-000000000000',
+        p_start_date: startDate.toISOString(),
+        p_end_date: new Date().toISOString(),
+        p_limit: 10,
       });
-      return Array.from(map.entries())
-        .map(([id, v]) => ({ id, ...v }))
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 10);
+      if (error) throw error;
+      return ((data as any[]) || []).map((p: any) => ({
+        id: p.product_id,
+        name: p.product_name,
+        qty: Number(p.total_qty),
+        revenue: Number(p.total_revenue),
+      }));
     },
+    enabled: branches.length > 0,
   });
 
   // Low stock alerts
