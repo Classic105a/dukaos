@@ -2007,9 +2007,43 @@ export type Database = {
       }
     }
     Functions: {
+      complete_sale: {
+        Args: {
+          p_branch_id: string
+          p_cashier_id: string
+          p_cost_total?: number
+          p_customer_id?: string
+          p_discount_amount?: number
+          p_items?: Json
+          p_notes?: string
+          p_offline_id?: string
+          p_payments?: Json
+          p_profit_total?: number
+          p_receipt_number: string
+          p_shift_id?: string
+          p_subtotal?: number
+          p_tax_amount?: number
+          p_total_amount?: number
+        }
+        Returns: Json
+      }
+      get_dashboard_stats: {
+        Args: { p_branch_id: string; p_end_date: string; p_start_date: string }
+        Returns: Json
+      }
+      get_low_stock_alerts: { Args: { p_branch_id: string }; Returns: Json }
       get_product_stock: {
         Args: { p_branch_id: string; p_product_id: string }
         Returns: number
+      }
+      get_top_products: {
+        Args: {
+          p_branch_id: string
+          p_end_date: string
+          p_limit?: number
+          p_start_date: string
+        }
+        Returns: Json
       }
       has_role: {
         Args: {

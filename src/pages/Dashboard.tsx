@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
@@ -126,11 +127,11 @@ const Dashboard = () => {
 
   const handleClearCart = useCallback(() => setCartItems([]), []);
 
-  // === COMPLETE SALE — single function, no modal for cash/card ===
+  // === COMPLETE SALE — uses atomic DB function when online, offline queue when offline ===
   const completeSale = useCallback(async (
     payments: Array<{ method: string; amount: number; mpesa_reference?: string; mpesa_phone?: string }>
   ) => {
-    if (completingRef.current) return; // prevent double-tap
+    if (completingRef.current) return;
     if (cartItems.length === 0) return;
     if (!currentBranch?.id || !user?.id) { toast.error('Select a branch'); return; }
 
@@ -142,25 +143,65 @@ const Dashboard = () => {
     const saleTotal = total;
 
     try {
-      await saveSaleOffline({
-        branch_id: currentBranch.id,
-        cashier_id: user.id,
-        receipt_number: receiptNumber,
-        customer_id: null,
-        items: saleItems.map(item => ({
-          product_id: item.product_id, product_name: item.name,
-          quantity: item.quantity, unit_price: item.unit_price, total_amount: item.total
-        })),
-        payments: payments.map(p => ({
-          payment_method: p.method, amount: p.amount,
-          mpesa_reference: p.mpesa_reference, mpesa_phone: p.mpesa_phone,
-        })),
-        subtotal: saleSubtotal, tax_amount: saleTax, discount_amount: 0,
-        total_amount: saleTotal, shift_id: currentShift?.id || null,
-        status: 'completed', created_at: new Date().toISOString(),
-      });
+      if (navigator.onLine) {
+        // === ONLINE: Use atomic complete_sale RPC (concurrency-safe) ===
+        const { data, error } = await supabase.rpc('complete_sale', {
+          p_branch_id: currentBranch.id,
+          p_cashier_id: user.id,
+          p_receipt_number: receiptNumber,
+          p_customer_id: null,
+          p_shift_id: currentShift?.id || null,
+          p_subtotal: saleSubtotal,
+          p_tax_amount: saleTax,
+          p_discount_amount: 0,
+          p_total_amount: saleTotal,
+          p_cost_total: 0,
+          p_profit_total: 0,
+          p_notes: null,
+          p_items: saleItems.map(item => ({
+            product_id: item.product_id,
+            product_name: item.name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_amount: item.total,
+            discount_amount: 0,
+            tax_amount: 0,
+          })),
+          p_payments: payments.map(p => ({
+            payment_method: p.method,
+            amount: p.amount,
+            mpesa_reference: p.mpesa_reference || null,
+            mpesa_phone: p.mpesa_phone || null,
+          })),
+          p_offline_id: null,
+        });
 
-      // Optimistic update
+        if (error) {
+          // If server rejects (e.g. insufficient stock), show error and abort
+          toast.error(error.message || 'Sale failed', { duration: 3000 });
+          return;
+        }
+      } else {
+        // === OFFLINE: Queue for later sync ===
+        await saveSaleOffline({
+          branch_id: currentBranch.id,
+          cashier_id: user.id,
+          receipt_number: receiptNumber,
+          customer_id: null,
+          items: saleItems.map(item => ({
+            product_id: item.product_id, product_name: item.name,
+            quantity: item.quantity, unit_price: item.unit_price, total_amount: item.total
+          })),
+          payments: payments.map(p => ({
+            payment_method: p.method, amount: p.amount,
+            mpesa_reference: p.mpesa_reference, mpesa_phone: p.mpesa_phone,
+          })),
+          subtotal: saleSubtotal, tax_amount: saleTax, discount_amount: 0,
+          total_amount: saleTotal, shift_id: currentShift?.id || null,
+          status: 'completed', created_at: new Date().toISOString(),
+        });
+      }
+
       lastSaleItemsRef.current = saleItems;
       setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: 0, total: saleTotal });
       setLastSale({ receiptNumber, payments });
@@ -170,7 +211,6 @@ const Dashboard = () => {
       setCartItems([]);
       setProductRefreshKey(k => k + 1);
       clearCheckpoint();
-      refreshLocalData();
 
       // Auto-print
       if (hasPrinter && currentBranch) {
@@ -191,12 +231,11 @@ const Dashboard = () => {
         printReceipt(receiptData);
       }
 
-      toast.success(isOnline ? 'Sale completed!' : 'Saved offline', { duration: 1500 });
-      if (isOnline) syncPendingSales();
+      toast.success(navigator.onLine ? 'Sale completed!' : 'Saved offline', { duration: 1500 });
     } finally {
       completingRef.current = false;
     }
-  }, [cartItems, subtotal, tax, total, currentBranch, user, currentShift, saveSaleOffline, clearCheckpoint, refreshLocalData, hasPrinter, printReceipt, isOnline, syncPendingSales]);
+  }, [cartItems, subtotal, tax, total, currentBranch, user, currentShift, saveSaleOffline, clearCheckpoint, hasPrinter, printReceipt]);
 
   // === INSTANT CASH — one tap, no modal ===
   const handleCashPayment = useCallback((cashAmount?: number) => {
