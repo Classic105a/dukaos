@@ -519,6 +519,48 @@ export type Database = {
           },
         ]
       }
+      current_stock: {
+        Row: {
+          branch_id: string
+          last_movement_at: string | null
+          latest_batch_number: string | null
+          latest_expiry_date: string | null
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          branch_id: string
+          last_movement_at?: string | null
+          latest_batch_number?: string | null
+          latest_expiry_date?: string | null
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          branch_id?: string
+          last_movement_at?: string | null
+          latest_batch_number?: string | null
+          latest_expiry_date?: string | null
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "current_stock_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "current_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_permissions: {
         Row: {
           business_id: string | null
@@ -1979,32 +2021,7 @@ export type Database = {
       }
     }
     Views: {
-      current_stock: {
-        Row: {
-          branch_id: string | null
-          last_movement_at: string | null
-          latest_batch_number: string | null
-          latest_expiry_date: string | null
-          product_id: string | null
-          quantity: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stock_movements_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_movements_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       complete_sale: {
