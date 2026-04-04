@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useOfflineDB } from '@/hooks/useOfflineDB';
 import { usePrinter } from '@/hooks/usePrinter';
 import { useTaxSettings } from '@/hooks/useTaxSettings';
 import { useShift } from '@/hooks/useShift';
