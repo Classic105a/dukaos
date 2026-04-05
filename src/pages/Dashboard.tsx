@@ -149,15 +149,15 @@ const Dashboard = () => {
           p_branch_id: currentBranch.id,
           p_cashier_id: user.id,
           p_receipt_number: receiptNumber,
-          p_customer_id: null,
-          p_shift_id: currentShift?.id || null,
+          p_customer_id: undefined,
+          p_shift_id: currentShift?.id || undefined,
           p_subtotal: saleSubtotal,
           p_tax_amount: saleTax,
           p_discount_amount: 0,
           p_total_amount: saleTotal,
           p_cost_total: 0,
           p_profit_total: 0,
-          p_notes: null,
+          p_notes: undefined,
           p_items: saleItems.map(item => ({
             product_id: item.product_id,
             product_name: item.name,
@@ -170,10 +170,10 @@ const Dashboard = () => {
           p_payments: payments.map(p => ({
             payment_method: p.method,
             amount: p.amount,
-            mpesa_reference: p.mpesa_reference || null,
-            mpesa_phone: p.mpesa_phone || null,
+            mpesa_reference: p.mpesa_reference || undefined,
+            mpesa_phone: p.mpesa_phone || undefined,
           })),
-          p_offline_id: null,
+          p_offline_id: undefined,
         });
 
         if (error) {

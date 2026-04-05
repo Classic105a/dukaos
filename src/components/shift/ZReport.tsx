@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { Printer, FileText, Download, Clock, Wallet, CreditCard, Smartphone, AlertTriangle, CheckCircle, TrendingDown, TrendingUp, RotateCcw } from 'lucide-react';
+import { Printer, FileText, Wallet, CreditCard, Smartphone, AlertTriangle, CheckCircle, TrendingDown, TrendingUp, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ZReportProps {
@@ -38,9 +38,9 @@ interface ShiftData {
 }
 
 const ZReport = ({ isOpen, onClose, shiftId }: ZReportProps) => {
-  const { currentShift, getShiftSummary } = useShift();
+  const { currentShift } = useShift();
   const { currentBranch } = useBranch();
-  const { user } = useAuth();
+  const _auth = useAuth();
   const printRef = useRef<HTMLDivElement>(null);
 
   const targetShiftId = shiftId || currentShift?.id;

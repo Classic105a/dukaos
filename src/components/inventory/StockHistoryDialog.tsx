@@ -80,7 +80,7 @@ const StockHistoryDialog = ({
         const { data: profilesData } = await supabase
           .from('profiles')
           .select('id, full_name, email')
-          .in('id', userIds);
+          .in('id', userIds.filter((id): id is string => id !== null));
         
         profilesMap = (profilesData || []).reduce((acc, p) => {
           acc[p.id] = { full_name: p.full_name, email: p.email };

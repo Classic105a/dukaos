@@ -22,7 +22,7 @@ import {
 } from '@/lib/offline-db';
 
 const SYNC_INTERVAL = 30_000; // 30 seconds
-const DATA_CACHE_INTERVAL = 5 * 60_000; // 5 minutes
+// const DATA_CACHE_INTERVAL = 5 * 60_000; // 5 minutes
 
 export const useOfflineSync = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -134,7 +134,7 @@ export const useOfflineSync = () => {
         .eq('is_active', true);
 
       if (categoriesData) {
-        await cacheCategories(categoriesData.map(c => ({ ...c, _synced_at: Date.now() })));
+        await cacheCategories(categoriesData.map(c => ({ ...c, color: c.color ?? '#10B981', is_active: c.is_active ?? true, _synced_at: Date.now() })));
       }
 
       // Fetch and cache customers
@@ -210,15 +210,15 @@ export const useOfflineSync = () => {
         p_branch_id: sale.branch_id,
         p_cashier_id: sale.cashier_id,
         p_receipt_number: sale.receipt_number,
-        p_customer_id: sale.customer_id || null,
-        p_shift_id: sale.shift_id || null,
+        p_customer_id: sale.customer_id || undefined,
+        p_shift_id: sale.shift_id || undefined,
         p_subtotal: sale.subtotal,
         p_tax_amount: sale.tax_amount,
         p_discount_amount: sale.discount_amount,
         p_total_amount: sale.total_amount,
         p_cost_total: 0,
         p_profit_total: 0,
-        p_notes: null,
+        p_notes: undefined,
         p_items: sale.items.map(item => ({
           product_id: item.product_id,
           product_name: item.product_name,
@@ -231,8 +231,8 @@ export const useOfflineSync = () => {
         p_payments: sale.payments.map(p => ({
           payment_method: p.payment_method,
           amount: p.amount,
-          mpesa_reference: p.mpesa_reference || null,
-          mpesa_phone: p.mpesa_phone || null,
+          mpesa_reference: p.mpesa_reference || undefined,
+          mpesa_phone: p.mpesa_phone || undefined,
         })),
         p_offline_id: sale.id,
       });

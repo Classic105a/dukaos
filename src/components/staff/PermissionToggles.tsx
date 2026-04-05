@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useCustomPermissions, PERMISSION_GROUPS, CustomPermission } from '@/hooks/useCustomPermissions';
+import { useCustomPermissions, PERMISSION_GROUPS } from '@/hooks/useCustomPermissions';
 import { ShoppingCart, Package, Wallet, Settings, Shield } from 'lucide-react';
 
 interface PermissionTogglesProps {

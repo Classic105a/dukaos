@@ -6,7 +6,6 @@ import {
   getLocalStock,
   getLocalCategories,
   getLocalCustomers,
-  type LocalProduct,
   type LocalCategory,
   type LocalCustomer,
 } from '@/lib/offline-db';
@@ -29,7 +28,7 @@ export interface OfflineProduct {
  */
 export const useOfflineDB = () => {
   const { currentBranch } = useBranch();
-  const { isOnline, cacheServerData, lastCacheTime } = useOfflineSync();
+  const { isOnline, cacheServerData } = useOfflineSync();
 
   const [products, setProducts] = useState<OfflineProduct[]>([]);
   const [categories, setCategories] = useState<LocalCategory[]>([]);

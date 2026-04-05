@@ -28,7 +28,7 @@
    onRecordPayment: () => void;
  }
  
- const InstallmentPlansPanel = ({ customerId, onRecordPayment }: InstallmentPlansPanelProps) => {
+ const InstallmentPlansPanel = ({ customerId, onRecordPayment: _onRecordPayment }: InstallmentPlansPanelProps) => {
    const { user } = useAuth();
    const { toast } = useToast();
    const queryClient = useQueryClient();
@@ -61,7 +61,7 @@
        if (!customer) throw new Error('Customer not found');
  
        const paymentAmount = plan.installment_amount;
-       const newBalance = Math.max(0, customer.credit_balance - paymentAmount);
+       const newBalance = Math.max(0, (customer.credit_balance ?? 0) - paymentAmount);
        const newPaidInstallments = plan.paid_installments + 1;
        const newRemaining = Math.max(0, plan.remaining_amount - paymentAmount);
        const isComplete = newPaidInstallments >= plan.installments_count;

@@ -158,7 +158,7 @@ const ReceiptModal = ({
     }
   };
 
-  const handleBrowserPrint = () => {
+  const _handleBrowserPrint = () => {
     const printContent = receiptRef.current?.innerHTML;
     if (!printContent) return;
 
@@ -224,7 +224,7 @@ ${footerMessage}
     }
   };
 
-  const capabilities = getPrinterCapabilities();
+  const _capabilities = getPrinterCapabilities();
   const printerInfo = defaultPrinter 
     ? `${defaultPrinter.name} (${defaultPrinter.connection_type})`
     : 'No printer configured';

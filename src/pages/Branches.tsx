@@ -47,8 +47,8 @@ interface Branch {
   name: string;
   location: string | null;
   phone: string | null;
-  is_headquarters: boolean;
-  is_active: boolean;
+  is_headquarters: boolean | null;
+  is_active: boolean | null;
 }
 
 interface StockTransfer {
@@ -799,7 +799,7 @@ const EditBranchForm = ({
       <div className="flex items-center gap-2">
         <Switch
           id="edit-headquarters"
-          checked={formData.is_headquarters}
+          checked={formData.is_headquarters ?? false}
           onCheckedChange={(checked) => setFormData({ ...formData, is_headquarters: checked })}
           disabled={isLoading}
         />

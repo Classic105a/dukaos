@@ -17,8 +17,8 @@ interface Branch {
   kra_pin: string | null;
   receipt_footer_message: string | null;
   logo_url: string | null;
-  is_headquarters: boolean;
-  is_active: boolean;
+  is_headquarters: boolean | null;
+  is_active: boolean | null;
 }
 
 interface BranchContextType {

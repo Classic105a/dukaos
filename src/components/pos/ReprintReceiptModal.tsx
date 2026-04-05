@@ -32,7 +32,7 @@ interface ReprintReceiptModalProps {
 
 const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
   const { currentBranch } = useBranch();
-  const { printReceipt, isPrinting: printerBusy, hasPrinter } = usePrinter();
+  const { printReceipt, isPrinting: printerBusy } = usePrinter();
   const [searchQuery, setSearchQuery] = useState('');
   const [recentSales, setRecentSales] = useState<SaleRecord[]>([]);
   const [searching, setSearching] = useState(false);
@@ -58,7 +58,11 @@ const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
       const { data, error } = await query;
       if (error) throw error;
       
-      setRecentSales(data || []);
+      setRecentSales((data || []).map(d => ({
+        ...d,
+        tax_amount: d.tax_amount ?? 0,
+        discount_amount: d.discount_amount ?? 0,
+      })));
     } catch (error) {
       console.error('Search error:', error);
       toast.error('Failed to search sales');
@@ -116,7 +120,7 @@ const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
         payments: (payments || []).map(p => ({
           method: p.payment_method.toUpperCase(),
           amount: p.amount,
-          reference: p.mpesa_reference,
+          reference: p.mpesa_reference ?? undefined,
         })),
         footer: {
           message: currentBranch?.receipt_footer_message || 'Thank you for your business!',

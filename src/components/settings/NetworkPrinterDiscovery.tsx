@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,7 +55,7 @@ export const NetworkPrinterDiscovery = ({
   const [testingIp, setTestingIp] = useState<string | null>(null);
 
   // Test if a specific IP:port has a printer
-  const testPrinterConnection = async (ip: string, port: number): Promise<boolean> => {
+  const testPrinterConnection = async (_ip: string, _port: number): Promise<boolean> => {
     // In a real implementation, this would use a backend proxy to test TCP connections
     // Since browsers can't make raw TCP connections, we simulate the behavior
     // For production, you'd need an Edge Function to test printer connectivity
