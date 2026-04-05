@@ -158,7 +158,7 @@ const ReceiptModal = ({
     }
   };
 
-  const handleBrowserPrint = () => {
+  const _handleBrowserPrint = () => {
     const printContent = receiptRef.current?.innerHTML;
     if (!printContent) return;
 
