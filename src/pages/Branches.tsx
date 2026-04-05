@@ -799,7 +799,7 @@ const EditBranchForm = ({
       <div className="flex items-center gap-2">
         <Switch
           id="edit-headquarters"
-          checked={formData.is_headquarters}
+          checked={formData.is_headquarters ?? false}
           onCheckedChange={(checked) => setFormData({ ...formData, is_headquarters: checked })}
           disabled={isLoading}
         />

@@ -40,7 +40,7 @@ const CustomerStatement = () => {
       const { data, error } = await supabase
         .from('customers')
         .select('*')
-        .eq('id', customerId)
+        .eq('id', customerId as string)
         .single();
       if (error) throw error;
       return data;
