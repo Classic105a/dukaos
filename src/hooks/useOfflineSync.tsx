@@ -134,7 +134,7 @@ export const useOfflineSync = () => {
         .eq('is_active', true);
 
       if (categoriesData) {
-        await cacheCategories(categoriesData.map(c => ({ ...c, _synced_at: Date.now() })));
+        await cacheCategories(categoriesData.map(c => ({ ...c, color: c.color ?? '#10B981', is_active: c.is_active ?? true, _synced_at: Date.now() })));
       }
 
       // Fetch and cache customers
