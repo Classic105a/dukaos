@@ -58,7 +58,11 @@ const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
       const { data, error } = await query;
       if (error) throw error;
       
-      setRecentSales(data || []);
+      setRecentSales((data || []).map(d => ({
+        ...d,
+        tax_amount: d.tax_amount ?? 0,
+        discount_amount: d.discount_amount ?? 0,
+      })));
     } catch (error) {
       console.error('Search error:', error);
       toast.error('Failed to search sales');
