@@ -32,7 +32,7 @@ interface ReprintReceiptModalProps {
 
 const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
   const { currentBranch } = useBranch();
-  const { printReceipt, isPrinting: printerBusy, hasPrinter } = usePrinter();
+  const { printReceipt, isPrinting: printerBusy } = usePrinter();
   const [searchQuery, setSearchQuery] = useState('');
   const [recentSales, setRecentSales] = useState<SaleRecord[]>([]);
   const [searching, setSearching] = useState(false);
