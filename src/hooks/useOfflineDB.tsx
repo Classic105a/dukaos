@@ -6,7 +6,6 @@ import {
   getLocalStock,
   getLocalCategories,
   getLocalCustomers,
-  type LocalProduct,
   type LocalCategory,
   type LocalCustomer,
 } from '@/lib/offline-db';
