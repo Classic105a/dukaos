@@ -22,7 +22,7 @@ import {
 } from '@/lib/offline-db';
 
 const SYNC_INTERVAL = 30_000; // 30 seconds
-const DATA_CACHE_INTERVAL = 5 * 60_000; // 5 minutes
+// const DATA_CACHE_INTERVAL = 5 * 60_000; // 5 minutes
 
 export const useOfflineSync = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);

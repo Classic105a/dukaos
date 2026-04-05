@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Smartphone, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Smartphone, Loader2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MpesaDialogProps {

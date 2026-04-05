@@ -56,8 +56,8 @@ const ReturnModal = ({ isOpen, onClose, onComplete }: ReturnModalProps) => {
   
   // Manager approval state
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
-  const [pendingApproval, setPendingApproval] = useState(false);
-  const [approverInfo, setApproverInfo] = useState<{ id: string; email: string; role: string } | null>(null);
+  const [_pendingApproval, setPendingApproval] = useState(false);
+  const [_approverInfo, setApproverInfo] = useState<{ id: string; email: string; role: string } | null>(null);
 
   const handleSearch = async () => {
     if (!receiptNumber.trim()) return;

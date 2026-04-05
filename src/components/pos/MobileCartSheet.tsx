@@ -22,7 +22,7 @@ interface MobileCartSheetProps {
 
 const MobileCartSheet = ({
   isOpen, onClose, items, onUpdateQuantity, onRemoveItem, onClearCart,
-  subtotal, tax, total, onCashPayment, onCardPayment, onMpesaPayment,
+  subtotal: _subtotal, tax: _tax, total, onCashPayment, onCardPayment, onMpesaPayment,
 }: MobileCartSheetProps) => {
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>

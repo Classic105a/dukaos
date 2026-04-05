@@ -28,7 +28,7 @@ interface BranchDetails {
   logo_url: string | null;
   opening_hours: string | null;
   receipt_footer_message: string | null;
-  is_headquarters: boolean;
+  is_headquarters: boolean | null;
 }
 
 export const BranchDetailsForm = () => {

@@ -38,9 +38,9 @@ interface ShiftData {
 }
 
 const ZReport = ({ isOpen, onClose, shiftId }: ZReportProps) => {
-  const { currentShift, getShiftSummary } = useShift();
+  const { currentShift } = useShift();
   const { currentBranch } = useBranch();
-  const { user } = useAuth();
+  const _auth = useAuth();
   const printRef = useRef<HTMLDivElement>(null);
 
   const targetShiftId = shiftId || currentShift?.id;

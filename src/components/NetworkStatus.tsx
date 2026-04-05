@@ -1,5 +1,5 @@
 import { useOfflineSync } from '@/hooks/useOfflineSync';
-import { Wifi, WifiOff, RefreshCw, CloudOff } from 'lucide-react';
+import { WifiOff, RefreshCw, CloudOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 

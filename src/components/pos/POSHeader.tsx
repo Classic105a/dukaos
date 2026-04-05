@@ -53,7 +53,7 @@ const POSHeader = ({
   onViewZReport
 }: POSHeaderProps) => {
   const { currentBranch, branches, setCurrentBranch } = useBranch();
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const { isOnline, pendingCount } = useOfflineSync();
   const { currentShift, hasOpenShift } = useShift();
   const navigate = useNavigate();

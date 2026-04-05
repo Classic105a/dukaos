@@ -19,7 +19,6 @@ import {
 import { 
   ShoppingCart, 
   Package, 
-  BarChart3, 
   Users, 
   Building2, 
   Settings, 
@@ -34,8 +33,6 @@ import {
   Shield,
   LayoutDashboard,
   TrendingUp,
-  FileText,
-  Gavel,
   Tag,
   Warehouse,
   PieChart,

@@ -50,7 +50,7 @@ interface AuditLogEntry {
 export const useAuditLog = () => {
   const { user } = useAuth();
   const { currentBranch } = useBranch();
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   const logAction = useMutation({
     mutationFn: async (entry: AuditLogEntry) => {

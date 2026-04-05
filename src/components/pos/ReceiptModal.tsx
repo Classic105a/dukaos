@@ -224,7 +224,7 @@ ${footerMessage}
     }
   };
 
-  const capabilities = getPrinterCapabilities();
+  const _capabilities = getPrinterCapabilities();
   const printerInfo = defaultPrinter 
     ? `${defaultPrinter.name} (${defaultPrinter.connection_type})`
     : 'No printer configured';

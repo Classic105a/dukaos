@@ -14,8 +14,8 @@
  import { supabase } from '@/integrations/supabase/client';
  import { useAuth } from '@/hooks/useAuth';
  import { useToast } from '@/hooks/use-toast';
- import { Calendar, Calculator, CreditCard } from 'lucide-react';
- import { addDays, addWeeks, addMonths, format } from 'date-fns';
+ import { Calendar, Calculator } from 'lucide-react';
+ import { addWeeks, addMonths, format } from 'date-fns';
  
  interface InstallmentPlanDialogProps {
    isOpen: boolean;

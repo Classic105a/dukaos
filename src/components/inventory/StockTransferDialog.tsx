@@ -21,12 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { ArrowRight, Package, Truck, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 interface StockTransferDialogProps {

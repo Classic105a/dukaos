@@ -26,7 +26,7 @@ interface CartProps {
 
 const QUICK_CASH = [50, 100, 200, 500, 1000, 2000, 5000];
 
-const Cart = ({ items, onUpdateQuantity, onRemoveItem, onClearCart, subtotal, tax, total, onCashPayment, onCardPayment, onMpesaPayment }: CartProps) => {
+const Cart = ({ items, onUpdateQuantity, onRemoveItem, onClearCart, subtotal: _subtotal, tax, total, onCashPayment, onCardPayment, onMpesaPayment }: CartProps) => {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">

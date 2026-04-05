@@ -120,7 +120,7 @@ const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
         payments: (payments || []).map(p => ({
           method: p.payment_method.toUpperCase(),
           amount: p.amount,
-          reference: p.mpesa_reference,
+          reference: p.mpesa_reference ?? undefined,
         })),
         footer: {
           message: currentBranch?.receipt_footer_message || 'Thank you for your business!',
