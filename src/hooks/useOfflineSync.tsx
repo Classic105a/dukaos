@@ -218,7 +218,7 @@ export const useOfflineSync = () => {
         p_total_amount: sale.total_amount,
         p_cost_total: 0,
         p_profit_total: 0,
-        p_notes: null,
+        p_notes: undefined,
         p_items: sale.items.map(item => ({
           product_id: item.product_id,
           product_name: item.product_name,
