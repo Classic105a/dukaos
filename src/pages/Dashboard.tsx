@@ -170,10 +170,10 @@ const Dashboard = () => {
           p_payments: payments.map(p => ({
             payment_method: p.method,
             amount: p.amount,
-            mpesa_reference: p.mpesa_reference || null,
-            mpesa_phone: p.mpesa_phone || null,
+            mpesa_reference: p.mpesa_reference || undefined,
+            mpesa_phone: p.mpesa_phone || undefined,
           })),
-          p_offline_id: null,
+          p_offline_id: undefined,
         });
 
         if (error) {

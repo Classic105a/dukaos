@@ -195,7 +195,7 @@ export const ShiftProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ShiftContext.Provider
       value={{
-        currentShift,
+        currentShift: currentShift ?? null,
         isLoading,
         hasOpenShift: !!currentShift,
         openShift: (float) => openShiftMutation.mutateAsync(float),

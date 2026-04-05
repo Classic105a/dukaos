@@ -47,8 +47,8 @@ interface Branch {
   name: string;
   location: string | null;
   phone: string | null;
-  is_headquarters: boolean;
-  is_active: boolean;
+  is_headquarters: boolean | null;
+  is_active: boolean | null;
 }
 
 interface StockTransfer {

@@ -58,7 +58,7 @@ const CustomerStatement = () => {
       const { data, error } = await supabase
         .from('sales')
         .select('id, receipt_number, total_amount, subtotal, tax_amount, discount_amount, created_at, branch_id, branches(name), sale_items(product_name, quantity, unit_price, total_amount, discount_amount, tax_amount)')
-        .eq('customer_id', customerId)
+        .eq('customer_id', customerId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
