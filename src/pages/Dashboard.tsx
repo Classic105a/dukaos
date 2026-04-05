@@ -157,7 +157,7 @@ const Dashboard = () => {
           p_total_amount: saleTotal,
           p_cost_total: 0,
           p_profit_total: 0,
-          p_notes: null,
+          p_notes: undefined,
           p_items: saleItems.map(item => ({
             product_id: item.product_id,
             product_name: item.name,
