@@ -28,7 +28,7 @@
    onRecordPayment: () => void;
  }
  
- const InstallmentPlansPanel = ({ customerId, onRecordPayment }: InstallmentPlansPanelProps) => {
+ const InstallmentPlansPanel = ({ customerId, onRecordPayment: _onRecordPayment }: InstallmentPlansPanelProps) => {
    const { user } = useAuth();
    const { toast } = useToast();
    const queryClient = useQueryClient();
