@@ -153,9 +153,9 @@ const Dashboard = () => {
           p_customer_id: undefined,
           p_shift_id: currentShift?.id || undefined,
           p_subtotal: saleSubtotal,
-          p_tax_amount: saleTax, // hint only; server recalculates
+          p_tax_amount: 0, // ignored by server; tax extracted server-side
           p_discount_amount: 0,
-          p_total_amount: saleTotal, // = subtotal (tax-inclusive)
+          p_total_amount: saleTotal,
           p_cost_total: 0,
           p_profit_total: 0,
           p_notes: undefined,
@@ -166,7 +166,6 @@ const Dashboard = () => {
             unit_price: item.unit_price,
             total_amount: item.total,
             discount_amount: 0,
-            tax_amount: 0,
           })),
           p_payments: payments.map(p => ({
             payment_method: p.method,
@@ -197,7 +196,7 @@ const Dashboard = () => {
             payment_method: p.method, amount: p.amount,
             mpesa_reference: p.mpesa_reference, mpesa_phone: p.mpesa_phone,
           })),
-          subtotal: saleSubtotal, tax_amount: saleTax, discount_amount: 0,
+          subtotal: saleSubtotal, tax_amount: 0, discount_amount: 0, // tax extracted server-side on sync
           total_amount: saleTotal, shift_id: currentShift?.id || null,
           status: 'completed', created_at: new Date().toISOString(),
         });
