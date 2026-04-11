@@ -213,7 +213,7 @@ export const useOfflineSync = () => {
         p_customer_id: sale.customer_id || undefined,
         p_shift_id: sale.shift_id || undefined,
         p_subtotal: sale.subtotal,
-        p_tax_amount: sale.tax_amount,
+        p_tax_amount: 0, // ignored by server; tax extracted server-side
         p_discount_amount: sale.discount_amount,
         p_total_amount: sale.total_amount,
         p_cost_total: 0,
