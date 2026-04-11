@@ -196,7 +196,7 @@ const Dashboard = () => {
             payment_method: p.method, amount: p.amount,
             mpesa_reference: p.mpesa_reference, mpesa_phone: p.mpesa_phone,
           })),
-          subtotal: saleSubtotal, tax_amount: saleTax, discount_amount: 0,
+          subtotal: saleSubtotal, tax_amount: 0, discount_amount: 0, // tax extracted server-side on sync
           total_amount: saleTotal, shift_id: currentShift?.id || null,
           status: 'completed', created_at: new Date().toISOString(),
         });
