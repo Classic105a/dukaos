@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Trash2, Plus, Minus, ShoppingBag, Banknote, Smartphone, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import CashTenderPanel from './CashTenderPanel';
 
 export interface CartItem {
   id: string;
@@ -19,14 +21,14 @@ interface CartProps {
   subtotal: number;
   tax: number;
   total: number;
-  onCashPayment: (amount?: number) => void;
+  onCashPayment: (cashReceived: number) => void;
   onCardPayment: () => void;
   onMpesaPayment: () => void;
 }
 
-const QUICK_CASH = [50, 100, 200, 500, 1000, 2000, 5000];
-
 const Cart = ({ items, onUpdateQuantity, onRemoveItem, onClearCart, subtotal: _subtotal, tax, total, onCashPayment, onCardPayment, onMpesaPayment }: CartProps) => {
+  const [showCashTender, setShowCashTender] = useState(false);
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -78,7 +80,7 @@ const Cart = ({ items, onUpdateQuantity, onRemoveItem, onClearCart, subtotal: _s
         })}
       </div>
 
-      {/* TOTAL — always visible, large */}
+      {/* TOTAL */}
       <div className="border-t border-border pt-2 mt-1">
         {tax > 0 && (
           <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
@@ -92,45 +94,42 @@ const Cart = ({ items, onUpdateQuantity, onRemoveItem, onClearCart, subtotal: _s
         </div>
       </div>
 
-      {/* === INLINE PAYMENT BUTTONS === */}
+      {/* Payment area */}
       <div className="pt-3 space-y-2">
-        {/* Quick cash — one tap to complete */}
-        <div className="flex flex-wrap gap-1">
-          {QUICK_CASH.filter(a => a >= total).slice(0, 4).map(amt => (
+        {showCashTender ? (
+          <CashTenderPanel
+            total={total}
+            onConfirm={(cashReceived) => {
+              setShowCashTender(false);
+              onCashPayment(cashReceived);
+            }}
+            onCancel={() => setShowCashTender(false)}
+          />
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5">
             <button
-              key={amt}
-              onClick={() => onCashPayment(amt)}
-              className="flex-1 min-w-[60px] py-2 rounded-lg bg-success/10 text-success text-xs font-bold hover:bg-success/20 active:scale-95 transition-transform tabular-nums"
+              onClick={() => setShowCashTender(true)}
+              className="flex flex-col items-center gap-1 py-3 rounded-xl bg-success text-white font-bold text-sm active:scale-95 transition-transform"
             >
-              {amt.toLocaleString()}
+              <Banknote className="w-5 h-5" />
+              CASH
             </button>
-          ))}
-        </div>
-
-        {/* 3 main payment buttons */}
-        <div className="grid grid-cols-3 gap-1.5">
-          <button
-            onClick={() => onCashPayment()}
-            className="flex flex-col items-center gap-1 py-3 rounded-xl bg-success text-white font-bold text-sm active:scale-95 transition-transform"
-          >
-            <Banknote className="w-5 h-5" />
-            CASH
-          </button>
-          <button
-            onClick={onMpesaPayment}
-            className="flex flex-col items-center gap-1 py-3 rounded-xl bg-[#4caf50] text-white font-bold text-sm active:scale-95 transition-transform"
-          >
-            <Smartphone className="w-5 h-5" />
-            M-PESA
-          </button>
-          <button
-            onClick={onCardPayment}
-            className="flex flex-col items-center gap-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm active:scale-95 transition-transform"
-          >
-            <CreditCard className="w-5 h-5" />
-            CARD
-          </button>
-        </div>
+            <button
+              onClick={onMpesaPayment}
+              className="flex flex-col items-center gap-1 py-3 rounded-xl bg-[#4caf50] text-white font-bold text-sm active:scale-95 transition-transform"
+            >
+              <Smartphone className="w-5 h-5" />
+              M-PESA
+            </button>
+            <button
+              onClick={onCardPayment}
+              className="flex flex-col items-center gap-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm active:scale-95 transition-transform"
+            >
+              <CreditCard className="w-5 h-5" />
+              CARD
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
