@@ -237,12 +237,11 @@ const Dashboard = () => {
     }
   }, [cartItems, subtotal, tax, total, currentBranch, user, currentShift, saveSaleOffline, clearCheckpoint, hasPrinter, printReceipt]);
 
-  // === INSTANT CASH — one tap, no modal ===
-  const handleCashPayment = useCallback((cashAmount?: number) => {
-    const amt = cashAmount ?? total;
-    if (amt < total) { toast.error('Insufficient amount'); return; }
-    const change = amt - total;
-    completeSale([{ method: 'cash', amount: total }]);
+  // === CASH PAYMENT — sends tendered amount; backend validates & calculates change ===
+  const handleCashPayment = useCallback((cashReceived: number) => {
+    if (cashReceived < total) { toast.error('Insufficient amount'); return; }
+    const change = cashReceived - total;
+    completeSale([{ method: 'cash', amount: cashReceived }]);
     if (change > 0) {
       toast.info(`Change: KES ${change.toLocaleString()}`, { duration: 4000 });
     }
