@@ -301,3 +301,17 @@
     transform: translateX(0);
   }
 }
+
+/* Native barcode scanner overlay */
+body.scanner-active {
+  background: transparent !important;
+}
+body.scanner-active > #root {
+  display: none;
+}
+
+/* Safe area insets for Android notch/gesture bar */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
