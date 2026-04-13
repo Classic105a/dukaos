@@ -273,7 +273,13 @@ export const useOfflineSync = () => {
       if (error) throw error;
 
       const result = data as { sale_id: string; status: string };
+      // Mark synced in both IndexedDB and SQLite
       await markTransactionSynced(sale.id, result.sale_id);
+      if (isSQLiteAvailable()) {
+        await markSQLiteTransactionSynced(sale.id, result.sale_id).catch(e =>
+          console.warn('[OfflineSync] SQLite mark synced failed:', e)
+        );
+      }
       return true;
     } catch (error: any) {
       console.error('[OfflineSync] Failed to sync sale:', sale.id, error);
