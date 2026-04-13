@@ -20,6 +20,14 @@ import {
   type LocalTransaction,
   type SyncQueueItem,
 } from '@/lib/offline-db';
+import {
+  isSQLiteAvailable,
+  saveSaleToSQLite,
+  markSQLiteTransactionSynced,
+  updateSQLiteSyncItem,
+  getSQLiteSyncStats,
+  cleanupSQLiteSyncQueue,
+} from '@/lib/sqlite-db';
 
 const SYNC_INTERVAL = 30_000; // 30 seconds
 // const DATA_CACHE_INTERVAL = 5 * 60_000; // 5 minutes
@@ -159,10 +167,35 @@ export const useOfflineSync = () => {
     }
   }, []);
 
-  // ─── Save sale offline (local-first) ─────────────────────────────
+  // ─── Save sale offline (local-first, SQLite-durable) ──────────────
   const saveSaleOffline = useCallback(async (sale: Omit<LocalTransaction, 'id' | 'is_synced' | 'server_id' | 'synced_at'>) => {
-    const localId = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    let localId: string;
 
+    // 1. Save to SQLite first (crash-safe, atomic) if available
+    if (isSQLiteAvailable()) {
+      try {
+        localId = await saveSaleToSQLite({
+          branch_id: sale.branch_id,
+          cashier_id: sale.cashier_id,
+          receipt_number: sale.receipt_number,
+          customer_id: sale.customer_id,
+          shift_id: sale.shift_id,
+          items: sale.items,
+          payments: sale.payments,
+          subtotal: sale.subtotal,
+          tax_amount: sale.tax_amount,
+          discount_amount: sale.discount_amount,
+          total_amount: sale.total_amount,
+        });
+      } catch (err) {
+        console.error('[OfflineSync] SQLite save failed, falling back to IndexedDB only:', err);
+        localId = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+    } else {
+      localId = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    // 2. Mirror to IndexedDB for UI/sync engine consumption
     const tx: LocalTransaction = {
       ...sale,
       id: localId,
@@ -173,13 +206,13 @@ export const useOfflineSync = () => {
 
     await saveLocalTransaction(tx);
 
-    // Deduct local stock immediately
+    // 3. Deduct local stock immediately (optimistic)
     await deductLocalStock(sale.branch_id, sale.items.map(i => ({
       product_id: i.product_id,
       quantity: i.quantity,
     })));
 
-    // Add to sync queue
+    // 4. Add to IndexedDB sync queue
     await addToSyncQueue({
       entity_type: 'sale',
       entity_id: localId,
@@ -240,7 +273,13 @@ export const useOfflineSync = () => {
       if (error) throw error;
 
       const result = data as { sale_id: string; status: string };
+      // Mark synced in both IndexedDB and SQLite
       await markTransactionSynced(sale.id, result.sale_id);
+      if (isSQLiteAvailable()) {
+        await markSQLiteTransactionSynced(sale.id, result.sale_id).catch(e =>
+          console.warn('[OfflineSync] SQLite mark synced failed:', e)
+        );
+      }
       return true;
     } catch (error: any) {
       console.error('[OfflineSync] Failed to sync sale:', sale.id, error);
