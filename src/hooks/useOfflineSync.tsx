@@ -20,6 +20,14 @@ import {
   type LocalTransaction,
   type SyncQueueItem,
 } from '@/lib/offline-db';
+import {
+  isSQLiteAvailable,
+  saveSaleToSQLite,
+  markSQLiteTransactionSynced,
+  updateSQLiteSyncItem,
+  getSQLiteSyncStats,
+  cleanupSQLiteSyncQueue,
+} from '@/lib/sqlite-db';
 
 const SYNC_INTERVAL = 30_000; // 30 seconds
 // const DATA_CACHE_INTERVAL = 5 * 60_000; // 5 minutes
