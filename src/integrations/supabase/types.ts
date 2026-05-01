@@ -205,6 +205,7 @@ export type Database = {
           business_registration_number: string | null
           city: string | null
           created_at: string
+          default_tax_rate: number
           email: string | null
           id: string
           is_active: boolean | null
@@ -228,6 +229,7 @@ export type Database = {
           business_registration_number?: string | null
           city?: string | null
           created_at?: string
+          default_tax_rate?: number
           email?: string | null
           id?: string
           is_active?: boolean | null
@@ -251,6 +253,7 @@ export type Database = {
           business_registration_number?: string | null
           city?: string | null
           created_at?: string
+          default_tax_rate?: number
           email?: string | null
           id?: string
           is_active?: boolean | null
