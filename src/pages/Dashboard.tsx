@@ -137,7 +137,9 @@ const Dashboard = () => {
     if (!currentBranch?.id || !user?.id) { toast.error('Select a branch'); return; }
 
     completingRef.current = true;
-    const receiptNumber = `RCP-${Date.now().toString(36).toUpperCase()}`;
+    // Online: server generates gapless receipt (BR{code}-YYYYMMDD-0001).
+    // Offline: we still need a temporary receipt for local persistence; server replaces on sync.
+    const tempReceiptNumber = `OFF-${Date.now().toString(36).toUpperCase()}`;
     const saleItems = [...cartItems];
     const saleSubtotal = subtotal;
     const saleTax = tax;
@@ -149,7 +151,7 @@ const Dashboard = () => {
         const { data, error } = await supabase.rpc('complete_sale', {
           p_branch_id: currentBranch.id,
           p_cashier_id: user.id,
-          p_receipt_number: receiptNumber,
+          p_receipt_number: null as any, // server generates gapless receipt
           p_customer_id: undefined,
           p_shift_id: currentShift?.id || undefined,
           p_subtotal: saleSubtotal,
@@ -186,7 +188,7 @@ const Dashboard = () => {
         await saveSaleOffline({
           branch_id: currentBranch.id,
           cashier_id: user.id,
-          receipt_number: receiptNumber,
+          receipt_number: tempReceiptNumber,
           customer_id: null,
           items: saleItems.map(item => ({
             product_id: item.product_id, product_name: item.name,
