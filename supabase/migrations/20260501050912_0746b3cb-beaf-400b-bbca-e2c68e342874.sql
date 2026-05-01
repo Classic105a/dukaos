@@ -1,0 +1,308 @@
+-- 1. Add configurable per-branch tax rate
+ALTER TABLE public.branches
+  ADD COLUMN IF NOT EXISTS default_tax_rate numeric(5,2) NOT NULL DEFAULT 16.00;
+
+-- 2. Rewrite complete_sale: tax extracted from (subtotal - discount), configurable rate
+CREATE OR REPLACE FUNCTION public.complete_sale(
+  p_branch_id uuid,
+  p_cashier_id uuid,
+  p_receipt_number text,
+  p_customer_id uuid DEFAULT NULL,
+  p_shift_id uuid DEFAULT NULL,
+  p_subtotal numeric DEFAULT 0,
+  p_tax_amount numeric DEFAULT 0,
+  p_discount_amount numeric DEFAULT 0,
+  p_total_amount numeric DEFAULT 0,
+  p_cost_total numeric DEFAULT 0,
+  p_profit_total numeric DEFAULT 0,
+  p_notes text DEFAULT NULL,
+  p_items jsonb DEFAULT '[]'::jsonb,
+  p_payments jsonb DEFAULT '[]'::jsonb,
+  p_offline_id text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_sale_id uuid;
+  v_actual_cashier uuid;
+  v_item jsonb;
+  v_payment jsonb;
+  v_calc_subtotal numeric(12,2) := 0;
+  v_calc_cost numeric(12,2) := 0;
+  v_calc_total numeric(12,2) := 0;
+  v_calc_profit numeric(12,2) := 0;
+  v_calc_tax numeric(12,2) := 0;
+  v_discount numeric(12,2);
+  v_item_total numeric(12,2);
+  v_item_tax numeric(12,2);
+  v_item_taxable numeric(12,2);
+  v_item_cost_total numeric(12,2);
+  v_payment_total numeric(12,2) := 0;
+  v_non_cash_total numeric(12,2) := 0;
+  v_cash_total numeric(12,2) := 0;
+  v_change numeric(12,2) := 0;
+  v_server_price numeric(12,2);
+  v_server_cost numeric(12,2);
+  v_product_name text;
+  v_product_track boolean;
+  v_sorted_product_ids uuid[];
+  v_pid uuid;
+  v_requested integer;
+  v_rows_affected integer;
+  v_stock_before integer;
+  v_vat_rate numeric(5,2);
+  v_vat_divisor numeric(12,6);
+  v_discount_ratio numeric(12,6);
+BEGIN
+  -- ======== AUTHENTICATION ========
+  v_actual_cashier := auth.uid();
+  IF v_actual_cashier IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.branch_users
+    WHERE branch_id = p_branch_id AND user_id = v_actual_cashier
+  ) THEN
+    RAISE EXCEPTION 'Cashier not assigned to this branch';
+  END IF;
+
+  IF jsonb_array_length(p_items) = 0 THEN
+    RAISE EXCEPTION 'Cannot create sale with no items';
+  END IF;
+
+  -- ======== CONFIGURABLE TAX RATE (per-branch) ========
+  SELECT COALESCE(default_tax_rate, 16.00) INTO v_vat_rate
+  FROM public.branches WHERE id = p_branch_id;
+  v_vat_rate := COALESCE(v_vat_rate, 16.00);
+  v_vat_divisor := 1 + (v_vat_rate / 100);
+
+  v_discount := COALESCE(p_discount_amount, 0);
+
+  -- ======== SERVER-SIDE PRICING (client values ignored) ========
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    SELECT unit_price, COALESCE(cost_price, 0), name, COALESCE(track_inventory, true)
+    INTO v_server_price, v_server_cost, v_product_name, v_product_track
+    FROM public.products
+    WHERE id = (v_item->>'product_id')::uuid AND is_active = true;
+
+    IF v_product_name IS NULL THEN
+      RAISE EXCEPTION 'Product % not found or inactive', v_item->>'product_id';
+    END IF;
+
+    v_item_total := ROUND((v_item->>'quantity')::integer * v_server_price, 2);
+    v_item_cost_total := ROUND((v_item->>'quantity')::integer * v_server_cost, 2);
+    v_calc_subtotal := v_calc_subtotal + v_item_total;
+    v_calc_cost := v_calc_cost + v_item_cost_total;
+  END LOOP;
+
+  -- Cap discount at subtotal
+  IF v_discount > v_calc_subtotal THEN
+    v_discount := v_calc_subtotal;
+  END IF;
+
+  -- TAX-INCLUSIVE: total = subtotal - discount; tax extracted FROM the discounted total
+  v_calc_total := v_calc_subtotal - v_discount;
+  v_calc_tax := ROUND(v_calc_total - (v_calc_total / v_vat_divisor), 2);
+  v_calc_profit := v_calc_total - v_calc_cost;
+
+  -- Discount allocation ratio for per-line tax (proportional)
+  v_discount_ratio := CASE WHEN v_calc_subtotal > 0
+    THEN (v_calc_total::numeric / v_calc_subtotal::numeric)
+    ELSE 1 END;
+
+  -- ======== PAYMENT VALIDATION (method-aware) ========
+  FOR v_payment IN SELECT * FROM jsonb_array_elements(p_payments)
+  LOOP
+    v_payment_total := v_payment_total + ROUND((v_payment->>'amount')::numeric, 2);
+    IF (v_payment->>'payment_method') = 'cash' THEN
+      v_cash_total := v_cash_total + ROUND((v_payment->>'amount')::numeric, 2);
+    ELSE
+      v_non_cash_total := v_non_cash_total + ROUND((v_payment->>'amount')::numeric, 2);
+    END IF;
+  END LOOP;
+
+  IF v_non_cash_total > 0 AND v_cash_total = 0 THEN
+    IF ABS(v_payment_total - v_calc_total) > 1 THEN
+      RAISE EXCEPTION 'Payment mismatch: paid=% required=% (strict for card/mpesa)', v_payment_total, v_calc_total;
+    END IF;
+  ELSE
+    IF v_payment_total < v_calc_total - 1 THEN
+      RAISE EXCEPTION 'Underpayment: paid=% required=%', v_payment_total, v_calc_total;
+    END IF;
+  END IF;
+
+  v_change := GREATEST(v_payment_total - v_calc_total, 0);
+
+  -- ======== STOCK: LOCK + ATOMIC DEDUCTION ========
+  SELECT array_agg(pid ORDER BY pid) INTO v_sorted_product_ids
+  FROM (
+    SELECT DISTINCT (elem->>'product_id')::uuid AS pid
+    FROM jsonb_array_elements(p_items) AS elem
+  ) sub;
+
+  FOREACH v_pid IN ARRAY v_sorted_product_ids
+  LOOP
+    SELECT COALESCE(track_inventory, true) INTO v_product_track
+    FROM public.products WHERE id = v_pid;
+
+    IF v_product_track THEN
+      SELECT quantity INTO v_stock_before
+      FROM public.current_stock
+      WHERE product_id = v_pid AND branch_id = p_branch_id
+      FOR UPDATE;
+
+      IF v_stock_before IS NULL THEN v_stock_before := 0; END IF;
+
+      SELECT COALESCE(SUM((elem->>'quantity')::integer), 0) INTO v_requested
+      FROM jsonb_array_elements(p_items) AS elem
+      WHERE (elem->>'product_id')::uuid = v_pid;
+
+      UPDATE public.current_stock
+      SET quantity = quantity - v_requested,
+          last_movement_at = now()
+      WHERE product_id = v_pid
+        AND branch_id = p_branch_id
+        AND quantity >= v_requested;
+
+      GET DIAGNOSTICS v_rows_affected = ROW_COUNT;
+
+      IF v_rows_affected = 0 THEN
+        SELECT name INTO v_product_name FROM public.products WHERE id = v_pid;
+        RAISE EXCEPTION 'Insufficient stock for %. Available: %, Requested: %',
+          v_product_name, v_stock_before, v_requested;
+      END IF;
+    END IF;
+  END LOOP;
+
+  -- ======== INSERT SALE ========
+  INSERT INTO public.sales (
+    branch_id, cashier_id, customer_id, receipt_number,
+    subtotal, tax_amount, discount_amount, total_amount,
+    cost_total, profit_total, shift_id, notes, offline_id,
+    payment_status, is_synced
+  ) VALUES (
+    p_branch_id, v_actual_cashier, p_customer_id, p_receipt_number,
+    v_calc_subtotal, v_calc_tax, v_discount, v_calc_total,
+    v_calc_cost, v_calc_profit, p_shift_id, p_notes, p_offline_id,
+    'completed', true
+  )
+  RETURNING id INTO v_sale_id;
+
+  -- ======== INSERT ITEMS (tax extracted from discounted line value) ========
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    SELECT unit_price, COALESCE(cost_price, 0), name
+    INTO v_server_price, v_server_cost, v_product_name
+    FROM public.products WHERE id = (v_item->>'product_id')::uuid;
+
+    v_item_total := ROUND((v_item->>'quantity')::integer * v_server_price, 2);
+    v_item_taxable := ROUND(v_item_total * v_discount_ratio, 2);
+    v_item_tax := ROUND(v_item_taxable - (v_item_taxable / v_vat_divisor), 2);
+
+    INSERT INTO public.sale_items (
+      sale_id, product_id, product_name, quantity,
+      unit_price, discount_amount, tax_amount, total_amount
+    ) VALUES (
+      v_sale_id,
+      (v_item->>'product_id')::uuid,
+      v_product_name,
+      (v_item->>'quantity')::integer,
+      v_server_price,
+      ROUND(v_item_total - v_item_taxable, 2),
+      v_item_tax,
+      v_item_total
+    );
+
+    INSERT INTO public.stock_movements (
+      product_id, branch_id, quantity_change,
+      movement_type, reference_id, created_by, notes
+    ) VALUES (
+      (v_item->>'product_id')::uuid,
+      p_branch_id,
+      -(v_item->>'quantity')::integer,
+      'SALE',
+      v_sale_id,
+      v_actual_cashier,
+      'Sale ' || p_receipt_number
+    );
+  END LOOP;
+
+  -- ======== INSERT PAYMENTS ========
+  FOR v_payment IN SELECT * FROM jsonb_array_elements(p_payments)
+  LOOP
+    INSERT INTO public.payments (
+      sale_id, payment_method, amount,
+      mpesa_reference, mpesa_phone, status
+    ) VALUES (
+      v_sale_id,
+      v_payment->>'payment_method',
+      ROUND((v_payment->>'amount')::numeric, 2),
+      v_payment->>'mpesa_reference',
+      v_payment->>'mpesa_phone',
+      'completed'
+    );
+  END LOOP;
+
+  -- ======== CUSTOMER STATS ========
+  IF p_customer_id IS NOT NULL THEN
+    UPDATE public.customers
+    SET total_purchases = COALESCE(total_purchases, 0) + v_calc_total,
+        visit_count = COALESCE(visit_count, 0) + 1,
+        updated_at = now()
+    WHERE id = p_customer_id;
+  END IF;
+
+  -- ======== AUDIT LOG ========
+  INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, branch_id, new_values)
+  VALUES (
+    v_actual_cashier,
+    'SALE_COMPLETED',
+    'sale',
+    v_sale_id,
+    p_branch_id,
+    jsonb_build_object(
+      'receipt_number', p_receipt_number,
+      'subtotal', v_calc_subtotal,
+      'discount', v_discount,
+      'taxable_base', v_calc_total,
+      'tax_extracted', v_calc_tax,
+      'total', v_calc_total,
+      'cost', v_calc_cost,
+      'profit', v_calc_profit,
+      'items_count', jsonb_array_length(p_items),
+      'payment_total', v_payment_total,
+      'cash_tendered', v_cash_total,
+      'non_cash_total', v_non_cash_total,
+      'change', v_change,
+      'vat_rate', v_vat_rate,
+      'pricing_model', 'tax_inclusive_post_discount',
+      'offline_id', p_offline_id
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'sale_id', v_sale_id,
+    'status', 'completed',
+    'receipt_number', p_receipt_number,
+    'server_total', v_calc_total,
+    'tax_extracted', v_calc_tax,
+    'vat_rate', v_vat_rate,
+    'change', v_change
+  );
+
+EXCEPTION
+  WHEN unique_violation THEN
+    IF p_offline_id IS NOT NULL THEN
+      SELECT id INTO v_sale_id FROM public.sales WHERE offline_id = p_offline_id;
+      IF v_sale_id IS NOT NULL THEN
+        RETURN jsonb_build_object('sale_id', v_sale_id, 'status', 'already_synced');
+      END IF;
+    END IF;
+    RAISE;
+END;
+$function$;
