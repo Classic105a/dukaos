@@ -138,8 +138,9 @@ const Dashboard = () => {
 
     completingRef.current = true;
     // Online: server generates gapless receipt (BR{code}-YYYYMMDD-0001).
-    // Offline: we still need a temporary receipt for local persistence; server replaces on sync.
+    // Offline: temporary receipt for local persistence; server replaces on sync.
     const tempReceiptNumber = `OFF-${Date.now().toString(36).toUpperCase()}`;
+    let finalReceiptNumber = tempReceiptNumber;
     const saleItems = [...cartItems];
     const saleSubtotal = subtotal;
     const saleTax = tax;
@@ -183,6 +184,10 @@ const Dashboard = () => {
           toast.error(error.message || 'Sale failed', { duration: 3000 });
           return;
         }
+
+        // Use the gapless receipt number returned by the server
+        const serverReceipt = (data as any)?.receipt_number;
+        if (serverReceipt) finalReceiptNumber = serverReceipt;
       } else {
         // === OFFLINE: Queue for later sync ===
         await saveSaleOffline({
@@ -206,7 +211,7 @@ const Dashboard = () => {
 
       lastSaleItemsRef.current = saleItems;
       setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: 0, total: saleTotal });
-      setLastSale({ receiptNumber, payments });
+      setLastSale({ receiptNumber: finalReceiptNumber, payments });
       setShowMobileCart(false);
       setShowMpesa(false);
       setShowReceipt(true);
@@ -224,7 +229,7 @@ const Dashboard = () => {
             mpesaPaybill: currentBranch.mpesa_paybill_number || undefined,
             kraPin: currentBranch.kra_pin || undefined,
           },
-          receiptNumber, date: new Date(),
+          receiptNumber: finalReceiptNumber, date: new Date(),
           items: saleItems.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, totalPrice: i.total })),
           subtotal: saleSubtotal, taxAmount: saleTax, discountAmount: 0, totalAmount: saleTotal,
           payments: payments.map(p => ({ method: p.method.toUpperCase(), amount: p.amount, reference: p.mpesa_reference })),
