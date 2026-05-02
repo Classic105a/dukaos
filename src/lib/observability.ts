@@ -38,7 +38,7 @@ export async function logError(input: LogErrorInput): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return; // RLS would reject anyway
 
-    await supabase.from('error_logs').insert({
+    await supabase.from('error_logs').insert([{
       user_id: user.id,
       business_id: input.businessId ?? null,
       branch_id: input.branchId ?? null,
@@ -47,9 +47,9 @@ export async function logError(input: LogErrorInput): Promise<void> {
       message: input.message.slice(0, 2000),
       stack: input.stack?.slice(0, 8000) ?? null,
       route: window.location.pathname,
-      context: input.context ?? null,
+      context: (input.context ?? null) as any,
       user_agent: navigator.userAgent,
-    });
+    }]);
   } catch {
     // Swallow — never let observability crash the app
   }
@@ -60,15 +60,15 @@ export async function logMetric(input: LogMetricInput): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from('perf_metrics').insert({
+    await supabase.from('perf_metrics').insert([{
       user_id: user.id,
       business_id: input.businessId ?? null,
       branch_id: input.branchId ?? null,
       metric: input.metric,
       value_ms: Math.round(input.valueMs * 100) / 100,
       route: window.location.pathname,
-      context: input.context ?? null,
-    });
+      context: (input.context ?? null) as any,
+    }]);
   } catch {
     // Swallow
   }
