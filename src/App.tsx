@@ -33,6 +33,7 @@ import Promotions from "./pages/Promotions";
 import SmartInventory from "./pages/SmartInventory";
 import More from "./pages/More";
 import Install from "./pages/Install";
+import Observability from "./pages/Observability";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -111,6 +112,7 @@ const App = () => (
                 <Route path="/smart-inventory" element={<ProtectedRoute><SmartInventory /></ProtectedRoute>} />
                 <Route path="/more" element={<ProtectedRoute><More /></ProtectedRoute>} />
                 <Route path="/install" element={<Install />} />
+                <Route path="/observability" element={<ProtectedRoute><Observability /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ErrorBoundary>

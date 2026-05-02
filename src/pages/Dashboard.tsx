@@ -24,6 +24,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { playBeep } from '@/lib/audio';
+import { logMetric, logError } from '@/lib/observability';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
@@ -149,6 +150,7 @@ const Dashboard = () => {
     try {
       if (navigator.onLine) {
         // === ONLINE: Use atomic complete_sale RPC (concurrency-safe) ===
+        const _saleStart = performance.now();
         const { data, error } = await supabase.rpc('complete_sale', {
           p_branch_id: currentBranch.id,
           p_cashier_id: user.id,
@@ -178,8 +180,21 @@ const Dashboard = () => {
           })),
           p_offline_id: undefined,
         });
+        void logMetric({
+          metric: error ? 'sale_latency_ms_failed' : 'sale_latency_ms',
+          valueMs: performance.now() - _saleStart,
+          branchId: currentBranch.id,
+          context: { items: saleItems.length, total: saleTotal },
+        });
 
         if (error) {
+          void logError({
+            message: `complete_sale failed: ${error.message}`,
+            source: 'rpc',
+            severity: 'error',
+            branchId: currentBranch.id,
+            context: { code: (error as any).code, total: saleTotal, items: saleItems.length },
+          });
           // If server rejects (e.g. insufficient stock), show error and abort
           toast.error(error.message || 'Sale failed', { duration: 3000 });
           return;

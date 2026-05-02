@@ -4,9 +4,13 @@ import "./index.css";
 import { initNativePlatform } from "./lib/native-platform";
 import { isSQLiteAvailable, initSQLiteDB } from "./lib/sqlite-db";
 import { reconcileStores } from "./lib/sqlite-recovery";
+import { installGlobalErrorHandlers } from "./lib/observability";
 
 // Initialize native platform features (no-op on web)
 initNativePlatform();
+
+// Capture unhandled errors and promise rejections
+installGlobalErrorHandlers();
 
 // Initialize SQLite and reconcile stores (no-op on web)
 if (isSQLiteAvailable()) {
