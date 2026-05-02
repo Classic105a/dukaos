@@ -716,6 +716,51 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          branch_id: string | null
+          business_id: string | null
+          context: Json | null
+          created_at: string
+          id: string
+          message: string
+          route: string | null
+          severity: string
+          source: string
+          stack: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          business_id?: string | null
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message: string
+          route?: string | null
+          severity?: string
+          source: string
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          business_id?: string | null
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message?: string
+          route?: string | null
+          severity?: string
+          source?: string
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       goods_received_notes: {
         Row: {
           branch_id: string
@@ -1151,6 +1196,42 @@ export type Database = {
           },
         ]
       }
+      perf_metrics: {
+        Row: {
+          branch_id: string | null
+          business_id: string | null
+          context: Json | null
+          created_at: string
+          id: string
+          metric: string
+          route: string | null
+          user_id: string | null
+          value_ms: number
+        }
+        Insert: {
+          branch_id?: string | null
+          business_id?: string | null
+          context?: Json | null
+          created_at?: string
+          id?: string
+          metric: string
+          route?: string | null
+          user_id?: string | null
+          value_ms: number
+        }
+        Update: {
+          branch_id?: string | null
+          business_id?: string | null
+          context?: Json | null
+          created_at?: string
+          id?: string
+          metric?: string
+          route?: string | null
+          user_id?: string | null
+          value_ms?: number
+        }
+        Relationships: []
+      }
       printer_configurations: {
         Row: {
           bluetooth_device_id: string | null
@@ -1339,6 +1420,48 @@ export type Database = {
           phone?: string | null
           pin_hash?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      promo_redemptions: {
+        Row: {
+          branch_id: string | null
+          business_id: string | null
+          cart_subtotal: number
+          cashier_id: string
+          created_at: string
+          customer_id: string | null
+          discount_applied: number
+          id: string
+          promo_snapshot: Json | null
+          promotion_id: string
+          sale_id: string
+        }
+        Insert: {
+          branch_id?: string | null
+          business_id?: string | null
+          cart_subtotal: number
+          cashier_id: string
+          created_at?: string
+          customer_id?: string | null
+          discount_applied: number
+          id?: string
+          promo_snapshot?: Json | null
+          promotion_id: string
+          sale_id: string
+        }
+        Update: {
+          branch_id?: string | null
+          business_id?: string | null
+          cart_subtotal?: number
+          cashier_id?: string
+          created_at?: string
+          customer_id?: string | null
+          discount_applied?: number
+          id?: string
+          promo_snapshot?: Json | null
+          promotion_id?: string
+          sale_id?: string
         }
         Relationships: []
       }
@@ -2084,6 +2207,29 @@ export type Database = {
       }
     }
     Views: {
+      daily_sales_summary: {
+        Row: {
+          avg_order_value: number | null
+          branch_id: string | null
+          business_id: string | null
+          cost: number | null
+          discount: number | null
+          profit: number | null
+          revenue: number | null
+          sale_date: string | null
+          tax: number | null
+          transaction_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pg_all_foreign_keys: {
         Row: {
           fk_columns: unknown[] | null
@@ -2176,26 +2322,48 @@ export type Database = {
             }
             Returns: string
           }
-      complete_sale: {
-        Args: {
-          p_branch_id: string
-          p_cashier_id: string
-          p_cost_total?: number
-          p_customer_id?: string
-          p_discount_amount?: number
-          p_items?: Json
-          p_notes?: string
-          p_offline_id?: string
-          p_payments?: Json
-          p_profit_total?: number
-          p_receipt_number: string
-          p_shift_id?: string
-          p_subtotal?: number
-          p_tax_amount?: number
-          p_total_amount?: number
-        }
-        Returns: Json
-      }
+      complete_sale:
+        | {
+            Args: {
+              p_branch_id: string
+              p_cashier_id: string
+              p_cost_total?: number
+              p_customer_id?: string
+              p_discount_amount?: number
+              p_items?: Json
+              p_notes?: string
+              p_offline_id?: string
+              p_payments?: Json
+              p_profit_total?: number
+              p_receipt_number: string
+              p_shift_id?: string
+              p_subtotal?: number
+              p_tax_amount?: number
+              p_total_amount?: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_branch_id: string
+              p_cashier_id: string
+              p_cost_total?: number
+              p_customer_id?: string
+              p_discount_amount?: number
+              p_items?: Json
+              p_notes?: string
+              p_offline_id?: string
+              p_payments?: Json
+              p_profit_total?: number
+              p_promotion_id?: string
+              p_receipt_number: string
+              p_shift_id?: string
+              p_subtotal?: number
+              p_tax_amount?: number
+              p_total_amount?: number
+            }
+            Returns: Json
+          }
       diag:
         | {
             Args: { msg: unknown }
@@ -2218,6 +2386,32 @@ export type Database = {
         | { Args: { "": string }; Returns: string }
       findfuncs: { Args: { "": string }; Returns: string[] }
       finish: { Args: { exception_on_failure?: boolean }; Returns: string[] }
+      get_daily_sales_summary: {
+        Args: {
+          p_branch_id?: string
+          p_business_id: string
+          p_end_date?: string
+          p_start_date?: string
+        }
+        Returns: {
+          avg_order_value: number | null
+          branch_id: string | null
+          business_id: string | null
+          cost: number | null
+          discount: number | null
+          profit: number | null
+          revenue: number | null
+          sale_date: string | null
+          tax: number | null
+          transaction_count: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "daily_sales_summary"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_dashboard_stats: {
         Args: { p_branch_id: string; p_end_date: string; p_start_date: string }
         Returns: Json
@@ -2262,6 +2456,7 @@ export type Database = {
       pg_version: { Args: never; Returns: string }
       pg_version_num: { Args: never; Returns: number }
       pgtap_version: { Args: never; Returns: number }
+      refresh_daily_sales_summary: { Args: never; Returns: undefined }
       run_complete_sale_tests: { Args: never; Returns: string[] }
       runtests:
         | { Args: never; Returns: string[] }
