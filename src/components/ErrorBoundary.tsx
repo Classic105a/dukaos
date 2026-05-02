@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Home, Copy, CheckCircle2 } from 'lucide-react';
+import { logError } from '@/lib/observability';
 
 interface Props {
   children: ReactNode;
@@ -27,6 +28,15 @@ class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
     this.setState({ errorInfo });
+
+    // Send to server-side error_logs (fire-and-forget)
+    void logError({
+      message: error.message,
+      stack: error.stack,
+      severity: 'fatal',
+      source: 'client',
+      context: { componentStack: errorInfo.componentStack?.slice(0, 4000) },
+    });
 
     // Log to localStorage for debugging
     try {
