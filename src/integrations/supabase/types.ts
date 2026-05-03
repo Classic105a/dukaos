@@ -2370,48 +2370,27 @@ export type Database = {
             }
             Returns: string
           }
-      complete_sale:
-        | {
-            Args: {
-              p_branch_id: string
-              p_cashier_id: string
-              p_cost_total?: number
-              p_customer_id?: string
-              p_discount_amount?: number
-              p_items?: Json
-              p_notes?: string
-              p_offline_id?: string
-              p_payments?: Json
-              p_profit_total?: number
-              p_receipt_number: string
-              p_shift_id?: string
-              p_subtotal?: number
-              p_tax_amount?: number
-              p_total_amount?: number
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_branch_id: string
-              p_cashier_id: string
-              p_cost_total?: number
-              p_customer_id?: string
-              p_discount_amount?: number
-              p_items?: Json
-              p_notes?: string
-              p_offline_id?: string
-              p_payments?: Json
-              p_profit_total?: number
-              p_promotion_id?: string
-              p_receipt_number: string
-              p_shift_id?: string
-              p_subtotal?: number
-              p_tax_amount?: number
-              p_total_amount?: number
-            }
-            Returns: Json
-          }
+      complete_sale: {
+        Args: {
+          p_branch_id: string
+          p_cashier_id: string
+          p_cost_total?: number
+          p_customer_id?: string
+          p_discount_amount?: number
+          p_items?: Json
+          p_notes?: string
+          p_offline_id?: string
+          p_payments?: Json
+          p_profit_total?: number
+          p_promotion_id?: string
+          p_receipt_number: string
+          p_shift_id?: string
+          p_subtotal?: number
+          p_tax_amount?: number
+          p_total_amount?: number
+        }
+        Returns: Json
+      }
       diag:
         | {
             Args: { msg: unknown }
