@@ -6,9 +6,11 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Activity, AlertTriangle, RefreshCw, Gauge } from 'lucide-react';
+import { Activity, AlertTriangle, RefreshCw, Gauge, Database, Download } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useBusiness } from '@/hooks/useBusiness';
+import { toast } from 'sonner';
 
 const SEVERITY_COLOR: Record<string, string> = {
   fatal: 'bg-destructive text-destructive-foreground',
@@ -19,7 +21,9 @@ const SEVERITY_COLOR: Record<string, string> = {
 };
 
 const Observability = () => {
-  const [tab, setTab] = useState<'errors' | 'metrics'>('errors');
+  const [tab, setTab] = useState<'errors' | 'metrics' | 'backups'>('errors');
+  const { currentBusiness } = useBusiness();
+  const [backingUp, setBackingUp] = useState(false);
 
   const errorsQuery = useQuery({
     queryKey: ['observability', 'errors'],
@@ -48,6 +52,57 @@ const Observability = () => {
     },
     refetchInterval: 30_000,
   });
+
+  const backupsQuery = useQuery({
+    queryKey: ['observability', 'backups', currentBusiness?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('backup_runs')
+        .select('*')
+        .order('started_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data ?? [];
+    },
+    refetchInterval: 30_000,
+  });
+
+  const triggerBackup = async () => {
+    if (!currentBusiness?.id) {
+      toast.error('No business selected');
+      return;
+    }
+    setBackingUp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('dr-backup', {
+        body: { mode: 'on_demand', business_id: currentBusiness.id },
+      });
+      if (error) throw error;
+      const url = (data as any)?.download_url;
+      if (url) {
+        toast.success('Backup ready — downloading…');
+        window.open(url, '_blank');
+      } else {
+        toast.success('Backup created');
+      }
+      void backupsQuery.refetch();
+    } catch (e: any) {
+      toast.error(`Backup failed: ${e?.message ?? 'unknown'}`);
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  const downloadBackup = async (filePath: string) => {
+    const { data, error } = await supabase.storage
+      .from('dr-backups')
+      .createSignedUrl(filePath, 3600);
+    if (error || !data?.signedUrl) {
+      toast.error('Could not generate download link');
+      return;
+    }
+    window.open(data.signedUrl, '_blank');
+  };
 
   // Aggregate metrics: p50 / p95 / count per metric name (last 500 samples)
   const metricStats = (() => {
@@ -116,10 +171,11 @@ const Observability = () => {
           </Card>
         </div>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'errors' | 'metrics')}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'errors' | 'metrics' | 'backups')}>
           <TabsList>
             <TabsTrigger value="errors">Errors</TabsTrigger>
             <TabsTrigger value="metrics">Performance</TabsTrigger>
+            <TabsTrigger value="backups">Backups</TabsTrigger>
           </TabsList>
 
           <TabsContent value="errors" className="space-y-2 mt-4">
@@ -195,6 +251,87 @@ const Observability = () => {
                         <td className="p-3 text-right tabular-nums">{m.p50.toFixed(1)} ms</td>
                         <td className="p-3 text-right tabular-nums">{m.p95.toFixed(1)} ms</td>
                         <td className="p-3 text-right tabular-nums">{m.avg.toFixed(1)} ms</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="backups" className="mt-4 space-y-3">
+            <Card className="p-4 flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div className="font-semibold flex items-center gap-2">
+                  <Database className="w-4 h-4" /> Disaster Recovery
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Automatic daily backups at 02:30 UTC · 30-day retention · stored in private bucket
+                </p>
+              </div>
+              <Button onClick={triggerBackup} disabled={backingUp || !currentBusiness}>
+                <Download className="w-4 h-4 mr-2" />
+                {backingUp ? 'Backing up…' : 'Backup now'}
+              </Button>
+            </Card>
+
+            {backupsQuery.isLoading ? (
+              <div className="text-sm text-muted-foreground p-8 text-center">Loading…</div>
+            ) : (backupsQuery.data?.length ?? 0) === 0 ? (
+              <div className="text-sm text-muted-foreground p-8 text-center">No backups yet</div>
+            ) : (
+              <Card className="overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="text-left p-3">Started</th>
+                      <th className="text-left p-3">Kind</th>
+                      <th className="text-left p-3">Status</th>
+                      <th className="text-right p-3">Tables</th>
+                      <th className="text-right p-3">Rows</th>
+                      <th className="text-right p-3">Size</th>
+                      <th className="text-right p-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {backupsQuery.data!.map((b: any) => (
+                      <tr key={b.id} className="border-t">
+                        <td className="p-3">
+                          {formatDistanceToNow(new Date(b.started_at), { addSuffix: true })}
+                        </td>
+                        <td className="p-3 capitalize">{b.kind?.replace('_', ' ')}</td>
+                        <td className="p-3">
+                          <Badge
+                            className={cn(
+                              'text-[10px] uppercase',
+                              b.status === 'success'
+                                ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                                : b.status === 'failed'
+                                ? 'bg-destructive text-destructive-foreground'
+                                : 'bg-muted text-muted-foreground'
+                            )}
+                          >
+                            {b.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-right tabular-nums">{b.tables_count ?? '—'}</td>
+                        <td className="p-3 text-right tabular-nums">
+                          {b.rows_count?.toLocaleString() ?? '—'}
+                        </td>
+                        <td className="p-3 text-right tabular-nums">
+                          {b.size_bytes ? `${(b.size_bytes / 1024).toFixed(1)} KB` : '—'}
+                        </td>
+                        <td className="p-3 text-right">
+                          {b.file_path && b.status === 'success' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => downloadBackup(b.file_path)}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
