@@ -82,6 +82,8 @@ export type Database = {
           ip_address: string | null
           new_values: Json | null
           old_values: Json | null
+          prev_hash: string | null
+          row_hash: string | null
           user_agent: string | null
           user_id: string
         }
@@ -96,6 +98,8 @@ export type Database = {
           ip_address?: string | null
           new_values?: Json | null
           old_values?: Json | null
+          prev_hash?: string | null
+          row_hash?: string | null
           user_agent?: string | null
           user_id: string
         }
@@ -110,6 +114,8 @@ export type Database = {
           ip_address?: string | null
           new_values?: Json | null
           old_values?: Json | null
+          prev_hash?: string | null
+          row_hash?: string | null
           user_agent?: string | null
           user_id?: string
         }
@@ -1087,6 +1093,66 @@ export type Database = {
           },
         ]
       }
+      mpesa_callbacks: {
+        Row: {
+          amount: number | null
+          branch_id: string | null
+          business_id: string | null
+          checkout_request_id: string | null
+          created_at: string
+          id: string
+          merchant_request_id: string | null
+          mpesa_receipt_number: string | null
+          payment_id: string | null
+          phone_number: string | null
+          raw_payload: Json
+          reconciled: boolean
+          reconciled_at: string | null
+          result_code: number | null
+          result_desc: string | null
+          sale_id: string | null
+          transaction_date: string | null
+        }
+        Insert: {
+          amount?: number | null
+          branch_id?: string | null
+          business_id?: string | null
+          checkout_request_id?: string | null
+          created_at?: string
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt_number?: string | null
+          payment_id?: string | null
+          phone_number?: string | null
+          raw_payload: Json
+          reconciled?: boolean
+          reconciled_at?: string | null
+          result_code?: number | null
+          result_desc?: string | null
+          sale_id?: string | null
+          transaction_date?: string | null
+        }
+        Update: {
+          amount?: number | null
+          branch_id?: string | null
+          business_id?: string | null
+          checkout_request_id?: string | null
+          created_at?: string
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt_number?: string | null
+          payment_id?: string | null
+          phone_number?: string | null
+          raw_payload?: Json
+          reconciled?: boolean
+          reconciled_at?: string | null
+          result_code?: number | null
+          result_desc?: string | null
+          sale_id?: string | null
+          transaction_date?: string | null
+        }
+        Relationships: []
+      }
       parties: {
         Row: {
           address: string | null
@@ -1356,6 +1422,7 @@ export type Database = {
       }
       products: {
         Row: {
+          allow_negative_stock: boolean
           barcode: string | null
           branch_id: string | null
           business_id: string | null
@@ -1377,6 +1444,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_negative_stock?: boolean
           barcode?: string | null
           branch_id?: string | null
           business_id?: string | null
@@ -1398,6 +1466,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_negative_stock?: boolean
           barcode?: string | null
           branch_id?: string | null
           business_id?: string | null
@@ -2232,6 +2301,54 @@ export type Database = {
           },
         ]
       }
+      sync_conflicts: {
+        Row: {
+          branch_id: string | null
+          business_id: string | null
+          cashier_id: string
+          conflict_type: string
+          created_at: string
+          error_message: string | null
+          id: string
+          offline_id: string
+          payload: Json
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          branch_id?: string | null
+          business_id?: string | null
+          cashier_id: string
+          conflict_type: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          offline_id: string
+          payload: Json
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          branch_id?: string | null
+          business_id?: string | null
+          cashier_id?: string
+          conflict_type?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          offline_id?: string
+          payload?: Json
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2501,6 +2618,15 @@ export type Database = {
       todo_start:
         | { Args: never; Returns: boolean[] }
         | { Args: { "": string }; Returns: boolean[] }
+      verify_audit_chain: {
+        Args: { p_limit?: number }
+        Returns: {
+          actual_prev: string
+          broken_at_created_at: string
+          broken_at_id: string
+          expected_prev: string
+        }[]
+      }
       verify_manager_credentials: {
         Args: { p_user_id: string }
         Returns: {
