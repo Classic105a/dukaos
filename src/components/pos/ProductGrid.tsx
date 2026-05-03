@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useOfflineDB, type OfflineProduct } from '@/hooks/useOfflineDB';
 import { Input } from '@/components/ui/input';
 import { Search, Package, ScanLine, WifiOff } from 'lucide-react';
@@ -76,12 +77,27 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
     }
   }, [products, onProductSelect]);
 
-  // Fast filter — runs synchronously, no debounce needed for <1000 items
-  const query = searchQuery.toLowerCase();
-  const filteredProducts = products.filter(product => {
-    if (selectedCategory && product.category_id !== selectedCategory) return false;
-    if (!query) return true;
-    return product.name.toLowerCase().includes(query) || (product.barcode && product.barcode.includes(searchQuery));
+  // Filter — memoized so virtualization stays stable across renders
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return products.filter(product => {
+      if (selectedCategory && product.category_id !== selectedCategory) return false;
+      if (!q) return true;
+      return product.name.toLowerCase().includes(q) || (product.barcode && product.barcode.includes(searchQuery));
+    });
+  }, [products, selectedCategory, searchQuery]);
+
+  // Virtualization for large catalogs (>300 items). 3 cols on mobile.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const COLS = 3;
+  const ROW_HEIGHT = 132; // ~card height incl. gap
+  const useVirtual = filteredProducts.length > 300;
+  const rowCount = Math.ceil(filteredProducts.length / COLS);
+  const rowVirtualizer = useVirtualizer({
+    count: useVirtual ? rowCount : 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 4,
   });
 
   return (
@@ -137,7 +153,7 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto -mx-2 px-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto -mx-2 px-2">
         {loading ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5">
             {Array.from({ length: 12 }, (_, i) => <div key={i} className="bg-secondary/40 rounded-lg aspect-square animate-pulse" />)}
@@ -146,6 +162,22 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
           <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
             <Package className="w-8 h-8 opacity-15 mb-1" />
             <p className="text-xs">No products found</p>
+          </div>
+        ) : useVirtual ? (
+          <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }} className="pb-32 lg:pb-2">
+            {rowVirtualizer.getVirtualItems().map(vRow => {
+              const startIdx = vRow.index * COLS;
+              const rowItems = filteredProducts.slice(startIdx, startIdx + COLS);
+              return (
+                <div
+                  key={vRow.key}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${vRow.start}px)`, height: ROW_HEIGHT }}
+                  className="grid grid-cols-3 gap-1.5 px-0"
+                >
+                  {rowItems.map(p => <ProductCard key={p.id} product={p} onSelect={onProductSelect} />)}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 pb-32 lg:pb-2">

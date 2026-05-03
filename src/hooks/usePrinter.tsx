@@ -18,6 +18,8 @@ import {
   type USBPrinter,
 } from '@/lib/escpos';
 import { toast } from 'sonner';
+import { isNativeApp } from '@/lib/escpos';
+import { isNativeBluetoothPrintAvailable, printNativeNetwork } from '@/lib/native-printing';
 
 interface PrinterConfiguration {
   id: string;
@@ -183,6 +185,21 @@ export const usePrinter = () => {
         case 'ethernet': {
           if (!defaultPrinter.ip_address) {
             throw new Error('Printer IP address not configured');
+          }
+          // On native (Android/iOS), prefer the device's own TCP socket so we don't
+          // round-trip through an edge function that can't reach a LAN-only printer.
+          if (isNativeApp()) {
+            try {
+              const r = await printNativeNetwork(
+                defaultPrinter.ip_address,
+                defaultPrinter.port || 9100,
+                receiptBytes
+              );
+              if (r.success) { success = true; break; }
+              console.warn('[Printer] native TCP unavailable, falling back to edge function:', r.error);
+            } catch (e) {
+              console.warn('[Printer] native TCP failed, falling back to edge function:', e);
+            }
           }
           success = await printViaNetwork(
             defaultPrinter.ip_address,
