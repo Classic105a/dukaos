@@ -115,6 +115,54 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_runs: {
+        Row: {
+          business_id: string | null
+          created_at: string
+          error: string | null
+          file_path: string | null
+          finished_at: string | null
+          id: string
+          kind: string
+          rows_count: number | null
+          size_bytes: number | null
+          started_at: string
+          status: string
+          tables_count: number | null
+          triggered_by: string | null
+        }
+        Insert: {
+          business_id?: string | null
+          created_at?: string
+          error?: string | null
+          file_path?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          rows_count?: number | null
+          size_bytes?: number | null
+          started_at?: string
+          status?: string
+          tables_count?: number | null
+          triggered_by?: string | null
+        }
+        Update: {
+          business_id?: string | null
+          created_at?: string
+          error?: string | null
+          file_path?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          rows_count?: number | null
+          size_bytes?: number | null
+          started_at?: string
+          status?: string
+          tables_count?: number | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       branch_inventory: {
         Row: {
           batch_number: string | null
