@@ -18,8 +18,7 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ["favicon.ico", "robots.txt"],
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}"],
-        navigateFallbackDenylist: [/^\/~oauth/, /^\/auth/, /^\/auth\/callback/],
-        navigateFallback: null,
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/auth\/callback/, /^\/auth$/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
