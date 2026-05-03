@@ -315,11 +315,36 @@ export const useOfflineSync = () => {
           }
         } catch (error: any) {
           const newRetry = item.retry_count + 1;
+          const willGiveUp = newRetry >= item.max_retries;
           await updateSyncQueueItem(item.id!, {
-            status: newRetry >= item.max_retries ? 'failed' : 'pending',
+            status: willGiveUp ? 'failed' : 'pending',
             retry_count: newRetry,
             error_message: error.message || 'Unknown error',
           });
+          // Persist a conflict record so a manager can resolve it.
+          if (willGiveUp && item.entity_type === 'sale') {
+            try {
+              const sale = item.payload as LocalTransaction;
+              const msg = String(error?.message || '');
+              const conflictType = /insufficient stock|negative|stock/i.test(msg)
+                ? 'oversell'
+                : /duplicate|unique|offline_id/i.test(msg)
+                ? 'duplicate'
+                : /violat|invalid|check_violation|promo/i.test(msg)
+                ? 'validation'
+                : 'other';
+              await supabase.from('sync_conflicts').insert({
+                cashier_id: sale.cashier_id,
+                branch_id: sale.branch_id,
+                offline_id: sale.id,
+                conflict_type: conflictType,
+                error_message: msg.slice(0, 500),
+                payload: sale as any,
+              });
+            } catch (e) {
+              console.warn('[OfflineSync] failed to log sync_conflict', e);
+            }
+          }
           failedCount++;
         }
       }
