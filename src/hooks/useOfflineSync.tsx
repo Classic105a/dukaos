@@ -30,7 +30,8 @@ import {
 } from '@/lib/sqlite-db';
 
 const SYNC_INTERVAL = 30_000; // 30 seconds
-// const DATA_CACHE_INTERVAL = 5 * 60_000; // 5 minutes
+const PENDING_POLL_INTERVAL = 30_000; // 30s — was 5s; reduces idle IndexedDB load
+const DELTA_SYNC_KEY = (branchId: string) => `dukaos_delta_${branchId}`;
 
 export const useOfflineSync = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -78,7 +79,7 @@ export const useOfflineSync = () => {
 
   useEffect(() => {
     refreshPendingCount();
-    const interval = setInterval(refreshPendingCount, 5000);
+    const interval = setInterval(refreshPendingCount, PENDING_POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [refreshPendingCount]);
 
@@ -87,12 +88,20 @@ export const useOfflineSync = () => {
     if (!navigator.onLine) return;
 
     try {
-      // Fetch and cache products
-      const { data: productsData } = await supabase
+      // ─── Delta sync: only fetch rows updated since last successful sync ───
+      const lastSyncIso = localStorage.getItem(DELTA_SYNC_KEY(branchId));
+      const sinceIso = lastSyncIso || '1970-01-01T00:00:00Z';
+      const nowIso = new Date().toISOString();
+
+      let productQuery = supabase
         .from('products')
-        .select('id, name, barcode, unit_price, cost_price, image_url, category_id, branch_id, is_shared_product, is_active, tax_rate, sku, unit_of_measure, track_inventory, low_stock_threshold, categories(name, color)')
+        .select('id, name, barcode, unit_price, cost_price, image_url, category_id, branch_id, is_shared_product, is_active, tax_rate, sku, unit_of_measure, track_inventory, low_stock_threshold, updated_at, categories(name, color)')
         .eq('is_active', true)
-        .or(`branch_id.eq.${branchId},is_shared_product.eq.true`);
+        .or(`branch_id.eq.${branchId},is_shared_product.eq.true`)
+        .gt('updated_at', sinceIso)
+        .limit(1000);
+
+      const { data: productsData } = await productQuery;
 
       if (productsData) {
         const localProducts: LocalProduct[] = productsData.map((p: any) => ({
@@ -118,7 +127,7 @@ export const useOfflineSync = () => {
         await cacheProducts(localProducts);
       }
 
-      // Fetch and cache stock levels
+      // Stock — always full snapshot for current branch (it's small + critical for accuracy)
       const { data: stockData } = await supabase
         .from('current_stock')
         .select('product_id, quantity')
@@ -135,20 +144,23 @@ export const useOfflineSync = () => {
         await cacheStock(localStock);
       }
 
-      // Fetch and cache categories
+      // Categories — delta
       const { data: categoriesData } = await supabase
         .from('categories')
-        .select('id, name, color, is_active')
-        .eq('is_active', true);
+        .select('id, name, color, is_active, updated_at')
+        .eq('is_active', true)
+        .gt('updated_at', sinceIso);
 
       if (categoriesData) {
         await cacheCategories(categoriesData.map(c => ({ ...c, color: c.color ?? '#10B981', is_active: c.is_active ?? true, _synced_at: Date.now() })));
       }
 
-      // Fetch and cache customers
+      // Customers — delta (capped to keep payload small)
       const { data: customersData } = await supabase
         .from('customers')
-        .select('id, name, phone, email, credit_enabled, credit_limit, credit_balance, segment');
+        .select('id, name, phone, email, credit_enabled, credit_limit, credit_balance, segment, updated_at')
+        .gt('updated_at', sinceIso)
+        .limit(2000);
 
       if (customersData) {
         await cacheCustomers(customersData.map(c => ({
@@ -160,8 +172,14 @@ export const useOfflineSync = () => {
         })));
       }
 
+      // Persist delta cursor only after successful pass
+      localStorage.setItem(DELTA_SYNC_KEY(branchId), nowIso);
       setLastCacheTime(Date.now());
-      console.log('[OfflineSync] Server data cached to IndexedDB');
+      console.log('[OfflineSync] Delta sync complete', {
+        products: productsData?.length ?? 0,
+        categories: categoriesData?.length ?? 0,
+        customers: customersData?.length ?? 0,
+      });
     } catch (error) {
       console.error('[OfflineSync] Failed to cache server data:', error);
     }
