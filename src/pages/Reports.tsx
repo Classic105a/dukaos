@@ -99,6 +99,7 @@ const Reports = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 60_000,
   });
 
   // Fetch payments data
@@ -116,6 +117,7 @@ const Reports = () => {
       return data;
     },
     enabled: salesData.length > 0,
+    staleTime: 60_000,
   });
 
   // Calculate metrics
