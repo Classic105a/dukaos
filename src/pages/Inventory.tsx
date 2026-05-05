@@ -129,7 +129,8 @@ const Inventory = () => {
         .select('*')
         .eq('is_active', true)
         .or(`branch_id.eq.${currentBranch.id},is_shared_product.eq.true`)
-        .order('name');
+        .order('name')
+        .limit(2000);
       
       if (productsError) throw productsError;
       
@@ -146,7 +147,8 @@ const Inventory = () => {
       const { data: stockData } = await supabase
         .from('current_stock')
         .select('*')
-        .eq('branch_id', currentBranch.id);
+        .eq('branch_id', currentBranch.id)
+        .limit(5000);
       
       // Create a map of stock by product_id
       const stockMap = new Map(
