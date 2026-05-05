@@ -25,6 +25,8 @@ interface ReceiptModalProps {
     mpesa_reference?: string;
   }>;
   cashierName?: string;
+  cashReceived?: number;
+  changeGiven?: number;
   branchName?: string;
   branchAddress?: string | null;
   branchCity?: string | null;
