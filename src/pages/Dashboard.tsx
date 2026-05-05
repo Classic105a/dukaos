@@ -405,6 +405,8 @@ const Dashboard = () => {
           discount={lastSaleTotal.discount}
           total={lastSaleTotal.total}
           payments={lastSale.payments}
+          cashReceived={lastSale.cashReceived}
+          changeGiven={lastSale.changeGiven}
           branchName={currentBranch?.name}
           branchAddress={currentBranch?.address}
           branchCity={currentBranch?.city}
