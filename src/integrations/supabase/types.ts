@@ -479,6 +479,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          business_id: string | null
           color: string | null
           created_at: string
           description: string | null
@@ -490,6 +491,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          business_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -501,6 +503,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          business_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -818,6 +821,7 @@ export type Database = {
       goods_received_notes: {
         Row: {
           branch_id: string
+          business_id: string | null
           created_at: string
           grn_number: string
           id: string
@@ -833,6 +837,7 @@ export type Database = {
         }
         Insert: {
           branch_id: string
+          business_id?: string | null
           created_at?: string
           grn_number: string
           id?: string
@@ -848,6 +853,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string
+          business_id?: string | null
           created_at?: string
           grn_number?: string
           id?: string
@@ -1351,6 +1357,7 @@ export type Database = {
           bluetooth_device_id: string | null
           bluetooth_device_name: string | null
           branch_id: string
+          business_id: string | null
           characters_per_line: number | null
           connection_type: string
           created_at: string
@@ -1372,6 +1379,7 @@ export type Database = {
           bluetooth_device_id?: string | null
           bluetooth_device_name?: string | null
           branch_id: string
+          business_id?: string | null
           characters_per_line?: number | null
           connection_type: string
           created_at?: string
@@ -1393,6 +1401,7 @@ export type Database = {
           bluetooth_device_id?: string | null
           bluetooth_device_name?: string | null
           branch_id?: string
+          business_id?: string | null
           characters_per_line?: number | null
           connection_type?: string
           created_at?: string
@@ -2451,6 +2460,7 @@ export type Database = {
       _table_privs: { Args: never; Returns: unknown[] }
       _temptypes: { Args: { "": string }; Returns: string }
       _todo: { Args: never; Returns: string }
+      business_id_from_branch: { Args: { _branch_id: string }; Returns: string }
       col_is_null:
         | {
             Args: {
