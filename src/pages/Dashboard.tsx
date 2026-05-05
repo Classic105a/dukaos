@@ -57,6 +57,8 @@ const Dashboard = () => {
   const [lastSale, setLastSale] = useState<{
     receiptNumber: string;
     payments: Array<{ method: string; amount: number; mpesa_reference?: string }>;
+    cashReceived?: number;
+    changeGiven?: number;
   } | null>(null);
 
   // Persist cart to localStorage on every change
@@ -179,6 +181,7 @@ const Dashboard = () => {
             mpesa_phone: p.mpesa_phone || undefined,
           })),
           p_offline_id: undefined,
+          p_promotion_id: undefined,
         });
         void logMetric({
           metric: error ? 'sale_latency_ms_failed' : 'sale_latency_ms',
@@ -226,7 +229,10 @@ const Dashboard = () => {
 
       lastSaleItemsRef.current = saleItems;
       setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: 0, total: saleTotal });
-      setLastSale({ receiptNumber: finalReceiptNumber, payments });
+      const cashPay = payments.find(p => p.method === 'cash');
+      const cashReceived = cashPay?.amount && cashPay.amount > saleTotal ? cashPay.amount : undefined;
+      const changeGiven = cashReceived ? cashReceived - saleTotal : undefined;
+      setLastSale({ receiptNumber: finalReceiptNumber, payments, cashReceived, changeGiven });
       setShowMobileCart(false);
       setShowMpesa(false);
       setShowReceipt(true);
@@ -399,6 +405,8 @@ const Dashboard = () => {
           discount={lastSaleTotal.discount}
           total={lastSaleTotal.total}
           payments={lastSale.payments}
+          cashReceived={lastSale.cashReceived}
+          changeGiven={lastSale.changeGiven}
           branchName={currentBranch?.name}
           branchAddress={currentBranch?.address}
           branchCity={currentBranch?.city}

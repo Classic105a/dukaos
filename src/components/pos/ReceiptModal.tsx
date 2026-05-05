@@ -25,6 +25,8 @@ interface ReceiptModalProps {
     mpesa_reference?: string;
   }>;
   cashierName?: string;
+  cashReceived?: number;
+  changeGiven?: number;
   branchName?: string;
   branchAddress?: string | null;
   branchCity?: string | null;
@@ -57,6 +59,8 @@ const ReceiptModal = ({
   mpesaAccount,
   kraPin,
   customerName,
+  cashReceived,
+  changeGiven,
   footerMessage = 'Thank you for your business!'
 }: ReceiptModalProps) => {
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -359,6 +363,18 @@ ${footerMessage}
                 <span>KSh {payment.amount.toLocaleString()}</span>
               </div>
             ))}
+            {typeof cashReceived === 'number' && cashReceived > 0 && (
+              <div className="flex justify-between">
+                <span>Cash Received:</span>
+                <span>KSh {cashReceived.toLocaleString()}</span>
+              </div>
+            )}
+            {typeof changeGiven === 'number' && changeGiven > 0 && (
+              <div className="flex justify-between font-bold">
+                <span>Change:</span>
+                <span>KSh {changeGiven.toLocaleString()}</span>
+              </div>
+            )}
             {payments.some(p => p.mpesa_reference) && (
               <p className="text-[9px] text-muted-foreground">
                 Ref: {payments.find(p => p.mpesa_reference)?.mpesa_reference}
