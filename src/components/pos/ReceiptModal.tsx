@@ -363,6 +363,18 @@ ${footerMessage}
                 <span>KSh {payment.amount.toLocaleString()}</span>
               </div>
             ))}
+            {typeof cashReceived === 'number' && cashReceived > 0 && (
+              <div className="flex justify-between">
+                <span>Cash Received:</span>
+                <span>KSh {cashReceived.toLocaleString()}</span>
+              </div>
+            )}
+            {typeof changeGiven === 'number' && changeGiven > 0 && (
+              <div className="flex justify-between font-bold">
+                <span>Change:</span>
+                <span>KSh {changeGiven.toLocaleString()}</span>
+              </div>
+            )}
             {payments.some(p => p.mpesa_reference) && (
               <p className="text-[9px] text-muted-foreground">
                 Ref: {payments.find(p => p.mpesa_reference)?.mpesa_reference}
