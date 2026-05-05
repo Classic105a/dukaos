@@ -59,6 +59,8 @@ const ReceiptModal = ({
   mpesaAccount,
   kraPin,
   customerName,
+  cashReceived,
+  changeGiven,
   footerMessage = 'Thank you for your business!'
 }: ReceiptModalProps) => {
   const receiptRef = useRef<HTMLDivElement>(null);
