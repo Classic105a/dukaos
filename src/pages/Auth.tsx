@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,8 @@ const authSchema = z.object({
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite') || sessionStorage.getItem('pendingInviteToken') || '';
   const { user, signIn, signUp, resetPassword, loading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -33,9 +36,20 @@ const Auth = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      if (inviteToken) {
+        sessionStorage.removeItem('pendingInviteToken');
+        supabase.rpc('accept_invite', { p_token: inviteToken })
+          .then(({ data, error }) => {
+            if (!error && (data as any)?.business_id) {
+              localStorage.setItem('currentBusinessId', (data as any).business_id);
+            }
+            navigate('/dashboard');
+          });
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [user, navigate]);
+  }, [user, navigate, inviteToken]);
 
   const validateForm = () => {
     try {
