@@ -48,6 +48,8 @@ import { PrinterSettings } from '@/components/settings/PrinterSettings';
 import TaxSettings from '@/components/settings/TaxSettings';
 import PermissionToggles from '@/components/staff/PermissionToggles';
 import ApprovalSettings from '@/components/settings/ApprovalSettings';
+import { useBusiness } from '@/hooks/useBusiness';
+import { Copy, Mail, X } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -488,6 +490,66 @@ const TeamSettings = ({
   getRoleColor: (role: string) => string;
 }) => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const { currentBusiness } = useBusiness();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('attendant');
+  const [sending, setSending] = useState(false);
+
+  const { data: pendingInvites = [] } = useQuery({
+    queryKey: ['pending-invites', currentBusiness?.id],
+    queryFn: async () => {
+      if (!currentBusiness?.id) return [];
+      const { data, error } = await supabase
+        .from('invites')
+        .select('id, email, role, status, expires_at, token, created_at')
+        .eq('business_id', currentBusiness.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!currentBusiness?.id,
+  });
+
+  const handleSendInvite = async () => {
+    if (!currentBusiness?.id || !inviteEmail.trim()) return;
+    setSending(true);
+    const { data, error } = await supabase.rpc('create_invite', {
+      p_business_id: currentBusiness.id,
+      p_email: inviteEmail.trim(),
+      p_role: inviteRole,
+    });
+    setSending(false);
+    if (error) {
+      toast({ title: 'Failed to send invite', description: error.message, variant: 'destructive' });
+      return;
+    }
+    const link = `${window.location.origin}/accept-invite?token=${(data as any).token}`;
+    await navigator.clipboard.writeText(link).catch(() => {});
+    toast({ title: 'Invite sent', description: 'Link copied to clipboard. User will join after accepting.' });
+    setInviteEmail('');
+    setInviteRole('attendant');
+    setInviteDialogOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
+  };
+
+  const copyLink = (token: string) => {
+    const link = `${window.location.origin}/accept-invite?token=${token}`;
+    navigator.clipboard.writeText(link);
+    toast({ title: 'Link copied' });
+  };
+
+  const revokeInvite = async (id: string) => {
+    const { error } = await supabase.rpc('revoke_invite', { p_invite_id: id });
+    if (error) {
+      toast({ title: 'Failed to revoke', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Invite revoked' });
+    queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
+  };
 
   return (
     <Card>
@@ -507,16 +569,69 @@ const TeamSettings = ({
             <DialogHeader>
               <DialogTitle>Invite Team Member</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <p className="text-sm text-muted-foreground">
-                New team members can sign up at the login page. After they sign up, 
-                you can assign them a role from this settings page.
+            <div className="space-y-4 py-2">
+              <div>
+                <Label htmlFor="invite-email">Email</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="teammate@example.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="invite-role">Role</Label>
+                <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <SelectTrigger id="invite-role"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="attendant">Attendant</SelectItem>
+                    <SelectItem value="cashier">Cashier</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Invite link will be copied to your clipboard. The user will join after accepting.
               </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSendInvite} disabled={sending || !inviteEmail.trim()}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  {sending ? 'Sending…' : 'Send Invite'}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
       </CardHeader>
       <CardContent>
+        {pendingInvites.length > 0 && (
+          <div className="mb-6">
+            <h4 className="text-sm font-semibold mb-2">Pending Invites</h4>
+            <div className="space-y-2">
+              {pendingInvites.map((inv: any) => (
+                <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div>
+                    <p className="text-sm font-medium">{inv.email}</p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {inv.role} · expires {format(new Date(inv.expires_at), 'PP')}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => copyLink(inv.token)}>
+                      <Copy className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => revokeInvite(inv.id)}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="space-y-4">
           {users.map(member => (
             <div key={member.id}>
