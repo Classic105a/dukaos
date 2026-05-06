@@ -50,6 +50,7 @@ import PermissionToggles from '@/components/staff/PermissionToggles';
 import ApprovalSettings from '@/components/settings/ApprovalSettings';
 import { useBusiness } from '@/hooks/useBusiness';
 import { Copy, Mail, X } from 'lucide-react';
+import { INVITE_ROLES, INVITE_ROLE_LABELS, normalizeInviteRole, type InviteStatus } from '@/lib/invite-roles';
 
 interface Profile {
   id: string;
@@ -494,18 +495,18 @@ const TeamSettings = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('attendant');
+  const [inviteRole, setInviteRole] = useState<string>('attendant');
   const [sending, setSending] = useState(false);
+  const [inviteStatusFilter, setInviteStatusFilter] = useState<InviteStatus>('pending');
 
-  const { data: pendingInvites = [] } = useQuery({
-    queryKey: ['pending-invites', currentBusiness?.id],
+  const { data: invitesAll = [] } = useQuery({
+    queryKey: ['invites', currentBusiness?.id],
     queryFn: async () => {
       if (!currentBusiness?.id) return [];
       const { data, error } = await supabase
         .from('invites')
-        .select('id, email, role, status, expires_at, token, created_at')
+        .select('id, email, role, status, expires_at, token, created_at, accepted_at')
         .eq('business_id', currentBusiness.id)
-        .eq('status', 'pending')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -513,13 +514,32 @@ const TeamSettings = ({
     enabled: !!currentBusiness?.id,
   });
 
+  // Treat pending-but-past-expiry as "expired" in the UI even before the cron runs.
+  const decoratedInvites = invitesAll.map((inv: any) => ({
+    ...inv,
+    effective_status:
+      inv.status === 'pending' && inv.expires_at && new Date(inv.expires_at) < new Date()
+        ? 'expired'
+        : inv.status,
+  }));
+  const filteredInvites = decoratedInvites.filter(i => i.effective_status === inviteStatusFilter);
+  const inviteCounts = decoratedInvites.reduce<Record<string, number>>((acc, i) => {
+    acc[i.effective_status] = (acc[i.effective_status] || 0) + 1;
+    return acc;
+  }, {});
+
   const handleSendInvite = async () => {
     if (!currentBusiness?.id || !inviteEmail.trim()) return;
+    const role = normalizeInviteRole(inviteRole);
+    if (!role) {
+      toast({ title: 'Invalid role', description: 'Owners cannot be invited.', variant: 'destructive' });
+      return;
+    }
     setSending(true);
     const { data, error } = await supabase.rpc('create_invite', {
       p_business_id: currentBusiness.id,
       p_email: inviteEmail.trim(),
-      p_role: inviteRole,
+      p_role: role,
     });
     setSending(false);
     if (error) {
@@ -532,7 +552,7 @@ const TeamSettings = ({
     setInviteEmail('');
     setInviteRole('attendant');
     setInviteDialogOpen(false);
-    queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
+    queryClient.invalidateQueries({ queryKey: ['invites'] });
   };
 
   const copyLink = (token: string) => {
@@ -548,7 +568,7 @@ const TeamSettings = ({
       return;
     }
     toast({ title: 'Invite revoked' });
-    queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
+    queryClient.invalidateQueries({ queryKey: ['invites'] });
   };
 
   return (
@@ -585,10 +605,9 @@ const TeamSettings = ({
                 <Select value={inviteRole} onValueChange={setInviteRole}>
                   <SelectTrigger id="invite-role"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="attendant">Attendant</SelectItem>
-                    <SelectItem value="cashier">Cashier</SelectItem>
+                    {INVITE_ROLES.map(r => (
+                      <SelectItem key={r} value={r}>{INVITE_ROLE_LABELS[r]}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -607,29 +626,55 @@ const TeamSettings = ({
         </Dialog>
       </CardHeader>
       <CardContent>
-        {pendingInvites.length > 0 && (
+        {decoratedInvites.length > 0 && (
           <div className="mb-6">
-            <h4 className="text-sm font-semibold mb-2">Pending Invites</h4>
-            <div className="space-y-2">
-              {pendingInvites.map((inv: any) => (
-                <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <div>
-                    <p className="text-sm font-medium">{inv.email}</p>
-                    <p className="text-xs text-muted-foreground capitalize">
-                      {inv.role} · expires {format(new Date(inv.expires_at), 'PP')}
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => copyLink(inv.token)}>
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => revokeInvite(inv.id)}>
-                      <X className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-semibold">Invites</h4>
             </div>
+            <Tabs value={inviteStatusFilter} onValueChange={(v) => setInviteStatusFilter(v as InviteStatus)}>
+              <TabsList className="grid w-full grid-cols-4">
+                {(['pending','accepted','revoked','expired'] as InviteStatus[]).map(s => (
+                  <TabsTrigger key={s} value={s} className="capitalize">
+                    {s} {inviteCounts[s] ? `(${inviteCounts[s]})` : ''}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <TabsContent value={inviteStatusFilter} className="mt-3">
+                {filteredInvites.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-4 text-center">No {inviteStatusFilter} invites</p>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredInvites.map((inv: any) => (
+                      <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{inv.email}</p>
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {inv.role}
+                            {inv.effective_status === 'pending' && ` · expires ${format(new Date(inv.expires_at), 'PP')}`}
+                            {inv.effective_status === 'accepted' && inv.accepted_at && ` · joined ${format(new Date(inv.accepted_at), 'PP')}`}
+                            {inv.effective_status === 'expired' && ` · expired ${format(new Date(inv.expires_at), 'PP')}`}
+                            {inv.effective_status === 'revoked' && ' · revoked'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="capitalize">{inv.effective_status}</Badge>
+                          {inv.effective_status === 'pending' && (
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => copyLink(inv.token)} aria-label="Copy invite link">
+                                <Copy className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => revokeInvite(inv.id)} aria-label="Revoke invite">
+                                <X className="w-3.5 h-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         )}
         <div className="space-y-4">
