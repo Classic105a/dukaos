@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -11,10 +12,12 @@ const AcceptInvite = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const queryClient = useQueryClient();
   const token = params.get('token') || '';
   const [state, setState] = useState<'idle' | 'accepting' | 'done' | 'error'>('idle');
   const [message, setMessage] = useState<string>('');
   const [invite, setInvite] = useState<any>(null);
+  const acceptingRef = useRef(false);
 
   // Lookup invite metadata (non-sensitive) by token
   useEffect(() => {
@@ -30,16 +33,22 @@ const AcceptInvite = () => {
   }, [token]);
 
   const handleAccept = async () => {
+    if (acceptingRef.current || state === 'done') return;
+    acceptingRef.current = true;
     setState('accepting');
     const { data, error } = await supabase.rpc('accept_invite', { p_token: token });
     if (error) {
       setState('error');
       setMessage(error.message);
       toast.error(error.message);
+      acceptingRef.current = false;
       return;
     }
     const biz = (data as any)?.business_id;
     if (biz) localStorage.setItem('currentBusinessId', biz);
+    sessionStorage.removeItem('pendingInviteToken');
+    // Make the new tenant visible to BusinessSwitcher immediately
+    await queryClient.invalidateQueries({ queryKey: ['businesses'] });
     setState('done');
     toast.success('You have joined the business');
     setTimeout(() => navigate('/dashboard'), 1200);
