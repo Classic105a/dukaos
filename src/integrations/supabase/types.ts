@@ -2524,6 +2524,7 @@ export type Database = {
       _todo: { Args: never; Returns: string }
       accept_invite: { Args: { p_token: string }; Returns: Json }
       business_id_from_branch: { Args: { _branch_id: string }; Returns: string }
+      cleanup_invites: { Args: never; Returns: Json }
       col_is_null:
         | {
             Args: {

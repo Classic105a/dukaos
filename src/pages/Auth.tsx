@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,19 +34,12 @@ const Auth = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (user) {
-      if (inviteToken) {
-        sessionStorage.removeItem('pendingInviteToken');
-        supabase.rpc('accept_invite', { p_token: inviteToken })
-          .then(({ data, error }) => {
-            if (!error && (data as any)?.business_id) {
-              localStorage.setItem('currentBusinessId', (data as any).business_id);
-            }
-            navigate('/dashboard');
-          });
-      } else {
-        navigate('/dashboard');
-      }
+    if (!user) return;
+    if (inviteToken) {
+      // Defer to /accept-invite — single, idempotent code path for accepting.
+      navigate(`/accept-invite?token=${encodeURIComponent(inviteToken)}`, { replace: true });
+    } else {
+      navigate('/dashboard');
     }
   }, [user, navigate, inviteToken]);
 
