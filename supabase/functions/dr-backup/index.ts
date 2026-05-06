@@ -21,6 +21,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 
 // Tables to back up. Each is filtered by business_id when that column exists.
 const TABLES_WITH_BUSINESS: string[] = [
@@ -202,7 +203,20 @@ Deno.serve(async (req) => {
     });
 
     if (mode === "scheduled") {
-      // Pruning + per-business backup. No user auth required for cron.
+      // Pruning + per-business backup. Require shared secret OR service-role JWT.
+      const incomingSecret = req.headers.get("x-cron-secret") ?? "";
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const presentedKey = authHeader.toLowerCase().startsWith("bearer ")
+        ? authHeader.slice(7).trim()
+        : "";
+      const secretOk = CRON_SECRET.length > 0 && incomingSecret === CRON_SECRET;
+      const serviceOk = presentedKey.length > 0 && presentedKey === SERVICE_ROLE;
+      if (!secretOk && !serviceOk) {
+        return new Response(JSON.stringify({ error: "forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       await pruneOld(admin);
       const { data: bizs, error } = await admin
         .from("businesses")
