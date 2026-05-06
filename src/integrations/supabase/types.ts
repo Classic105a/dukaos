@@ -349,24 +349,30 @@ export type Database = {
           business_id: string
           created_at: string
           id: string
+          invited_by: string | null
           is_owner: boolean | null
           role: string | null
+          status: string
           user_id: string
         }
         Insert: {
           business_id: string
           created_at?: string
           id?: string
+          invited_by?: string | null
           is_owner?: boolean | null
           role?: string | null
+          status?: string
           user_id: string
         }
         Update: {
           business_id?: string
           created_at?: string
           id?: string
+          invited_by?: string | null
           is_owner?: boolean | null
           role?: string | null
+          status?: string
           user_id?: string
         }
         Relationships: [
@@ -1019,6 +1025,56 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          business_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          role: string
+          status: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          business_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          role?: string
+          status?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          business_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          role?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -2460,6 +2516,7 @@ export type Database = {
       _table_privs: { Args: never; Returns: unknown[] }
       _temptypes: { Args: { "": string }; Returns: string }
       _todo: { Args: never; Returns: string }
+      accept_invite: { Args: { p_token: string }; Returns: Json }
       business_id_from_branch: { Args: { _branch_id: string }; Returns: string }
       col_is_null:
         | {
@@ -2517,6 +2574,28 @@ export type Database = {
           p_total_amount?: number
         }
         Returns: Json
+      }
+      create_invite: {
+        Args: { p_business_id: string; p_email: string; p_role?: string }
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          business_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          role: string
+          status: string
+          token: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       diag:
         | {
@@ -2611,6 +2690,7 @@ export type Database = {
       pg_version_num: { Args: never; Returns: number }
       pgtap_version: { Args: never; Returns: number }
       refresh_daily_sales_summary: { Args: never; Returns: undefined }
+      revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
       run_complete_sale_tests: { Args: never; Returns: string[] }
       runtests:
         | { Args: never; Returns: string[] }
