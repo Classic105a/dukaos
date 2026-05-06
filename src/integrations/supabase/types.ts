@@ -1875,6 +1875,7 @@ export type Database = {
       receipt_settings: {
         Row: {
           branch_id: string
+          business_id: string | null
           created_at: string
           footer_message: string | null
           id: string
@@ -1905,6 +1906,7 @@ export type Database = {
         }
         Insert: {
           branch_id: string
+          business_id?: string | null
           created_at?: string
           footer_message?: string | null
           id?: string
@@ -1935,6 +1937,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string
+          business_id?: string | null
           created_at?: string
           footer_message?: string | null
           id?: string
@@ -2304,6 +2307,7 @@ export type Database = {
       }
       stock_transfers: {
         Row: {
+          business_id: string | null
           completed_at: string | null
           created_at: string
           from_branch_id: string | null
@@ -2317,6 +2321,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          business_id?: string | null
           completed_at?: string | null
           created_at?: string
           from_branch_id?: string | null
@@ -2330,6 +2335,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          business_id?: string | null
           completed_at?: string | null
           created_at?: string
           from_branch_id?: string | null
@@ -2729,7 +2735,7 @@ export type Database = {
         Returns: {
           user_email: string
           user_id: string
-          user_role: Database["public"]["Enums"]["app_role"]
+          user_role: string
         }[]
       }
     }
