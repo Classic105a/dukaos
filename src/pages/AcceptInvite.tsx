@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useBusiness } from '@/hooks/useBusiness';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,10 +14,12 @@ const AcceptInvite = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
+  const { businesses, setCurrentBusiness } = useBusiness();
   const token = params.get('token') || '';
   const [state, setState] = useState<'idle' | 'accepting' | 'done' | 'error'>('idle');
   const [message, setMessage] = useState<string>('');
   const [invite, setInvite] = useState<any>(null);
+  const [joinedBusinessId, setJoinedBusinessId] = useState<string | null>(null);
   const acceptingRef = useRef(false);
 
   // Lookup invite metadata (non-sensitive) by token
@@ -49,9 +52,14 @@ const AcceptInvite = () => {
     sessionStorage.removeItem('pendingInviteToken');
     // Make the new tenant visible to BusinessSwitcher immediately
     await queryClient.invalidateQueries({ queryKey: ['businesses'] });
+    setJoinedBusinessId(biz ?? null);
     setState('done');
     toast.success('You have joined the business');
-    setTimeout(() => navigate('/dashboard'), 1200);
+    // If the user already belongs to other businesses, let them choose.
+    // Otherwise auto-switch and redirect.
+    if ((businesses?.length ?? 0) <= 1) {
+      setTimeout(() => navigate('/dashboard'), 1200);
+    }
   };
 
   if (!token) {
@@ -112,9 +120,33 @@ const AcceptInvite = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {state === 'done' && (
-            <p className="text-sm flex items-center gap-2 text-success">
-              <CheckCircle2 className="w-4 h-4" /> Joined! Redirecting…
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm flex items-center gap-2 text-success">
+                <CheckCircle2 className="w-4 h-4" /> Joined!
+              </p>
+              {(businesses?.length ?? 0) > 1 && joinedBusinessId && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    You belong to multiple businesses. Switch now?
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        const b = businesses.find(x => x.id === joinedBusinessId);
+                        if (b) setCurrentBusiness(b);
+                        navigate('/dashboard');
+                      }}
+                    >
+                      Switch & continue
+                    </Button>
+                    <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                      Stay where I am
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {state === 'error' && (
             <p className="text-sm flex items-center gap-2 text-destructive">
