@@ -245,26 +245,19 @@ const Customers = () => {
     },
   });
 
-  // Filter customers
-  const filteredCustomers = customers.filter(customer => {
-    const matchesSearch = 
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone?.includes(searchTerm) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSegment = segmentFilter === 'all' || customer.segment === segmentFilter;
-    return matchesSearch && matchesSegment;
-  });
+  // Server already filtered by search + segment; render rows as-is.
+  const filteredCustomers = customers;
 
-  // Segment customers
+  // Segment groupings reflect the currently-loaded page window. Tenant-wide
+  // counts are exposed via `stats` from the dedicated aggregate query.
   const vipCustomers = customers.filter(c => c.segment === 'vip');
   const regularCustomers = customers.filter(c => c.segment === 'regular' || !c.segment);
   const newCustomers = customers.filter(c => c.segment === 'new');
   const creditCustomers = customers.filter(c => c.credit_enabled);
 
-  // Total stats
-  const totalCustomers = customers.length;
-  const totalLoyaltyPoints = customers.reduce((sum, c) => sum + (c.loyalty_points || 0), 0);
-  const totalPurchases = customers.reduce((sum, c) => sum + (c.total_purchases || 0), 0);
+  const totalCustomers = stats?.totalCustomers ?? customers.length;
+  const totalLoyaltyPoints = stats?.totalLoyaltyPoints ?? 0;
+  const totalPurchases = stats?.totalPurchases ?? 0;
 
   const getSegmentIcon = (segment: string | null) => {
     switch (segment) {
