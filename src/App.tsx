@@ -33,7 +33,6 @@ import Warehouse from "./pages/Warehouse";
 import Promotions from "./pages/Promotions";
 import SmartInventory from "./pages/SmartInventory";
 import { FEATURES } from "./lib/feature-flags";
-import { Navigate } from "react-router-dom";
 import More from "./pages/More";
 import Install from "./pages/Install";
 import Observability from "./pages/Observability";
