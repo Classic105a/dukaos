@@ -387,10 +387,10 @@ const Customers = () => {
         {/* Customer List */}
         <Tabs defaultValue="all" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="all">All ({customers.length})</TabsTrigger>
+            <TabsTrigger value="all">All ({totalMatching})</TabsTrigger>
             <TabsTrigger value="vip" className="gap-2">
               <Crown className="w-3.5 h-3.5" />
-              VIP ({vipCustomers.length})
+              VIP ({stats?.vipCustomers ?? vipCustomers.length})
             </TabsTrigger>
             <TabsTrigger value="regular">Regular ({regularCustomers.length})</TabsTrigger>
             <TabsTrigger value="new">New ({newCustomers.length})</TabsTrigger>
@@ -419,6 +419,19 @@ const Customers = () => {
               getSegmentIcon={getSegmentIcon}
               getSegmentColor={getSegmentColor}
             />
+            {customersQuery.hasNextPage && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => customersQuery.fetchNextPage()}
+                  disabled={customersQuery.isFetchingNextPage}
+                >
+                  {customersQuery.isFetchingNextPage
+                    ? 'Loading…'
+                    : `Load more (${customers.length} of ${totalMatching})`}
+                </Button>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="vip">
