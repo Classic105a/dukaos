@@ -15,6 +15,9 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 const useAuthMock = vi.fn();
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => useAuthMock() }));
+vi.mock("@/hooks/useBusiness", () => ({
+  useBusiness: () => ({ businesses: [], setCurrentBusiness: vi.fn() }),
+}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import AcceptInvite from "@/pages/AcceptInvite";
