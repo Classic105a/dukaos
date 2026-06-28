@@ -192,7 +192,7 @@ const Customers = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] }); queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
       toast({ title: 'Customer created successfully' });
       setCustomerDialogOpen(false);
     },
@@ -214,7 +214,7 @@ const Customers = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] }); queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
       toast({ title: 'Customer updated successfully' });
       setCustomerDialogOpen(false);
       setSelectedCustomer(null);
@@ -237,7 +237,7 @@ const Customers = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] }); queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
       toast({ title: 'Points added successfully' });
     },
     onError: (error: Error) => {
