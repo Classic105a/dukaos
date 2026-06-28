@@ -32,6 +32,8 @@ import CustomerStatement from "./pages/CustomerStatement";
 import Warehouse from "./pages/Warehouse";
 import Promotions from "./pages/Promotions";
 import SmartInventory from "./pages/SmartInventory";
+import { FEATURES } from "./lib/feature-flags";
+import { Navigate } from "react-router-dom";
 import More from "./pages/More";
 import Install from "./pages/Install";
 import Observability from "./pages/Observability";
@@ -102,16 +104,16 @@ const App = () => (
                 <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
                 <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-                <Route path="/parties" element={<ProtectedRoute><Parties /></ProtectedRoute>} />
+                <Route path="/parties" element={<ProtectedRoute>{FEATURES.parties ? <Parties /> : <Navigate to="/more" replace />}</ProtectedRoute>} />
                 <Route path="/debts" element={<ProtectedRoute><DebtDashboard /></ProtectedRoute>} />
                 <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
                 <Route path="/customers/:customerId/statement" element={<ProtectedRoute><CustomerStatement /></ProtectedRoute>} />
-                <Route path="/warehouse" element={<ProtectedRoute><Warehouse /></ProtectedRoute>} />
-                <Route path="/promotions" element={<ProtectedRoute><Promotions /></ProtectedRoute>} />
-                <Route path="/smart-inventory" element={<ProtectedRoute><SmartInventory /></ProtectedRoute>} />
+                <Route path="/warehouse" element={<ProtectedRoute>{FEATURES.warehouse ? <Warehouse /> : <Navigate to="/more" replace />}</ProtectedRoute>} />
+                <Route path="/promotions" element={<ProtectedRoute>{FEATURES.promotions ? <Promotions /> : <Navigate to="/more" replace />}</ProtectedRoute>} />
+                <Route path="/smart-inventory" element={<ProtectedRoute>{FEATURES.smartInventory ? <SmartInventory /> : <Navigate to="/more" replace />}</ProtectedRoute>} />
                 <Route path="/more" element={<ProtectedRoute><More /></ProtectedRoute>} />
                 <Route path="/install" element={<Install />} />
                 <Route path="/observability" element={<ProtectedRoute><Observability /></ProtectedRoute>} />
