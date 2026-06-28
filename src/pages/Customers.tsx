@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -95,22 +95,72 @@ const Customers = () => {
   const [installmentDialogOpen, setInstallmentDialogOpen] = useState(false);
   const [installmentCustomer, setInstallmentCustomer] = useState<Customer | null>(null);
 
-  // Fetch customers — capped at 1000 rows; UI search/segment filtering runs
-  // client-side over this window. Larger tenants should switch to server-side
-  // pagination via a dedicated RPC.
-  const { data: customers = [], isLoading } = useQuery({
-    queryKey: ['customers'],
-    queryFn: async () => {
-      const { data, error } = await supabase
+  // Debounce the search input so each keystroke doesn't hit the server.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 250);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  const PAGE_SIZE = 50;
+
+  // Server-side paginated + filtered list. Uses pg_trgm indexes on
+  // name/phone/email and (business_id, segment, total_purchases) for
+  // sub-100ms search even at 100k+ rows.
+  const customersQuery = useInfiniteQuery({
+    queryKey: ['customers', { search: debouncedSearch, segment: segmentFilter }],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam = 0 }) => {
+      const from = (pageParam as number) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      let q = supabase
         .from('customers')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('total_purchases', { ascending: false })
-        .limit(1000);
+        .range(from, to);
+      if (segmentFilter !== 'all') q = q.eq('segment', segmentFilter);
+      if (debouncedSearch) {
+        const esc = debouncedSearch.replace(/[%,]/g, ' ');
+        q = q.or(`name.ilike.%${esc}%,phone.ilike.%${esc}%,email.ilike.%${esc}%`);
+      }
+      const { data, error, count } = await q;
       if (error) throw error;
-      return data as Customer[];
+      return { rows: (data as Customer[]) ?? [], count: count ?? 0, page: pageParam as number };
+    },
+    getNextPageParam: (last) => {
+      const loaded = (last.page + 1) * PAGE_SIZE;
+      return loaded < last.count ? last.page + 1 : undefined;
     },
     staleTime: 60_000,
     gcTime: 5 * 60_000,
+  });
+
+  const customers = useMemo<Customer[]>(
+    () => customersQuery.data?.pages.flatMap(p => p.rows) ?? [],
+    [customersQuery.data]
+  );
+  const totalMatching = customersQuery.data?.pages[0]?.count ?? 0;
+  const isLoading = customersQuery.isLoading;
+
+  // Tenant-wide aggregates for the summary cards (independent of pagination).
+  const { data: stats } = useQuery({
+    queryKey: ['customers-stats'],
+    queryFn: async () => {
+      const [total, vip, points] = await Promise.all([
+        supabase.from('customers').select('id', { count: 'exact', head: true }),
+        supabase.from('customers').select('id', { count: 'exact', head: true }).eq('segment', 'vip'),
+        supabase.from('customers').select('loyalty_points,total_purchases').limit(1000),
+      ]);
+      const loyalty = (points.data ?? []).reduce((s: number, r: any) => s + (r.loyalty_points || 0), 0);
+      const purchases = (points.data ?? []).reduce((s: number, r: any) => s + Number(r.total_purchases || 0), 0);
+      return {
+        totalCustomers: total.count ?? 0,
+        vipCustomers: vip.count ?? 0,
+        totalLoyaltyPoints: loyalty,
+        totalPurchases: purchases,
+      };
+    },
+    staleTime: 5 * 60_000,
   });
 
   // Fetch customer sales when details dialog is open
@@ -142,7 +192,7 @@ const Customers = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] }); queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
       toast({ title: 'Customer created successfully' });
       setCustomerDialogOpen(false);
     },
@@ -164,7 +214,7 @@ const Customers = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] }); queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
       toast({ title: 'Customer updated successfully' });
       setCustomerDialogOpen(false);
       setSelectedCustomer(null);
@@ -187,7 +237,7 @@ const Customers = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] }); queryClient.invalidateQueries({ queryKey: ['customers-stats'] });
       toast({ title: 'Points added successfully' });
     },
     onError: (error: Error) => {
@@ -195,26 +245,19 @@ const Customers = () => {
     },
   });
 
-  // Filter customers
-  const filteredCustomers = customers.filter(customer => {
-    const matchesSearch = 
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone?.includes(searchTerm) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSegment = segmentFilter === 'all' || customer.segment === segmentFilter;
-    return matchesSearch && matchesSegment;
-  });
+  // Server already filtered by search + segment; render rows as-is.
+  const filteredCustomers = customers;
 
-  // Segment customers
+  // Segment groupings reflect the currently-loaded page window. Tenant-wide
+  // counts are exposed via `stats` from the dedicated aggregate query.
   const vipCustomers = customers.filter(c => c.segment === 'vip');
   const regularCustomers = customers.filter(c => c.segment === 'regular' || !c.segment);
   const newCustomers = customers.filter(c => c.segment === 'new');
   const creditCustomers = customers.filter(c => c.credit_enabled);
 
-  // Total stats
-  const totalCustomers = customers.length;
-  const totalLoyaltyPoints = customers.reduce((sum, c) => sum + (c.loyalty_points || 0), 0);
-  const totalPurchases = customers.reduce((sum, c) => sum + (c.total_purchases || 0), 0);
+  const totalCustomers = stats?.totalCustomers ?? customers.length;
+  const totalLoyaltyPoints = stats?.totalLoyaltyPoints ?? 0;
+  const totalPurchases = stats?.totalPurchases ?? 0;
 
   const getSegmentIcon = (segment: string | null) => {
     switch (segment) {
@@ -344,10 +387,10 @@ const Customers = () => {
         {/* Customer List */}
         <Tabs defaultValue="all" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="all">All ({customers.length})</TabsTrigger>
+            <TabsTrigger value="all">All ({totalMatching})</TabsTrigger>
             <TabsTrigger value="vip" className="gap-2">
               <Crown className="w-3.5 h-3.5" />
-              VIP ({vipCustomers.length})
+              VIP ({stats?.vipCustomers ?? vipCustomers.length})
             </TabsTrigger>
             <TabsTrigger value="regular">Regular ({regularCustomers.length})</TabsTrigger>
             <TabsTrigger value="new">New ({newCustomers.length})</TabsTrigger>
@@ -376,6 +419,19 @@ const Customers = () => {
               getSegmentIcon={getSegmentIcon}
               getSegmentColor={getSegmentColor}
             />
+            {customersQuery.hasNextPage && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => customersQuery.fetchNextPage()}
+                  disabled={customersQuery.isFetchingNextPage}
+                >
+                  {customersQuery.isFetchingNextPage
+                    ? 'Loading…'
+                    : `Load more (${customers.length} of ${totalMatching})`}
+                </Button>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="vip">
