@@ -314,6 +314,11 @@ const Settings = () => {
           <TabsContent value="preferences">
             <PreferencesSettings />
           </TabsContent>
+
+          {/* Modules Tab */}
+          <TabsContent value="modules">
+            <ModulesSettings currentRole={userRole} />
+          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
