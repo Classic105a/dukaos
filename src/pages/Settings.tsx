@@ -48,8 +48,9 @@ import { PrinterSettings } from '@/components/settings/PrinterSettings';
 import TaxSettings from '@/components/settings/TaxSettings';
 import PermissionToggles from '@/components/staff/PermissionToggles';
 import ApprovalSettings from '@/components/settings/ApprovalSettings';
+import ModulesSettings from '@/components/settings/ModulesSettings';
 import { useBusiness } from '@/hooks/useBusiness';
-import { Copy, Mail, X } from 'lucide-react';
+import { Copy, Mail, X, LayoutGrid } from 'lucide-react';
 import { INVITE_ROLES, INVITE_ROLE_LABELS, normalizeInviteRole, type InviteStatus } from '@/lib/invite-roles';
 
 interface Profile {
