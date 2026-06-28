@@ -95,17 +95,22 @@ const Customers = () => {
   const [installmentDialogOpen, setInstallmentDialogOpen] = useState(false);
   const [installmentCustomer, setInstallmentCustomer] = useState<Customer | null>(null);
 
-  // Fetch customers
+  // Fetch customers — capped at 1000 rows; UI search/segment filtering runs
+  // client-side over this window. Larger tenants should switch to server-side
+  // pagination via a dedicated RPC.
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('customers')
         .select('*')
-        .order('total_purchases', { ascending: false });
+        .order('total_purchases', { ascending: false })
+        .limit(1000);
       if (error) throw error;
       return data as Customer[];
     },
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   // Fetch customer sales when details dialog is open
