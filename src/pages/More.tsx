@@ -29,6 +29,7 @@ import {
   UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FEATURES } from '@/lib/feature-flags';
 
 interface NavBoxItem {
   path: string;
@@ -43,7 +44,7 @@ interface NavGroup {
   items: NavBoxItem[];
 }
 
-const navGroups: NavGroup[] = [
+const allGroups: NavGroup[] = [
   {
     label: 'Sales',
     items: [
@@ -92,6 +93,18 @@ const navGroups: NavGroup[] = [
     ],
   },
 ];
+
+// Filter out modules disabled by feature flags so trimmed deployments
+// don't show dead navigation tiles.
+const FLAGGED_PATHS: Record<string, boolean> = {
+  '/promotions': FEATURES.promotions,
+  '/smart-inventory': FEATURES.smartInventory,
+  '/warehouse': FEATURES.warehouse,
+  '/parties': FEATURES.parties,
+};
+const navGroups: NavGroup[] = allGroups
+  .map(g => ({ ...g, items: g.items.filter(i => FLAGGED_PATHS[i.path] !== false) }))
+  .filter(g => g.items.length > 0);
 
 const More = () => {
   const { user } = useAuth();
