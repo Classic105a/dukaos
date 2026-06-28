@@ -243,6 +243,10 @@ const Settings = () => {
               <Palette className="w-4 h-4" />
               <span className="hidden sm:inline">Preferences</span>
             </TabsTrigger>
+            <TabsTrigger value="modules" className="gap-2">
+              <LayoutGrid className="w-4 h-4" />
+              <span className="hidden sm:inline">Modules</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
