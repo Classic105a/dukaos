@@ -175,7 +175,7 @@ const ReceiptModal = ({
     printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt ${receiptNumber}</title>
+          <title>Receipt ${String(receiptNumber).replace(/[<>&"']/g, (c) => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;' }[c] as string))}</title>
           <style>
             @page {
               size: 80mm auto;
