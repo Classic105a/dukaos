@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { escapeHtml } from './html';
 
 /**
  * Export data as CSV file download
@@ -45,15 +46,15 @@ export const exportToExcel = (data: Record<string, any>[], filename: string, tit
     </style>
     </head>
     <body>
-      ${title ? `<div class="title">${title}</div>` : ''}
+      ${title ? `<div class="title">${escapeHtml(title)}</div>` : ''}
       <div class="meta">Generated: ${format(new Date(), 'dd MMM yyyy HH:mm')}</div>
       <table>
-        <thead><tr>${headers.map(h => `<th>${formatHeader(h)}</th>`).join('')}</tr></thead>
+        <thead><tr>${headers.map(h => `<th>${escapeHtml(formatHeader(h))}</th>`).join('')}</tr></thead>
         <tbody>
           ${data.map(row => `<tr>${headers.map(h => {
             const val = row[h];
             const isNum = typeof val === 'number';
-            return `<td class="${isNum ? 'number' : ''}">${val ?? ''}</td>`;
+            return `<td class="${isNum ? 'number' : ''}">${escapeHtml(val ?? '')}</td>`;
           }).join('')}</tr>`).join('')}
         </tbody>
       </table>
@@ -74,7 +75,7 @@ export const exportToPDF = (content: string, title: string) => {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>${title}</title>
+      <title>${escapeHtml(title)}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 40px; color: #1a1a1a; font-size: 12px; }
@@ -98,7 +99,7 @@ export const exportToPDF = (content: string, title: string) => {
     </head>
     <body>
       <div class="header">
-        <h1>${title}</h1>
+        <h1>${escapeHtml(title)}</h1>
         <div class="meta">Generated: ${format(new Date(), 'dd MMMM yyyy, HH:mm')} | DukaOS Enterprise</div>
       </div>
       ${content}
@@ -124,6 +125,7 @@ export const generatePLReport = (data: {
   paymentBreakdown: Array<{ method: string; amount: number; count: number }>;
 }) => {
   const grossMargin = data.revenue > 0 ? ((data.grossProfit / data.revenue) * 100).toFixed(1) : '0';
+  const dateRange = escapeHtml(data.dateRange);
 
   return `
     <div class="summary-grid">
@@ -133,7 +135,7 @@ export const generatePLReport = (data: {
       <div class="summary-card"><div class="label">Gross Margin</div><div class="value">${grossMargin}%</div></div>
     </div>
 
-    <div class="section-title">Profit & Loss Statement — ${data.dateRange}</div>
+    <div class="section-title">Profit & Loss Statement — ${dateRange}</div>
     <table>
       <tr><td><strong>Revenue</strong></td><td class="number"><strong>KES ${data.revenue.toLocaleString()}</strong></td></tr>
       <tr><td>Less: Cost of Goods Sold</td><td class="number">(KES ${data.costOfGoods.toLocaleString()})</td></tr>
@@ -147,7 +149,7 @@ export const generatePLReport = (data: {
     <table>
       <thead><tr><th>#</th><th>Product</th><th class="number">Qty Sold</th><th class="number">Revenue</th></tr></thead>
       <tbody>
-        ${data.topProducts.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td><td class="number">${p.quantity}</td><td class="number">KES ${p.revenue.toLocaleString()}</td></tr>`).join('')}
+        ${data.topProducts.map((p, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(p.name)}</td><td class="number">${escapeHtml(String(p.quantity))}</td><td class="number">KES ${escapeHtml(p.revenue.toLocaleString())}</td></tr>`).join('')}
       </tbody>
     </table>
 
@@ -155,7 +157,7 @@ export const generatePLReport = (data: {
     <table>
       <thead><tr><th>Method</th><th class="number">Count</th><th class="number">Amount</th></tr></thead>
       <tbody>
-        ${data.paymentBreakdown.map(p => `<tr><td>${p.method}</td><td class="number">${p.count}</td><td class="number">KES ${p.amount.toLocaleString()}</td></tr>`).join('')}
+        ${data.paymentBreakdown.map(p => `<tr><td>${escapeHtml(p.method)}</td><td class="number">${escapeHtml(String(p.count))}</td><td class="number">KES ${escapeHtml(p.amount.toLocaleString())}</td></tr>`).join('')}
       </tbody>
     </table>
   `;
