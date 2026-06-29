@@ -357,6 +357,7 @@ body.scanner-active > #root {
 
 .android-chromium-compositor-safe * {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke !important;
+  animation: none !important;
 }
 
 .android-chromium-compositor-safe .animate-float,
@@ -364,7 +365,6 @@ body.scanner-active > #root {
 .android-chromium-compositor-safe .animate-scale-in,
 .android-chromium-compositor-safe .animate-slide-in-right,
 .android-chromium-compositor-safe .animate-fade-in {
-  animation: none !important;
   opacity: 1 !important;
   transform: none !important;
 }
