@@ -27,6 +27,30 @@ function parseDarajaTimestamp(v: any): string | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Shared-secret check: Safaricom Daraja lets you configure the callback URL
+  // with a query parameter or custom header. We require one to match
+  // MPESA_CALLBACK_SECRET so the public endpoint cannot be forged.
+  const expectedSecret = Deno.env.get("MPESA_CALLBACK_SECRET");
+  if (expectedSecret) {
+    const url = new URL(req.url);
+    const providedSecret =
+      url.searchParams.get("secret") ??
+      req.headers.get("x-callback-secret") ??
+      req.headers.get("X-Callback-Secret");
+    if (providedSecret !== expectedSecret) {
+      console.warn("[mpesa-callback] rejected: bad/missing shared secret");
+      return new Response(
+        JSON.stringify({ ResultCode: 1, ResultDesc: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+  } else {
+    console.warn(
+      "[mpesa-callback] MPESA_CALLBACK_SECRET not configured — callback is unauthenticated. " +
+        "Set this secret and append ?secret=<value> to the Daraja callback URL.",
+    );
+  }
+
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
