@@ -29,7 +29,7 @@ const ProductCard = memo(({ product, onSelect }: { product: OfflineProduct; onSe
       onClick={() => onSelect(product as Product)}
       disabled={outOfStock}
       className={cn(
-        'bg-card rounded-lg p-2 text-left border border-border/40 active:scale-[0.95] transition-transform relative',
+        'bg-card rounded-lg p-2 text-left border border-border/40 active:bg-secondary/60 relative',
         outOfStock && 'opacity-30 cursor-not-allowed'
       )}
     >
@@ -117,7 +117,7 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
             className="pl-9 h-9 bg-card border-border rounded-lg text-sm"
           />
         </div>
-        <button className="shrink-0 h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center active:scale-95">
+        <button className="shrink-0 h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center active:bg-primary/90">
           <ScanLine className="w-4 h-4" />
         </button>
       </div>
@@ -156,7 +156,7 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto -mx-2 px-2"
-        style={{ contain: 'layout paint', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
+        style={{ overscrollBehavior: 'contain', backgroundColor: 'hsl(var(--background))' }}
       >
         {loading ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5">
@@ -175,7 +175,7 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
               return (
                 <div
                   key={vRow.key}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${vRow.start}px)`, height: ROW_HEIGHT }}
+                  style={{ position: 'absolute', top: vRow.start, left: 0, right: 0, height: ROW_HEIGHT }}
                   className="grid grid-cols-3 gap-1.5 px-0"
                 >
                   {rowItems.map(p => <ProductCard key={p.id} product={p} onSelect={onProductSelect} />)}
@@ -184,7 +184,7 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
             })}
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 pb-32 lg:pb-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 pb-2">
             {filteredProducts.map(product => (
               <ProductCard key={product.id} product={product} onSelect={onProductSelect} />
             ))}

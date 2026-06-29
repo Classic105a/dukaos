@@ -70,7 +70,7 @@ const POSHeader = ({
   };
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50">
+    <header className="bg-card border-b border-border shrink-0 z-50">
       <div className="flex items-center justify-between h-14 px-3 lg:px-5">
         {/* Left: Menu & Brand */}
         <div className="flex items-center gap-2.5">
