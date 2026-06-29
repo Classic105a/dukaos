@@ -113,7 +113,7 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-card/95 backdrop-blur-xl border-b border-border">
+      <nav className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-hero flex items-center justify-center shadow-soft">

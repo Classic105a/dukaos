@@ -153,7 +153,11 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
       </div>
 
       {/* Grid */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto -mx-2 px-2">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto -mx-2 px-2"
+        style={{ contain: 'layout paint', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
+      >
         {loading ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5">
             {Array.from({ length: 12 }, (_, i) => <div key={i} className="bg-secondary/40 rounded-lg aspect-square animate-pulse" />)}

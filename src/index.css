@@ -186,9 +186,9 @@
     box-shadow: var(--shadow-accent);
   }
 
-  /* Professional glass effect */
+  /* Opaque surface (was glass — backdrop-filter caused Chromium-Android compositor tearing) */
   .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    @apply bg-card border border-border/50;
   }
 
   /* Scrollbar styling */
