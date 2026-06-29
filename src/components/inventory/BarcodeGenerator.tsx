@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Printer, Download, Barcode } from 'lucide-react';
+import { escapeHtml } from '@/lib/html';
 
 interface BarcodeGeneratorProps {
   isOpen: boolean;
@@ -70,9 +71,9 @@ const BarcodeGenerator = ({ isOpen, onClose, products }: BarcodeGeneratorProps) 
 
     const labels = Array(labelCount).fill(null).map(() => `
       <div style="display:inline-block;text-align:center;margin:4px;padding:8px;border:1px dashed #ccc;page-break-inside:avoid;">
-        ${selectedProduct ? `<div style="font-weight:bold;font-size:11px;margin-bottom:4px;">${selectedProduct.name}</div>` : ''}
+        ${selectedProduct ? `<div style="font-weight:bold;font-size:11px;margin-bottom:4px;">${escapeHtml(selectedProduct.name)}</div>` : ''}
         <img src="${dataUrl}" style="max-width:200px;height:auto;" />
-        ${showPrice && selectedProduct ? `<div style="font-size:12px;font-weight:bold;margin-top:2px;">KES ${selectedProduct.unit_price.toLocaleString()}</div>` : ''}
+        ${showPrice && selectedProduct ? `<div style="font-size:12px;font-weight:bold;margin-top:2px;">KES ${escapeHtml(selectedProduct.unit_price.toLocaleString())}</div>` : ''}
       </div>
     `).join('');
 
