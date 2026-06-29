@@ -355,6 +355,10 @@ body.scanner-active > #root {
   scroll-behavior: auto !important;
 }
 
+.android-chromium-compositor-safe * {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke !important;
+}
+
 .android-chromium-compositor-safe .animate-float,
 .android-chromium-compositor-safe .animate-slide-up,
 .android-chromium-compositor-safe .animate-scale-in,
@@ -368,5 +372,9 @@ body.scanner-active > #root {
 @media (max-width: 1023px) {
   .android-chromium-compositor-safe .fixed {
     transform: none !important;
+  }
+
+  .android-chromium-compositor-safe [class*="shadow-"] {
+    box-shadow: none !important;
   }
 }

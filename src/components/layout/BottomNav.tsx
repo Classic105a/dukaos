@@ -20,7 +20,7 @@ const BottomNav = () => {
   const location = useLocation();
 
   return (
-    <nav className="lg:hidden sticky bottom-0 left-0 right-0 z-50 shrink-0 bg-card border-t border-border safe-area-bottom shadow-[0_-1px_0_hsl(var(--border))]">
+    <nav className="lg:hidden shrink-0 z-50 bg-card border-t border-border safe-area-bottom shadow-[0_-1px_0_hsl(var(--border))]">
       <div className="flex items-stretch justify-around h-16 px-1">
         {primaryTabs.map(tab => {
           const Icon = tab.icon;
