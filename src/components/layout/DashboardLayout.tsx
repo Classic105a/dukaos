@@ -102,7 +102,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <SystemHealthBar />
 
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
+      <header className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="flex items-center justify-between h-14 px-3 lg:px-5">
           {/* Left: Logo */}
           <div className="flex items-center gap-2.5">

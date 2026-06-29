@@ -10,7 +10,7 @@ const cardVariants = cva(
       variant: {
         default: "bg-card shadow-soft border-border",
         elevated: "bg-card shadow-elevated border-transparent hover:shadow-strong",
-        glass: "bg-card/70 backdrop-blur-xl border-border/40 shadow-soft",
+        glass: "bg-card border-border/40 shadow-soft",
         feature: "bg-card shadow-soft hover:shadow-elevated hover:-translate-y-0.5 border-border/60",
         pricing: "bg-card shadow-elevated border-2 border-border hover:border-primary/40",
         "pricing-featured": "bg-gradient-hero text-primary-foreground shadow-strong border-0",
