@@ -286,7 +286,7 @@ const Dashboard = () => {
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
       {/* Offline/sync bar */}
       {(!isOnline || pendingCount > 0) && (
         <div className={`shrink-0 flex items-center justify-between px-3 py-1 text-xs font-medium text-white ${!isOnline ? 'bg-destructive' : 'bg-warning'}`}>

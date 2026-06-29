@@ -82,13 +82,13 @@ const MobileCartSheet = ({
                 <>
                   {/* Payment buttons */}
                   <div className="grid grid-cols-3 gap-1.5">
-                    <button onClick={() => setShowCashTender(true)} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-success text-white font-bold text-sm active:scale-95 transition-transform">
+                    <button onClick={() => setShowCashTender(true)} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-success text-white font-bold text-sm active:bg-success/90">
                       <Banknote className="w-5 h-5" />CASH
                     </button>
-                    <button onClick={onMpesaPayment} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-[#4caf50] text-white font-bold text-sm active:scale-95 transition-transform">
+                    <button onClick={onMpesaPayment} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-[#4caf50] text-white font-bold text-sm active:bg-[#43a047]">
                       <Smartphone className="w-5 h-5" />M-PESA
                     </button>
-                    <button onClick={onCardPayment} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm active:scale-95 transition-transform">
+                    <button onClick={onCardPayment} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm active:bg-primary/90">
                       <CreditCard className="w-5 h-5" />CARD
                     </button>
                   </div>
