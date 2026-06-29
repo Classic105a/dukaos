@@ -286,10 +286,10 @@ const Dashboard = () => {
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
       {/* Offline/sync bar */}
       {(!isOnline || pendingCount > 0) && (
-        <div className={`flex items-center justify-between px-3 py-1 text-xs font-medium text-white ${!isOnline ? 'bg-destructive' : 'bg-warning'}`}>
+        <div className={`shrink-0 flex items-center justify-between px-3 py-1 text-xs font-medium text-white ${!isOnline ? 'bg-destructive' : 'bg-warning'}`}>
           <div className="flex items-center gap-1.5">
             {!isOnline ? <><WifiOff className="w-3 h-3" /><span>OFFLINE</span></> :
               isSyncing ? <><RefreshCw className="w-3 h-3 animate-spin" /><span>Syncing...</span></> :
@@ -355,9 +355,9 @@ const Dashboard = () => {
 
       {/* Mobile floating cart */}
       {cartItems.length > 0 && (
-        <div className="lg:hidden fixed bottom-20 left-3 right-3 z-40">
+        <div className="lg:hidden shrink-0 px-3 py-2 bg-background border-t border-border">
           <Button
-            className="w-full h-14 rounded-xl shadow-lg justify-between px-5 bg-primary text-primary-foreground"
+            className="w-full h-14 rounded-xl shadow-soft justify-between px-5 bg-primary text-primary-foreground"
             onClick={() => setShowMobileCart(true)}
           >
             <div className="flex items-center gap-2">

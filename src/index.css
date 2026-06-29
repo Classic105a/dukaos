@@ -124,6 +124,18 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background: hsl(var(--background));
+  }
+
+  body {
+    margin: 0;
+    overflow-x: hidden;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     @apply font-bold tracking-tight;
@@ -314,4 +326,55 @@ body.scanner-active > #root {
 :root {
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/*
+  Android Chromium compositor safe mode
+  ------------------------------------
+  Root cause of the reported black horizontal bands: Chrome-family Android
+  browsers were compositing a scrollable POS surface beneath fixed/sticky UI and
+  transform/filter driven animation layers. During scroll/navigation the GPU
+  reused stale tiles, exposing unpainted/stale frame-buffer rows. The corruption
+  reproduces in PWA because it is a browser compositor path, not a Lovable iframe
+  issue. This mode makes all app surfaces opaque and removes the paint features
+  that force fragile GPU layer promotion on those browsers.
+*/
+.android-chromium-compositor-safe,
+.android-chromium-compositor-safe body,
+.android-chromium-compositor-safe #root {
+  background: hsl(var(--background)) !important;
+}
+
+.android-chromium-compositor-safe *,
+.android-chromium-compositor-safe *::before,
+.android-chromium-compositor-safe *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+  perspective: none !important;
+  scroll-behavior: auto !important;
+}
+
+.android-chromium-compositor-safe * {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke !important;
+  animation: none !important;
+}
+
+.android-chromium-compositor-safe .animate-float,
+.android-chromium-compositor-safe .animate-slide-up,
+.android-chromium-compositor-safe .animate-scale-in,
+.android-chromium-compositor-safe .animate-slide-in-right,
+.android-chromium-compositor-safe .animate-fade-in {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+@media (max-width: 1023px) {
+  .android-chromium-compositor-safe .fixed {
+    transform: none !important;
+  }
+
+  .android-chromium-compositor-safe [class*="shadow-"] {
+    box-shadow: none !important;
+  }
 }

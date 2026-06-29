@@ -1,35 +1,23 @@
-import { motion } from 'framer-motion';
 import { Store } from 'lucide-react';
 
 /** Full-page loading state with brand identity */
 export const FullPageLoader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-    <motion.div
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="w-14 h-14 bg-gradient-hero rounded-2xl flex items-center justify-center shadow-glow"
-    >
+    <div className="w-14 h-14 bg-gradient-hero rounded-2xl flex items-center justify-center shadow-glow">
       <Store className="w-7 h-7 text-primary-foreground" />
-    </motion.div>
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.2 }}
-      className="flex flex-col items-center gap-2"
-    >
+    </div>
+    <div className="flex flex-col items-center gap-2">
       <div className="flex gap-1">
         {[0, 1, 2].map(i => (
-          <motion.div
+          <div
             key={i}
-            className="w-2 h-2 rounded-full bg-primary"
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+            className="w-2 h-2 rounded-full bg-primary animate-pulse"
+            style={{ animationDelay: `${i * 200}ms` }}
           />
         ))}
       </div>
       <span className="text-sm text-muted-foreground font-medium">Loading DukaOS</span>
-    </motion.div>
+    </div>
   </div>
 );
 

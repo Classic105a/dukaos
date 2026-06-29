@@ -23,7 +23,7 @@ const CashTenderPanel = ({ total, onConfirm, onCancel }: CashTenderPanelProps) =
   }, [total]);
 
   return (
-    <div className="space-y-2 animate-in slide-in-from-bottom-2 duration-200">
+    <div className="space-y-2">
       {/* Cash received input */}
       <div>
         <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Cash Received</label>
@@ -42,7 +42,7 @@ const CashTenderPanel = ({ total, onConfirm, onCancel }: CashTenderPanelProps) =
       <div className="flex gap-1.5">
         <button
           onClick={() => setCashReceived(total)}
-          className="px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-bold active:scale-95 transition-transform"
+          className="px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-bold active:bg-primary/20"
         >
           Exact
         </button>
@@ -51,7 +51,7 @@ const CashTenderPanel = ({ total, onConfirm, onCancel }: CashTenderPanelProps) =
             key={amt}
             onClick={() => setCashReceived(amt)}
             className={cn(
-              "flex-1 py-2 rounded-lg text-xs font-bold tabular-nums active:scale-95 transition-transform",
+              "flex-1 py-2 rounded-lg text-xs font-bold tabular-nums active:bg-secondary/80",
               cashReceived === amt
                 ? "bg-success/20 text-success ring-1 ring-success/30"
                 : "bg-secondary text-foreground"
@@ -84,7 +84,7 @@ const CashTenderPanel = ({ total, onConfirm, onCancel }: CashTenderPanelProps) =
       <div className="flex gap-2">
         <button
           onClick={onCancel}
-          className="flex items-center justify-center gap-1 px-4 py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:scale-95 transition-transform"
+          className="flex items-center justify-center gap-1 px-4 py-3 rounded-xl bg-secondary text-foreground font-medium text-sm active:bg-secondary/80"
         >
           <X className="w-4 h-4" />
         </button>
@@ -92,7 +92,7 @@ const CashTenderPanel = ({ total, onConfirm, onCancel }: CashTenderPanelProps) =
           onClick={() => isValid && onConfirm(cashReceived)}
           disabled={!isValid}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm active:scale-95 transition-transform",
+            "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm active:bg-success/90",
             isValid
               ? "bg-success text-white"
               : "bg-muted text-muted-foreground cursor-not-allowed"

@@ -102,7 +102,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <SystemHealthBar />
 
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 bg-card border-b border-border">
+      <header className="shrink-0 z-50 bg-card border-b border-border">
         <div className="flex items-center justify-between h-14 px-3 lg:px-5">
           {/* Left: Logo */}
           <div className="flex items-center gap-2.5">
@@ -257,7 +257,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-3 lg:p-5 pb-bottom-nav lg:pb-5">
+      <main className="flex-1 p-3 lg:p-5 lg:pb-5">
         <PageTransition>
           {children}
         </PageTransition>

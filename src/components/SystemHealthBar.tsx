@@ -3,7 +3,6 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { Activity, AlertTriangle, CheckCircle2, RefreshCw, WifiOff, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const SystemHealthBar = () => {
   const { isOnline, isSyncing, pendingCount, syncError, syncPendingSales, clearFailedSales } = useOfflineSync();
@@ -49,52 +48,45 @@ const SystemHealthBar = () => {
   const Icon = status.icon;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ height: 0, opacity: 0 }}
-        animate={{ height: 'auto', opacity: 1 }}
-        exit={{ height: 0, opacity: 0 }}
-        className={cn('overflow-hidden', status.color)}
-      >
-        <div className="flex items-center justify-between px-3 py-1.5 text-white text-xs font-medium">
-          <div className="flex items-center gap-2">
-            <Icon className={cn('w-3.5 h-3.5', status.type === 'syncing' && 'animate-spin')} />
-            <span>{status.label}</span>
-            {dbLatency !== null && isOnline && !syncError && (
-              <span className="opacity-60 ml-2">
-                {dbLatency}ms latency
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5">
-            {pendingCount > 0 && isOnline && !isSyncing && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 text-xs text-white hover:text-white hover:bg-white/20 px-2"
-                onClick={() => syncPendingSales()}
-              >
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Sync Now
-              </Button>
-            )}
-            {syncError && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 text-xs text-white hover:text-white hover:bg-white/20 px-2"
-                onClick={clearFailedSales}
-              >
-                Clear Failed
-              </Button>
-            )}
-            <button onClick={() => setDismissed(true)} className="p-0.5 hover:bg-white/20 rounded">
-              <X className="w-3 h-3" />
-            </button>
-          </div>
+    <div className={cn('overflow-hidden shrink-0', status.color)}>
+      <div className="flex items-center justify-between px-3 py-1.5 text-white text-xs font-medium">
+        <div className="flex items-center gap-2">
+          <Icon className={cn('w-3.5 h-3.5', status.type === 'syncing' && 'animate-spin')} />
+          <span>{status.label}</span>
+          {dbLatency !== null && isOnline && !syncError && (
+            <span className="opacity-60 ml-2">
+              {dbLatency}ms latency
+            </span>
+          )}
         </div>
-      </motion.div>
-    </AnimatePresence>
+        <div className="flex items-center gap-1.5">
+          {pendingCount > 0 && isOnline && !isSyncing && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs text-white hover:text-white hover:bg-white/20 px-2"
+              onClick={() => syncPendingSales()}
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Sync Now
+            </Button>
+          )}
+          {syncError && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs text-white hover:text-white hover:bg-white/20 px-2"
+              onClick={clearFailedSales}
+            >
+              Clear Failed
+            </Button>
+          )}
+          <button onClick={() => setDismissed(true)} className="p-0.5 hover:bg-white/20 rounded">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
