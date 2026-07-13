@@ -14,6 +14,7 @@ import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import SessionLockScreen from "@/components/SessionLockScreen";
 import SessionWarning from "@/components/SessionWarning";
+import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 // Eager: landing, auth, primary POS (kept fast on cold boot)
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -115,6 +116,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <PWAUpdatePrompt />
         <BrowserRouter>
           <AuthProvider>
             <ErrorBoundary>
