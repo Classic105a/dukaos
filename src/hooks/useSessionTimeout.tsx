@@ -3,6 +3,7 @@ import { useAuth } from './useAuth';
 
 const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 const WARNING_MS = 60 * 1000; // 1 minute warning before timeout
+const LOCK_CHANNEL = 'dukaos_session_lock';
 
 interface UseSessionTimeoutReturn {
   isLocked: boolean;
@@ -28,6 +29,7 @@ export const useSessionTimeout = (): UseSessionTimeoutReturn => {
   const warningRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef(Date.now());
+  const channelRef = useRef<BroadcastChannel | null>(null);
 
   const clearTimers = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -39,10 +41,16 @@ export const useSessionTimeout = (): UseSessionTimeoutReturn => {
     setIsLocked(true);
     setShowWarning(false);
     clearTimers();
+    try { channelRef.current?.postMessage({ type: 'lock' }); } catch { /* noop */ }
   }, [clearTimers]);
 
   const resetTimer = useCallback(() => {
     if (!user || isLocked) return;
+    // H6: skip timer arming while tab is hidden — resumes on visibility change
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      clearTimers();
+      return;
+    }
     
     lastActivityRef.current = Date.now();
     setShowWarning(false);
@@ -75,12 +83,14 @@ export const useSessionTimeout = (): UseSessionTimeoutReturn => {
       if (enteredPin === pin) {
         setIsLocked(false);
         resetTimer();
+        try { channelRef.current?.postMessage({ type: 'unlock' }); } catch { /* noop */ }
         return true;
       }
       return false;
     }
     setIsLocked(false);
     resetTimer();
+    try { channelRef.current?.postMessage({ type: 'unlock' }); } catch { /* noop */ }
     return true;
   }, [pin, resetTimer]);
 
@@ -105,12 +115,33 @@ export const useSessionTimeout = (): UseSessionTimeoutReturn => {
       document.addEventListener(event, handleActivity, { passive: true });
     });
 
+    // H6: pause/resume on tab visibility to save battery
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && !isLocked) resetTimer();
+      else clearTimers();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    // M10: cross-tab lock/unlock sync
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      channel = new BroadcastChannel(LOCK_CHANNEL);
+      channelRef.current = channel;
+      channel.onmessage = (ev) => {
+        if (ev.data?.type === 'lock') { setIsLocked(true); setShowWarning(false); clearTimers(); }
+        if (ev.data?.type === 'unlock') { setIsLocked(false); }
+      };
+    }
+
     resetTimer();
 
     return () => {
       events.forEach(event => {
         document.removeEventListener(event, handleActivity);
       });
+      document.removeEventListener('visibilitychange', onVisibility);
+      channel?.close();
+      channelRef.current = null;
       clearTimers();
     };
   }, [user, isLocked, resetTimer, clearTimers]);
