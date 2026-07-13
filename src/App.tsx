@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,32 +14,57 @@ import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import SessionLockScreen from "@/components/SessionLockScreen";
 import SessionWarning from "@/components/SessionWarning";
+import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
+// Eager: landing, auth, primary POS (kept fast on cold boot)
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import AcceptInvite from "./pages/AcceptInvite";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
 import Dashboard from "./pages/Dashboard";
-import Inventory from "./pages/Inventory";
-import Branches from "./pages/Branches";
-import Reports from "./pages/Reports";
-import Customers from "./pages/Customers";
-import Settings from "./pages/Settings";
-import Parties from "./pages/Parties";
-import DebtDashboard from "./pages/DebtDashboard";
-import AuditLog from "./pages/AuditLog";
-import Analytics from "./pages/Analytics";
-import CustomerStatement from "./pages/CustomerStatement";
-import Warehouse from "./pages/Warehouse";
-import Promotions from "./pages/Promotions";
-import SmartInventory from "./pages/SmartInventory";
 import { FEATURES } from "./lib/feature-flags";
-import More from "./pages/More";
-import Install from "./pages/Install";
-import Observability from "./pages/Observability";
-import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Lazy: everything else code-splits into its own chunk
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Inventory = lazy(() => import("./pages/Inventory"));
+const Branches = lazy(() => import("./pages/Branches"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Customers = lazy(() => import("./pages/Customers"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Parties = lazy(() => import("./pages/Parties"));
+const DebtDashboard = lazy(() => import("./pages/DebtDashboard"));
+const AuditLog = lazy(() => import("./pages/AuditLog"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const CustomerStatement = lazy(() => import("./pages/CustomerStatement"));
+const Warehouse = lazy(() => import("./pages/Warehouse"));
+const Promotions = lazy(() => import("./pages/Promotions"));
+const SmartInventory = lazy(() => import("./pages/SmartInventory"));
+const More = lazy(() => import("./pages/More"));
+const Install = lazy(() => import("./pages/Install"));
+const Observability = lazy(() => import("./pages/Observability"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: "always",
+      retry: 1,
+    },
+    mutations: { retry: 0 },
+  },
+});
+
+const RouteFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex gap-1">
+      {[0, 1, 2].map(i => (
+        <div key={i} className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: `${i * 200}ms` }} />
+      ))}
+    </div>
+  </div>
+);
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -90,9 +116,11 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <PWAUpdatePrompt />
         <BrowserRouter>
           <AuthProvider>
             <ErrorBoundary>
+              <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
@@ -118,6 +146,7 @@ const App = () => (
                 <Route path="/observability" element={<ProtectedRoute><Observability /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
             </ErrorBoundary>
           </AuthProvider>
         </BrowserRouter>
