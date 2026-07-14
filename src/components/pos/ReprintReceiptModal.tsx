@@ -93,6 +93,11 @@ const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
       if (paymentsError) throw paymentsError;
 
       // Build receipt data for thermal printing
+      const cashPay = (payments || []).find(p => p.payment_method === 'cash');
+      const cashReceivedVal = cashPay && Number(cashPay.amount) > Number(sale.total_amount)
+        ? Number(cashPay.amount) : undefined;
+      const changeGivenVal = cashReceivedVal !== undefined
+        ? cashReceivedVal - Number(sale.total_amount) : undefined;
       const receiptData: ReceiptData = {
         header: {
           businessName: 'DukaOS',
@@ -122,6 +127,8 @@ const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
           amount: p.amount,
           reference: p.mpesa_reference ?? undefined,
         })),
+        cashReceived: cashReceivedVal,
+        changeGiven: changeGivenVal,
         footer: {
           message: currentBranch?.receipt_footer_message || 'Thank you for your business!',
         },
