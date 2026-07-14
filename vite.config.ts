@@ -14,6 +14,24 @@ export default defineConfig(({ mode }) => ({
     // H11: strip console.* and debugger from production bundle
     drop: mode === "production" ? ["console", "debugger"] : [],
   },
+  build: {
+    // Batch 4: split heavy vendors into their own chunks so the POS shell
+    // loads without pulling recharts / radix / supabase up front.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("recharts") || id.includes("d3-")) return "charts";
+          if (id.includes("@supabase")) return "supabase";
+          if (id.includes("@radix-ui")) return "radix";
+          if (id.includes("@tanstack")) return "tanstack";
+          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("react-dom") || id.includes("react-router")) return "react";
+        },
+      },
+    },
+    chunkSizeWarningLimit: 900,
+  },
   plugins: [
     react(),
     mode === "development" && componentTagger(),
