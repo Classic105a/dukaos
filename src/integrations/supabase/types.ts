@@ -2585,7 +2585,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: {
           user_email: string
-          user_role: Database["public"]["Enums"]["app_role"]
+          user_role: string
         }[]
       }
       verify_manager_pin: {
