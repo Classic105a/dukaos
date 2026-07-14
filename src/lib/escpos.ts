@@ -100,6 +100,8 @@ export interface ReceiptData {
     amount: number;
     reference?: string;
   }>;
+  cashReceived?: number;
+  changeGiven?: number;
   footer?: {
     message?: string;
     returnPolicy?: string;
