@@ -200,12 +200,17 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     console.error("Print error:", error);
-    // Don't expose internal error details to client
+    // Return a graceful 200 with a fallback flag so the client can degrade to
+    // browser print instead of surfacing a fatal 500 (edge functions cannot
+    // reach LAN-only printer IPs, so timeouts are expected here).
     const isTimeout = error instanceof Error && error.message === "Connection timeout";
-    const message = isTimeout ? "Printer connection timed out" : "Failed to print receipt";
     return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        success: false,
+        fallback: true,
+        error: isTimeout ? "Printer unreachable from cloud (LAN-only)" : "Failed to print receipt",
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

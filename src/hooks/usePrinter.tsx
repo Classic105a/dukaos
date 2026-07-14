@@ -196,17 +196,19 @@ export const usePrinter = () => {
                 receiptBytes
               );
               if (r.success) { success = true; break; }
-              console.warn('[Printer] native TCP unavailable, falling back to edge function:', r.error);
+              console.warn('[Printer] native TCP unavailable:', r.error);
             } catch (e) {
-              console.warn('[Printer] native TCP failed, falling back to edge function:', e);
+              console.warn('[Printer] native TCP failed:', e);
             }
           }
-          success = await printViaNetwork(
-            defaultPrinter.ip_address,
-            defaultPrinter.port || 9100,
-            receiptBytes
+          // Edge functions run in the public cloud and cannot reach LAN printers
+          // (e.g. 192.168.x.x). Skip the network attempt on web — the caller's
+          // browser fallback (receiptHtml) will handle it.
+          throw new Error(
+            isNativeApp()
+              ? 'Printer unreachable on local network'
+              : 'Network printers require the mobile app. Using browser print instead.'
           );
-          break;
         }
 
         case 'bluetooth': {
