@@ -51,7 +51,8 @@ const PaymentModal = ({ isOpen, onClose, total, onConfirmPayment }: PaymentModal
 
     if (method === 'cash') {
       if (cashAmount < total) { toast.error('Insufficient cash'); return; }
-      payments.push({ method: 'cash', amount: total });
+      // Store tendered amount so backend can record change and receipt can show it
+      payments.push({ method: 'cash', amount: cashAmount });
     } else if (method === 'mpesa') {
       const phoneClean = mpesaPhone.replace(/\s/g, '');
       if (!phoneClean) { toast.error('Enter phone number'); return; }
