@@ -100,6 +100,8 @@ export interface ReceiptData {
     amount: number;
     reference?: string;
   }>;
+  cashReceived?: number;
+  changeGiven?: number;
   footer?: {
     message?: string;
     returnPolicy?: string;
@@ -322,6 +324,12 @@ export const buildReceiptText = (
       paymentLine += ` (${payment.reference})`;
     }
     receipt += paymentLine + '\n';
+  }
+
+  // Cash tendered / change (only for cash payments)
+  if (typeof data.cashReceived === 'number' && data.cashReceived > 0) {
+    receipt += padText('Cash Received:', formatCurrency(data.cashReceived), width) + '\n';
+    receipt += padText('Change:', formatCurrency(Math.max(0, data.changeGiven ?? (data.cashReceived - data.totalAmount))), width) + '\n';
   }
   
   // Barcode/QR Code section

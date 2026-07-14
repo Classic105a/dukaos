@@ -254,6 +254,7 @@ const Dashboard = () => {
           items: saleItems.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, totalPrice: i.total })),
           subtotal: saleSubtotal, taxAmount: saleTax, discountAmount: 0, totalAmount: saleTotal,
           payments: payments.map(p => ({ method: p.method.toUpperCase(), amount: p.amount, reference: p.mpesa_reference })),
+          cashReceived, changeGiven,
           footer: { message: currentBranch.receipt_footer_message || 'Thank you!' },
         };
         printReceipt(receiptData);
