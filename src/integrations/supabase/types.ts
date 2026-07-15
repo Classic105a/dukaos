@@ -2467,6 +2467,9 @@ export type Database = {
     Functions: {
       accept_invite: { Args: { p_token: string }; Returns: Json }
       business_id_from_branch: { Args: { _branch_id: string }; Returns: string }
+      business_id_from_grn: { Args: { _grn_id: string }; Returns: string }
+      business_id_from_po: { Args: { _po_id: string }; Returns: string }
+      business_id_from_sale: { Args: { _sale_id: string }; Returns: string }
       cleanup_invites: { Args: never; Returns: Json }
       complete_sale: {
         Args: {
@@ -2554,6 +2557,10 @@ export type Database = {
           p_start_date: string
         }
         Returns: Json
+      }
+      has_business_role: {
+        Args: { _business_id: string; _roles: string[]; _user_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
