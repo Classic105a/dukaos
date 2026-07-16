@@ -83,6 +83,7 @@ export interface ReceiptData {
   date: Date;
   cashierName?: string;
   customerName?: string;
+  isReprint?: boolean;
   items: Array<{
     name: string;
     quantity: number;
