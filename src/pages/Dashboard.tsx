@@ -316,6 +316,10 @@ const Dashboard = () => {
               <DropdownMenuItem asChild><Link to="/customers">Customers</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to="/reports">Reports</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShowReprint(true)}>
+                <Printer className="h-4 w-4 mr-2" />Reprint Receipt
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild><Link to="/settings"><Settings className="h-4 w-4 mr-2" />Settings</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={async () => { await signOut(); navigate('/auth'); }} className="text-destructive">
@@ -423,6 +427,8 @@ const Dashboard = () => {
       )}
 
       <BottomNav />
+
+      <ReprintReceiptModal isOpen={showReprint} onClose={() => setShowReprint(false)} />
     </div>
   );
 };
