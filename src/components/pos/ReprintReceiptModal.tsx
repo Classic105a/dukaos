@@ -110,8 +110,9 @@ const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
           mpesaAccount: currentBranch?.mpesa_account_number || undefined,
           kraPin: currentBranch?.kra_pin || undefined,
         },
-        receiptNumber: `${sale.receipt_number} (REPRINT)`,
+        receiptNumber: sale.receipt_number,
         date: new Date(sale.created_at),
+        isReprint: true,
         items: (items || []).map(item => ({
           name: item.product_name,
           quantity: item.quantity,
@@ -137,6 +138,10 @@ const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
       // Build HTML for browser fallback
       const receiptHtml = `
         <div style="font-family: monospace; max-width: 300px; margin: 0 auto; font-size: 12px;">
+          <div style="text-align: center; font-weight: bold; font-size: 16px; border: 2px dashed #000; padding: 6px; margin-bottom: 8px; letter-spacing: 2px;">
+            *** REPRINT ***<br/>
+            <span style="font-size: 11px; font-weight: normal; letter-spacing: 1px;">REPRINTED COPY — NOT AN ORIGINAL</span>
+          </div>
           <div style="text-align: center; margin-bottom: 10px;">
             <strong>DukaOS</strong><br/>
             ${currentBranch?.name || ''}<br/>

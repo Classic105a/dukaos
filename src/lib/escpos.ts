@@ -83,6 +83,7 @@ export interface ReceiptData {
   date: Date;
   cashierName?: string;
   customerName?: string;
+  isReprint?: boolean;
   items: Array<{
     name: string;
     quantity: number;
@@ -199,7 +200,18 @@ export const buildReceiptText = (
   // Initialize
   receipt += COMMANDS.INIT;
   receipt += COMMANDS.ALIGN_CENTER;
-  
+
+  // Reprint banner (must appear before receipt details)
+  if (data.isReprint) {
+    receipt += COMMANDS.BOLD_ON;
+    receipt += COMMANDS.DOUBLE_SIZE_ON;
+    receipt += '*** REPRINT ***\n';
+    receipt += COMMANDS.NORMAL_SIZE;
+    receipt += COMMANDS.BOLD_OFF;
+    receipt += 'REPRINTED COPY - NOT AN ORIGINAL\n';
+    receipt += divider(width) + '\n';
+  }
+
   // Header - Business Name
   if (s.showBusinessName && data.header.businessName) {
     receipt += COMMANDS.DOUBLE_SIZE_ON;
