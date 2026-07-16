@@ -11,13 +11,14 @@ import { useTransactionRecovery } from '@/hooks/useTransactionRecovery';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart, { CartItem } from '@/components/pos/Cart';
 import ReceiptModal from '@/components/pos/ReceiptModal';
+import ReprintReceiptModal from '@/components/pos/ReprintReceiptModal';
 import MobileCartSheet from '@/components/pos/MobileCartSheet';
 import MpesaDialog from '@/components/pos/MpesaDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { ReceiptData } from '@/lib/escpos';
-import { ShoppingCart, WifiOff, RefreshCw, Menu, LogOut, Settings } from 'lucide-react';
+import { ShoppingCart, WifiOff, RefreshCw, Menu, LogOut, Settings, Printer } from 'lucide-react';
 import BottomNav from '@/components/layout/BottomNav';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -54,6 +55,7 @@ const Dashboard = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [showMpesa, setShowMpesa] = useState(false);
+  const [showReprint, setShowReprint] = useState(false);
   const [lastSale, setLastSale] = useState<{
     receiptNumber: string;
     payments: Array<{ method: string; amount: number; mpesa_reference?: string }>;
@@ -314,6 +316,10 @@ const Dashboard = () => {
               <DropdownMenuItem asChild><Link to="/customers">Customers</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to="/reports">Reports</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShowReprint(true)}>
+                <Printer className="h-4 w-4 mr-2" />Reprint Receipt
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild><Link to="/settings"><Settings className="h-4 w-4 mr-2" />Settings</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={async () => { await signOut(); navigate('/auth'); }} className="text-destructive">
@@ -421,6 +427,8 @@ const Dashboard = () => {
       )}
 
       <BottomNav />
+
+      <ReprintReceiptModal isOpen={showReprint} onClose={() => setShowReprint(false)} />
     </div>
   );
 };
