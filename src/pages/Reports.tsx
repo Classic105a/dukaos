@@ -67,8 +67,32 @@ type DateRange = 'today' | 'week' | 'month' | 'custom';
 const Reports = () => {
   const { currentBranch, branches } = useBranch();
   const { canManageCustomerCredit } = usePermissions();
+  const { printReceipt, isPrinting: printerBusy } = usePrinter();
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
+  const [reprintingId, setReprintingId] = useState<string | null>(null);
+  const [reprintedId, setReprintedId] = useState<string | null>(null);
+
+  const handleReprintRow = useCallback(async (saleId: string) => {
+    setReprintingId(saleId);
+    setReprintedId(null);
+    try {
+      const { receiptData, receiptHtml } = await buildReprintPayload(saleId, currentBranch);
+      const result = await printReceipt(receiptData, { fallbackToBrowser: true, receiptHtml });
+      if (result.success) {
+        setReprintedId(saleId);
+        if (result.method === 'thermal') toast.success('Receipt reprinted');
+        setTimeout(() => setReprintedId(null), 2000);
+      } else {
+        toast.error(result.error || 'Failed to reprint');
+      }
+    } catch (err) {
+      console.error('Reprint error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to reprint');
+    } finally {
+      setReprintingId(null);
+    }
+  }, [currentBranch, printReceipt]);
 
   const getDateRange = () => {
     const now = new Date();
