@@ -4,6 +4,8 @@ import { exportToCSV, exportToExcel, exportToPDF, generatePLReport } from '@/lib
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
 import { usePermissions } from '@/hooks/usePermissions';
+import { usePrinter } from '@/hooks/usePrinter';
+import { buildReprintPayload } from '@/lib/reprint-receipt';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,6 +29,10 @@ import {
   Calendar,
   Download,
   CreditCard,
+  Printer,
+  Loader2,
+  Check,
+  Receipt as ReceiptIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -61,8 +67,32 @@ type DateRange = 'today' | 'week' | 'month' | 'custom';
 const Reports = () => {
   const { currentBranch, branches } = useBranch();
   const { canManageCustomerCredit } = usePermissions();
+  const { printReceipt, isPrinting: printerBusy } = usePrinter();
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
+  const [reprintingId, setReprintingId] = useState<string | null>(null);
+  const [reprintedId, setReprintedId] = useState<string | null>(null);
+
+  const handleReprintRow = useCallback(async (saleId: string) => {
+    setReprintingId(saleId);
+    setReprintedId(null);
+    try {
+      const { receiptData, receiptHtml } = await buildReprintPayload(saleId, currentBranch);
+      const result = await printReceipt(receiptData, { fallbackToBrowser: true, receiptHtml });
+      if (result.success) {
+        setReprintedId(saleId);
+        if (result.method === 'thermal') toast.success('Receipt reprinted');
+        setTimeout(() => setReprintedId(null), 2000);
+      } else {
+        toast.error(result.error || 'Failed to reprint');
+      }
+    } catch (err) {
+      console.error('Reprint error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to reprint');
+    } finally {
+      setReprintingId(null);
+    }
+  }, [currentBranch, printReceipt]);
 
   const getDateRange = () => {
     const now = new Date();
@@ -391,6 +421,10 @@ const Reports = () => {
             <TabsTrigger value="products">Top Products</TabsTrigger>
             <TabsTrigger value="categories">By Category</TabsTrigger>
             <TabsTrigger value="payments">Payment Methods</TabsTrigger>
+            <TabsTrigger value="transactions" className="gap-1">
+              <ReceiptIcon className="w-4 h-4" />
+              Transactions
+            </TabsTrigger>
             {canManageCustomerCredit && (
               <TabsTrigger value="credit" className="gap-1">
                 <CreditCard className="w-4 h-4" />
@@ -640,6 +674,80 @@ const Reports = () => {
               <EnhancedCreditAging />
             </TabsContent>
           )}
+
+          <TabsContent value="transactions">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Sales History</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {salesData.length} transaction{salesData.length === 1 ? '' : 's'} · click the printer icon to reprint a receipt
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {salesLoading ? (
+                  <p className="text-center text-muted-foreground py-8 text-sm">Loading transactions…</p>
+                ) : salesData.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8 text-sm">No completed sales in this period</p>
+                ) : (
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <table className="w-full text-sm min-w-[560px]">
+                      <thead>
+                        <tr className="border-b text-left text-xs text-muted-foreground">
+                          <th className="py-2 px-3 font-medium">Receipt</th>
+                          <th className="py-2 px-3 font-medium">Date</th>
+                          <th className="py-2 px-3 font-medium text-right">Items</th>
+                          <th className="py-2 px-3 font-medium text-right">Total</th>
+                          <th className="py-2 px-3 font-medium text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...salesData]
+                          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                          .map((sale: any) => {
+                            const itemCount = (sale.sale_items || []).reduce((n: number, i: any) => n + Number(i.quantity || 0), 0);
+                            const isBusy = reprintingId === sale.id;
+                            const justPrinted = reprintedId === sale.id;
+                            return (
+                              <tr key={sale.id} className="border-b hover:bg-muted/40 transition-colors">
+                                <td className="py-2 px-3 font-mono text-xs">{sale.receipt_number}</td>
+                                <td className="py-2 px-3 text-xs text-muted-foreground">
+                                  {format(new Date(sale.created_at), 'dd MMM yyyy, HH:mm')}
+                                </td>
+                                <td className="py-2 px-3 text-right tabular-nums">{itemCount}</td>
+                                <td className="py-2 px-3 text-right font-semibold tabular-nums">
+                                  KES {Number(sale.total_amount).toLocaleString()}
+                                </td>
+                                <td className="py-2 px-3 text-right">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleReprintRow(sale.id)}
+                                    disabled={isBusy || printerBusy}
+                                    className="gap-1"
+                                    aria-label={`Reprint receipt ${sale.receipt_number}`}
+                                  >
+                                    {isBusy ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : justPrinted ? (
+                                      <Check className="w-4 h-4 text-emerald-500" />
+                                    ) : (
+                                      <Printer className="w-4 h-4" />
+                                    )}
+                                    <span className="hidden sm:inline">Reprint</span>
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
