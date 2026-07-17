@@ -35,6 +35,7 @@ import {
   Receipt as ReceiptIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import SalesHistoryPanel from '@/components/reports/SalesHistoryPanel';
 import { 
   format, 
   subDays, 
