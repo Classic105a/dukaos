@@ -421,6 +421,10 @@ const Reports = () => {
             <TabsTrigger value="products">Top Products</TabsTrigger>
             <TabsTrigger value="categories">By Category</TabsTrigger>
             <TabsTrigger value="payments">Payment Methods</TabsTrigger>
+            <TabsTrigger value="transactions" className="gap-1">
+              <ReceiptIcon className="w-4 h-4" />
+              Transactions
+            </TabsTrigger>
             {canManageCustomerCredit && (
               <TabsTrigger value="credit" className="gap-1">
                 <CreditCard className="w-4 h-4" />
