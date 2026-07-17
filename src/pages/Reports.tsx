@@ -4,6 +4,8 @@ import { exportToCSV, exportToExcel, exportToPDF, generatePLReport } from '@/lib
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
 import { usePermissions } from '@/hooks/usePermissions';
+import { usePrinter } from '@/hooks/usePrinter';
+import { buildReprintPayload } from '@/lib/reprint-receipt';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,6 +29,10 @@ import {
   Calendar,
   Download,
   CreditCard,
+  Printer,
+  Loader2,
+  Check,
+  Receipt as ReceiptIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
