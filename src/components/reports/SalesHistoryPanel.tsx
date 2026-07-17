@@ -80,11 +80,11 @@ const SalesHistoryPanel = ({ sales, loading }: SalesHistoryPanelProps) => {
     enabled: saleIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('returns' as any)
+        .from('returns')
         .select('id, original_sale_id, refund_amount, status, created_at')
         .in('original_sale_id', saleIds);
       if (error) throw error;
-      return (data || []) as Array<{ id: string; original_sale_id: string; refund_amount: number; status: string; created_at: string }>;
+      return (data || []) as unknown as Array<{ id: string; original_sale_id: string; refund_amount: number; status: string; created_at: string }>;
     },
     staleTime: 30_000,
   });
