@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -34,9 +34,13 @@ interface ReturnModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: () => void;
+  /** When provided, skip the search step and auto-load this sale. */
+  preloadedSaleId?: string | null;
+  /** When true, prefill each item's returnQuantity with its full quantity (full refund flow). */
+  preloadFullRefund?: boolean;
 }
 
-const ReturnModal = ({ isOpen, onClose, onComplete }: ReturnModalProps) => {
+const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFullRefund }: ReturnModalProps) => {
   const { currentBranch } = useBranch();
   const { user } = useAuth();
   const { canProcessRefunds, isManager } = usePermissions();
@@ -100,6 +104,45 @@ const ReturnModal = ({ isOpen, onClose, onComplete }: ReturnModalProps) => {
       setSearching(false);
     }
   };
+
+  const loadSaleById = async (saleId: string, prefillFull: boolean) => {
+    setSearching(true);
+    try {
+      const { data: sale, error } = await supabase
+        .from('sales')
+        .select('id, receipt_number, total_amount, created_at')
+        .eq('id', saleId)
+        .single();
+      if (error || !sale) {
+        toast.error('Sale not found');
+        return;
+      }
+      const { data: items } = await supabase
+        .from('sale_items')
+        .select('id, product_id, product_name, quantity, unit_price, total_amount')
+        .eq('sale_id', sale.id);
+      setReceiptNumber(sale.receipt_number);
+      setSaleData({
+        ...sale,
+        items: (items || []).map(item => ({
+          ...item,
+          returnQuantity: prefillFull ? item.quantity : 0,
+        })),
+      });
+    } catch (err) {
+      console.error('Preload error:', err);
+      toast.error('Failed to load sale');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && preloadedSaleId) {
+      loadSaleById(preloadedSaleId, !!preloadFullRefund);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, preloadedSaleId, preloadFullRefund]);
 
   const handleQuantityChange = (itemId: string, quantity: number) => {
     if (!saleData) return;
