@@ -106,6 +106,7 @@ const Warehouse = () => {
         .from('purchase_orders')
         .insert({
           branch_id: currentBranch.id,
+          business_id: (currentBranch as any).business_id,
           supplier_id: poForm.supplier_id || null,
           order_number: orderNumber,
           expected_delivery_date: poForm.expected_delivery_date || null,
@@ -114,7 +115,7 @@ const Warehouse = () => {
           notes: poForm.notes || null,
           created_by: user.id,
           status: 'pending',
-        })
+        } as any)
         .select()
         .single();
 
@@ -156,6 +157,7 @@ const Warehouse = () => {
         .insert({
           grn_number: grnNumber,
           branch_id: currentBranch.id,
+          business_id: (currentBranch as any).business_id,
           purchase_order_id: grnForm.purchase_order_id || null,
           supplier_id: grnForm.supplier_id || null,
           received_by: user.id,
@@ -163,7 +165,7 @@ const Warehouse = () => {
           total_items: totalItems,
           total_value: totalValue,
           notes: grnForm.notes || null,
-        })
+        } as any)
         .select()
         .single();
 
@@ -190,6 +192,7 @@ const Warehouse = () => {
           grnForm.items.filter(i => i.quantity_received > 0).map(item => ({
             product_id: item.product_id,
             branch_id: currentBranch.id,
+            business_id: (currentBranch as any).business_id,
             quantity_change: item.quantity_received,
             movement_type: 'PURCHASE',
             reference_id: grn.id,
@@ -197,7 +200,7 @@ const Warehouse = () => {
             batch_number: item.batch_number || null,
             expiry_date: item.expiry_date || null,
             notes: `GRN ${grnNumber}`,
-          }))
+          })) as any
         );
       }
       return grn;

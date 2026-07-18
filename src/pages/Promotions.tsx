@@ -57,8 +57,11 @@ const Promotions = () => {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Not authenticated');
+      const bizId = localStorage.getItem('currentBusinessId');
+      if (!bizId) throw new Error('No business selected');
       const { error } = await supabase.from('promotions').insert({
         name: form.name,
+        business_id: bizId,
         description: form.description || null,
         promotion_type: form.promotion_type,
         discount_value: form.discount_value,
@@ -70,7 +73,7 @@ const Promotions = () => {
         end_date: form.end_date || null,
         is_active: true,
         created_by: user.id,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {

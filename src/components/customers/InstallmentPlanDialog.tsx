@@ -61,13 +61,14 @@
  
        const { error } = await supabase.from('installment_plans').insert({
          customer_id: customer.id,
+        business_id: (customer as any).business_id,
          total_amount: totalAmount,
          installments_count: count,
          installment_amount: installmentAmount,
          remaining_amount: totalAmount,
          next_due_date: nextDue.toISOString().split('T')[0],
          created_by: user.id,
-       });
+      } as any);
  
        if (error) throw error;
      },

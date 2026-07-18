@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
+import { useBranch } from './useBranch';
 
 export type MovementType = 'ADD' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'TRANSFER_IN' | 'TRANSFER_OUT' | 'INITIAL';
 
@@ -14,12 +15,14 @@ interface StockMovementData {
   expiryDate?: string;
   referenceId?: string;
   notes?: string;
+  businessId?: string;
 }
 
 export const useStockMovements = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentBranch } = useBranch();
 
   const recordMovement = useMutation({
     mutationFn: async (data: StockMovementData) => {
@@ -30,6 +33,7 @@ export const useStockMovements = () => {
         .insert({
           product_id: data.productId,
           branch_id: data.branchId,
+          business_id: data.businessId || currentBranch?.business_id!,
           quantity_change: data.quantityChange,
           movement_type: data.movementType,
           batch_number: data.batchNumber || null,

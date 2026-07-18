@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 interface Branch {
   id: string;
   name: string;
+  business_id: string;
   location: string | null;
   phone: string | null;
   address: string | null;

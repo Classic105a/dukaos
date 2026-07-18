@@ -141,7 +141,7 @@ export const ReceiptSettings = () => {
       } else {
         const { error } = await supabase
           .from('receipt_settings')
-          .insert(data);
+          .insert({ ...data, business_id: (data as any).business_id ?? currentBranch?.business_id } as any);
         if (error) throw error;
       }
     },

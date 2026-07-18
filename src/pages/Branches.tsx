@@ -243,12 +243,16 @@ const Branches = () => {
       quantity: number;
       notes?: string;
     }) => {
+      const dest = branches.find((b: any) => b.id === transferData.to_branch_id);
+      const businessId = (dest as any)?.business_id;
+      if (!businessId) throw new Error('Destination branch missing business');
       const { data, error } = await supabase
         .from('stock_transfers')
         .insert({
           ...transferData,
+          business_id: businessId,
           status: 'pending',
-        })
+        } as any)
         .select()
         .single();
       if (error) throw error;
@@ -279,12 +283,13 @@ const Branches = () => {
         const { error: outError } = await supabase.from('stock_movements').insert({
           product_id: transfer.product_id,
           branch_id: transfer.from_branch_id,
+          business_id: (transfer as any).business_id,
           quantity_change: -transfer.quantity,
           movement_type: 'TRANSFER_OUT',
           reference_id: transferId,
           created_by: user.id,
           notes: `Transfer to ${transfer.to_branch?.name || transfer.to_branch_id}`,
-        });
+        } as any);
         if (outError) throw outError;
       }
 
@@ -292,6 +297,7 @@ const Branches = () => {
       const { error: inError } = await supabase.from('stock_movements').insert({
         product_id: transfer.product_id,
         branch_id: transfer.to_branch_id,
+        business_id: (transfer as any).business_id,
         quantity_change: transfer.quantity,
         movement_type: 'TRANSFER_IN',
         reference_id: transferId,
@@ -299,7 +305,7 @@ const Branches = () => {
         notes: transfer.from_branch_id
           ? `Transfer from ${transfer.from_branch?.name || transfer.from_branch_id}`
           : 'New stock transfer',
-      });
+      } as any);
       if (inError) throw inError;
 
       // Mark transfer as completed

@@ -86,10 +86,11 @@ export const ShiftProvider = ({ children }: { children: ReactNode }) => {
         .from('cashier_shifts')
         .insert({
           branch_id: currentBranch.id,
+          business_id: (currentBranch as any).business_id,
           cashier_id: user.id,
           opening_float: openingFloat,
           status: 'open',
-        })
+        } as any)
         .select()
         .single();
 
