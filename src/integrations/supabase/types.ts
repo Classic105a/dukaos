@@ -173,7 +173,7 @@ export type Database = {
         Row: {
           batch_number: string | null
           branch_id: string
-          business_id: string | null
+          business_id: string
           created_at: string
           expiry_date: string | null
           id: string
@@ -186,7 +186,7 @@ export type Database = {
         Insert: {
           batch_number?: string | null
           branch_id: string
-          business_id?: string | null
+          business_id: string
           created_at?: string
           expiry_date?: string | null
           id?: string
@@ -199,7 +199,7 @@ export type Database = {
         Update: {
           batch_number?: string | null
           branch_id?: string
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           expiry_date?: string | null
           id?: string
@@ -425,7 +425,7 @@ export type Database = {
         Row: {
           actual_cash: number | null
           branch_id: string
-          business_id: string | null
+          business_id: string
           cash_discrepancy: number | null
           cashier_id: string
           closed_at: string | null
@@ -442,7 +442,7 @@ export type Database = {
         Insert: {
           actual_cash?: number | null
           branch_id: string
-          business_id?: string | null
+          business_id: string
           cash_discrepancy?: number | null
           cashier_id: string
           closed_at?: string | null
@@ -459,7 +459,7 @@ export type Database = {
         Update: {
           actual_cash?: number | null
           branch_id?: string
-          business_id?: string | null
+          business_id?: string
           cash_discrepancy?: number | null
           cashier_id?: string
           closed_at?: string | null
@@ -485,7 +485,7 @@ export type Database = {
       }
       categories: {
         Row: {
-          business_id: string | null
+          business_id: string
           color: string | null
           created_at: string
           description: string | null
@@ -497,7 +497,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          business_id?: string | null
+          business_id: string
           color?: string | null
           created_at?: string
           description?: string | null
@@ -509,7 +509,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          business_id?: string | null
+          business_id?: string
           color?: string | null
           created_at?: string
           description?: string | null
@@ -533,7 +533,7 @@ export type Database = {
       credit_transactions: {
         Row: {
           amount: number
-          business_id: string | null
+          business_id: string
           created_at: string
           customer_id: string
           id: string
@@ -548,7 +548,7 @@ export type Database = {
         }
         Insert: {
           amount: number
-          business_id?: string | null
+          business_id: string
           created_at?: string
           customer_id: string
           id?: string
@@ -563,7 +563,7 @@ export type Database = {
         }
         Update: {
           amount?: number
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           customer_id?: string
           id?: string
@@ -603,7 +603,7 @@ export type Database = {
       current_stock: {
         Row: {
           branch_id: string
-          business_id: string | null
+          business_id: string
           last_movement_at: string | null
           latest_batch_number: string | null
           latest_expiry_date: string | null
@@ -612,7 +612,7 @@ export type Database = {
         }
         Insert: {
           branch_id: string
-          business_id?: string | null
+          business_id: string
           last_movement_at?: string | null
           latest_batch_number?: string | null
           latest_expiry_date?: string | null
@@ -621,7 +621,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string
-          business_id?: string | null
+          business_id?: string
           last_movement_at?: string | null
           latest_batch_number?: string | null
           latest_expiry_date?: string | null
@@ -725,7 +725,7 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
-          business_id: string | null
+          business_id: string
           created_at: string
           credit_balance: number | null
           credit_enabled: boolean | null
@@ -743,7 +743,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          business_id?: string | null
+          business_id: string
           created_at?: string
           credit_balance?: number | null
           credit_enabled?: boolean | null
@@ -761,7 +761,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           credit_balance?: number | null
           credit_enabled?: boolean | null
@@ -827,7 +827,7 @@ export type Database = {
       goods_received_notes: {
         Row: {
           branch_id: string
-          business_id: string | null
+          business_id: string
           created_at: string
           grn_number: string
           id: string
@@ -843,7 +843,7 @@ export type Database = {
         }
         Insert: {
           branch_id: string
-          business_id?: string | null
+          business_id: string
           created_at?: string
           grn_number: string
           id?: string
@@ -859,7 +859,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           grn_number?: string
           id?: string
@@ -962,7 +962,7 @@ export type Database = {
       }
       installment_plans: {
         Row: {
-          business_id: string | null
+          business_id: string
           created_at: string
           created_by: string
           customer_id: string
@@ -979,7 +979,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          business_id?: string | null
+          business_id: string
           created_at?: string
           created_by: string
           customer_id: string
@@ -996,7 +996,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           created_by?: string
           customer_id?: string
@@ -1082,7 +1082,7 @@ export type Database = {
       legal_cases: {
         Row: {
           amount_claimed: number
-          business_id: string | null
+          business_id: string
           case_number: string | null
           court_name: string | null
           created_at: string
@@ -1099,7 +1099,7 @@ export type Database = {
         }
         Insert: {
           amount_claimed?: number
-          business_id?: string | null
+          business_id: string
           case_number?: string | null
           court_name?: string | null
           created_at?: string
@@ -1116,7 +1116,7 @@ export type Database = {
         }
         Update: {
           amount_claimed?: number
-          business_id?: string | null
+          business_id?: string
           case_number?: string | null
           court_name?: string | null
           created_at?: string
@@ -1218,7 +1218,7 @@ export type Database = {
       parties: {
         Row: {
           address: string | null
-          business_id: string | null
+          business_id: string
           created_at: string
           current_balance: number | null
           email: string | null
@@ -1234,7 +1234,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          business_id?: string | null
+          business_id: string
           created_at?: string
           current_balance?: number | null
           email?: string | null
@@ -1250,7 +1250,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           current_balance?: number | null
           email?: string | null
@@ -1277,7 +1277,7 @@ export type Database = {
       payable_transactions: {
         Row: {
           amount: number
-          business_id: string | null
+          business_id: string
           created_at: string
           id: string
           notes: string | null
@@ -1290,7 +1290,7 @@ export type Database = {
         }
         Insert: {
           amount: number
-          business_id?: string | null
+          business_id: string
           created_at?: string
           id?: string
           notes?: string | null
@@ -1303,7 +1303,7 @@ export type Database = {
         }
         Update: {
           amount?: number
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           id?: string
           notes?: string | null
@@ -1413,7 +1413,7 @@ export type Database = {
           bluetooth_device_id: string | null
           bluetooth_device_name: string | null
           branch_id: string
-          business_id: string | null
+          business_id: string
           characters_per_line: number | null
           connection_type: string
           created_at: string
@@ -1435,7 +1435,7 @@ export type Database = {
           bluetooth_device_id?: string | null
           bluetooth_device_name?: string | null
           branch_id: string
-          business_id?: string | null
+          business_id: string
           characters_per_line?: number | null
           connection_type: string
           created_at?: string
@@ -1457,7 +1457,7 @@ export type Database = {
           bluetooth_device_id?: string | null
           bluetooth_device_name?: string | null
           branch_id?: string
-          business_id?: string | null
+          business_id?: string
           characters_per_line?: number | null
           connection_type?: string
           created_at?: string
@@ -1490,7 +1490,7 @@ export type Database = {
           allow_negative_stock: boolean
           barcode: string | null
           branch_id: string | null
-          business_id: string | null
+          business_id: string
           category_id: string | null
           cost_price: number | null
           created_at: string
@@ -1512,7 +1512,7 @@ export type Database = {
           allow_negative_stock?: boolean
           barcode?: string | null
           branch_id?: string | null
-          business_id?: string | null
+          business_id: string
           category_id?: string | null
           cost_price?: number | null
           created_at?: string
@@ -1534,7 +1534,7 @@ export type Database = {
           allow_negative_stock?: boolean
           barcode?: string | null
           branch_id?: string | null
-          business_id?: string | null
+          business_id?: string
           category_id?: string | null
           cost_price?: number | null
           created_at?: string
@@ -1605,7 +1605,7 @@ export type Database = {
       promo_redemptions: {
         Row: {
           branch_id: string | null
-          business_id: string | null
+          business_id: string
           cart_subtotal: number
           cashier_id: string
           created_at: string
@@ -1618,7 +1618,7 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
-          business_id?: string | null
+          business_id: string
           cart_subtotal: number
           cashier_id: string
           created_at?: string
@@ -1631,7 +1631,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
-          business_id?: string | null
+          business_id?: string
           cart_subtotal?: number
           cashier_id?: string
           created_at?: string
@@ -1647,7 +1647,7 @@ export type Database = {
       promotions: {
         Row: {
           applies_to: string
-          business_id: string | null
+          business_id: string
           category_ids: string[] | null
           created_at: string
           created_by: string
@@ -1668,7 +1668,7 @@ export type Database = {
         }
         Insert: {
           applies_to?: string
-          business_id?: string | null
+          business_id: string
           category_ids?: string[] | null
           created_at?: string
           created_by: string
@@ -1689,7 +1689,7 @@ export type Database = {
         }
         Update: {
           applies_to?: string
-          business_id?: string | null
+          business_id?: string
           category_ids?: string[] | null
           created_at?: string
           created_by?: string
@@ -1773,7 +1773,7 @@ export type Database = {
         Row: {
           approved_by: string | null
           branch_id: string | null
-          business_id: string | null
+          business_id: string
           created_at: string
           created_by: string
           expected_delivery_date: string | null
@@ -1791,7 +1791,7 @@ export type Database = {
         Insert: {
           approved_by?: string | null
           branch_id?: string | null
-          business_id?: string | null
+          business_id: string
           created_at?: string
           created_by: string
           expected_delivery_date?: string | null
@@ -1809,7 +1809,7 @@ export type Database = {
         Update: {
           approved_by?: string | null
           branch_id?: string | null
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           created_by?: string
           expected_delivery_date?: string | null
@@ -1872,7 +1872,7 @@ export type Database = {
       receipt_settings: {
         Row: {
           branch_id: string
-          business_id: string | null
+          business_id: string
           created_at: string
           footer_message: string | null
           id: string
@@ -1903,7 +1903,7 @@ export type Database = {
         }
         Insert: {
           branch_id: string
-          business_id?: string | null
+          business_id: string
           created_at?: string
           footer_message?: string | null
           id?: string
@@ -1934,7 +1934,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           footer_message?: string | null
           id?: string
@@ -1976,7 +1976,7 @@ export type Database = {
       reorder_rules: {
         Row: {
           branch_id: string
-          business_id: string | null
+          business_id: string
           created_at: string
           id: string
           is_auto_reorder: boolean
@@ -1991,7 +1991,7 @@ export type Database = {
         }
         Insert: {
           branch_id: string
-          business_id?: string | null
+          business_id: string
           created_at?: string
           id?: string
           is_auto_reorder?: boolean
@@ -2006,7 +2006,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           id?: string
           is_auto_reorder?: boolean
@@ -2046,7 +2046,7 @@ export type Database = {
       returns: {
         Row: {
           branch_id: string | null
-          business_id: string | null
+          business_id: string
           created_at: string
           id: string
           original_sale_id: string | null
@@ -2059,7 +2059,7 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
-          business_id?: string | null
+          business_id: string
           created_at?: string
           id?: string
           original_sale_id?: string | null
@@ -2072,7 +2072,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           id?: string
           original_sale_id?: string | null
@@ -2157,7 +2157,7 @@ export type Database = {
       sales: {
         Row: {
           branch_id: string
-          business_id: string | null
+          business_id: string
           cashier_id: string
           cost_total: number | null
           created_at: string
@@ -2178,7 +2178,7 @@ export type Database = {
         }
         Insert: {
           branch_id: string
-          business_id?: string | null
+          business_id: string
           cashier_id: string
           cost_total?: number | null
           created_at?: string
@@ -2199,7 +2199,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string
-          business_id?: string | null
+          business_id?: string
           cashier_id?: string
           cost_total?: number | null
           created_at?: string
@@ -2246,7 +2246,7 @@ export type Database = {
         Row: {
           batch_number: string | null
           branch_id: string
-          business_id: string | null
+          business_id: string
           created_at: string
           created_by: string | null
           expiry_date: string | null
@@ -2260,7 +2260,7 @@ export type Database = {
         Insert: {
           batch_number?: string | null
           branch_id: string
-          business_id?: string | null
+          business_id: string
           created_at?: string
           created_by?: string | null
           expiry_date?: string | null
@@ -2274,7 +2274,7 @@ export type Database = {
         Update: {
           batch_number?: string | null
           branch_id?: string
-          business_id?: string | null
+          business_id?: string
           created_at?: string
           created_by?: string | null
           expiry_date?: string | null
@@ -2304,7 +2304,7 @@ export type Database = {
       }
       stock_transfers: {
         Row: {
-          business_id: string | null
+          business_id: string
           completed_at: string | null
           created_at: string
           from_branch_id: string | null
@@ -2318,7 +2318,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          business_id?: string | null
+          business_id: string
           completed_at?: string | null
           created_at?: string
           from_branch_id?: string | null
@@ -2332,7 +2332,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          business_id?: string | null
+          business_id?: string
           completed_at?: string | null
           created_at?: string
           from_branch_id?: string | null
