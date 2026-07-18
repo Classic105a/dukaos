@@ -54,7 +54,7 @@
        // Get customer current balance
        const { data: customer } = await supabase
          .from('customers')
-         .select('credit_balance')
+          .select('credit_balance, business_id')
          .eq('id', customerId)
          .single();
  
@@ -69,6 +69,7 @@
        // Record credit transaction
        await supabase.from('credit_transactions').insert({
          customer_id: customerId,
+          business_id: (customer as any).business_id,
          transaction_type: 'PAYMENT',
          amount: -paymentAmount,
          running_balance: newBalance,
@@ -76,7 +77,7 @@
          reference: `Installment ${newPaidInstallments}/${plan.installments_count}`,
          processed_by: user.id,
          installment_plan_id: plan.id,
-       });
+        } as any);
  
        // Update customer balance
        await supabase

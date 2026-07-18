@@ -183,9 +183,10 @@ const Customers = () => {
   // Create customer mutation
   const createCustomer = useMutation({
     mutationFn: async (customerData: Partial<Customer>) => {
+      const bizId = localStorage.getItem('currentBusinessId');
       const { data, error } = await supabase
         .from('customers')
-        .insert([customerData as any])
+        .insert([{ ...customerData, business_id: bizId } as any])
         .select()
         .single();
       if (error) throw error;

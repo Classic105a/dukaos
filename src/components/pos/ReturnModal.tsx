@@ -184,7 +184,8 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
 
   const processReturn = async (approver?: { id: string; email: string; role: string }) => {
     const branchId = (currentBranch as any)?.id as string | undefined;
-    if (!branchId || !user?.id) {
+    const businessId = (currentBranch as any)?.business_id as string | undefined;
+    if (!branchId || !businessId || !user?.id) {
       toast.error('Please select a branch');
       return;
     }
@@ -202,6 +203,7 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
         .insert({
           original_sale_id: saleData.id,
           branch_id: branchId,
+          business_id: businessId,
           processed_by: user.id,
           reason,
           refund_method: refundMethod,
@@ -223,12 +225,13 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
           returnItems.map(item => ({
             product_id: item.product_id,
             branch_id: branchId,
+            business_id: businessId,
             quantity_change: item.returnQuantity,
             movement_type: 'RETURN',
             reference_id: returnId,
             created_by: user.id,
             notes: `Return for ${saleData.receipt_number}${approver ? ` - Approved by ${approver.email}` : ''}`,
-          }))
+          })) as any
         );
 
       if (movementError) throw movementError;

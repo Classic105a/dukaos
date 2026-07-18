@@ -5,7 +5,7 @@ import { useToast } from './use-toast';
 
 export interface PayableTransaction {
   id: string;
-  business_id: string | null;
+  business_id: string;
   party_id: string;
   transaction_type: string;
   amount: number;
@@ -65,7 +65,7 @@ export const usePayables = (partyId?: string) => {
       // Insert transaction
       const { error: txError } = await supabase.from('payable_transactions').insert({
         party_id: tx.partyId,
-        business_id: tx.businessId || null,
+        business_id: tx.businessId!,
         transaction_type: tx.type,
         amount: tx.amount,
         running_balance: newBalance,
@@ -73,7 +73,7 @@ export const usePayables = (partyId?: string) => {
         reference: tx.reference || null,
         notes: tx.notes || null,
         processed_by: user.id,
-      });
+      } as any);
       if (txError) throw txError;
 
       // Update party balance

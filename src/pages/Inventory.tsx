@@ -191,6 +191,7 @@ const Inventory = () => {
         .insert([{
           name: productFields.name!,
           unit_price: productFields.unit_price!,
+          business_id: currentBranch.business_id,
           sku: productFields.sku,
           barcode: productFields.barcode,
           cost_price: productFields.cost_price,
@@ -199,7 +200,7 @@ const Inventory = () => {
           description: productFields.description,
           is_shared_product: productFields.is_shared_product,
           branch_id: productFields.is_shared_product ? null : currentBranch.id,
-        }])
+        }] as any)
         .select()
         .single();
       
@@ -210,11 +211,12 @@ const Inventory = () => {
         await supabase.from('stock_movements').insert({
           product_id: data.id,
           branch_id: currentBranch.id,
+          business_id: currentBranch.business_id,
           quantity_change: initialStock,
           movement_type: 'INITIAL',
           created_by: user.id,
           notes: 'Initial stock on product creation',
-        });
+        } as any);
       }
       
       return data;
@@ -233,9 +235,10 @@ const Inventory = () => {
   // Create category mutation
   const createCategory = useMutation({
     mutationFn: async (categoryData: Partial<Category>) => {
+      if (!currentBranch?.business_id) throw new Error('No business');
       const { data, error } = await supabase
         .from('categories')
-        .insert([categoryData as any])
+        .insert([{ ...categoryData, business_id: currentBranch.business_id } as any])
         .select()
         .single();
       if (error) throw error;
@@ -315,13 +318,14 @@ const Inventory = () => {
       const { error } = await supabase.from('stock_movements').insert({
         product_id: productId,
         branch_id: currentBranch.id,
+        business_id: currentBranch.business_id,
         quantity_change: difference,
         movement_type: difference === 0 ? 'ADJUSTMENT' : (difference > 0 ? 'ADD' : 'ADJUSTMENT'),
         batch_number: batchNumber || null,
         expiry_date: expiryDate || null,
         created_by: user.id,
         notes: notes || `Stock ${difference >= 0 ? 'added' : 'adjusted'}: ${currentQuantity} → ${newQuantity}`,
-      });
+      } as any);
       
       if (error) throw error;
     },

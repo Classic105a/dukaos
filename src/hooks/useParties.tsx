@@ -4,7 +4,7 @@ import { useToast } from './use-toast';
 
 export interface Party {
   id: string;
-  business_id: string | null;
+  business_id: string;
   name: string;
   party_type: string;
   phone: string | null;

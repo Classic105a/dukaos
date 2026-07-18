@@ -5,7 +5,7 @@ import { useToast } from './use-toast';
 
 export interface LegalCase {
   id: string;
-  business_id: string | null;
+  business_id: string;
   customer_id: string | null;
   party_id: string | null;
   case_number: string | null;

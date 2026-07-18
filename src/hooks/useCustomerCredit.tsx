@@ -133,7 +133,7 @@ export const useCustomerCredit = () => {
       // Get current balance
       const { data: customer } = await supabase
         .from('customers')
-        .select('credit_balance, credit_limit')
+        .select('credit_balance, credit_limit, business_id')
         .eq('id', customerId)
         .single();
 
@@ -148,13 +148,14 @@ export const useCustomerCredit = () => {
       // Record transaction
       const { error: txError } = await supabase.from('credit_transactions').insert({
         customer_id: customerId,
+        business_id: (customer as any).business_id,
         sale_id: saleId,
         transaction_type: 'CREDIT_SALE',
         amount: amount,
         running_balance: newBalance,
         notes,
         processed_by: user.id,
-      });
+      } as any);
 
       if (txError) throw txError;
 
@@ -199,7 +200,7 @@ export const useCustomerCredit = () => {
       // Get current balance
       const { data: customer } = await supabase
         .from('customers')
-        .select('credit_balance')
+        .select('credit_balance, business_id')
         .eq('id', customerId)
         .single();
 
@@ -210,6 +211,7 @@ export const useCustomerCredit = () => {
       // Record transaction
       const { error: txError } = await supabase.from('credit_transactions').insert({
         customer_id: customerId,
+        business_id: (customer as any).business_id,
         transaction_type: 'PAYMENT',
         amount: -amount, // Negative for payment
         running_balance: newBalance,
@@ -217,7 +219,7 @@ export const useCustomerCredit = () => {
         reference,
         notes,
         processed_by: user.id,
-      });
+      } as any);
 
       if (txError) throw txError;
 

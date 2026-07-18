@@ -84,12 +84,13 @@ const StockTransferDialog = ({ isOpen, onClose }: StockTransferDialogProps) => {
       const { error } = await supabase.from('stock_transfers').insert({
         from_branch_id: currentBranch.id,
         to_branch_id: toBranchId,
+        business_id: currentBranch.business_id,
         product_id: selectedProductId,
         quantity: qty,
         initiated_by: user.id,
         notes: notes || null,
         status: 'pending',
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -115,6 +116,7 @@ const StockTransferDialog = ({ isOpen, onClose }: StockTransferDialogProps) => {
         {
           product_id: transfer.product_id,
           branch_id: transfer.from_branch_id!,
+          business_id: currentBranch!.business_id,
           quantity_change: -transfer.quantity,
           movement_type: 'TRANSFER_OUT',
           reference_id: transferId,
@@ -124,13 +126,14 @@ const StockTransferDialog = ({ isOpen, onClose }: StockTransferDialogProps) => {
         {
           product_id: transfer.product_id,
           branch_id: transfer.to_branch_id,
+          business_id: currentBranch!.business_id,
           quantity_change: transfer.quantity,
           movement_type: 'TRANSFER_IN',
           reference_id: transferId,
           created_by: user.id,
           notes: `Transfer from ${(transfer as any).from_branch?.name}`,
         },
-      ]);
+      ] as any);
 
       // Update transfer status
       const { error } = await supabase
