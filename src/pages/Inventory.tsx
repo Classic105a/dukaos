@@ -403,10 +403,10 @@ const Inventory = () => {
               Manage products and stock for {currentBranch?.name || 'your branch'}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 sm:overflow-visible">
             <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="shrink-0">
                   <Plus className="w-4 h-4 mr-2" />
                   Category
                 </Button>
@@ -418,17 +418,17 @@ const Inventory = () => {
                 <CategoryForm onSubmit={(data) => createCategory.mutate(data)} />
               </DialogContent>
             </Dialog>
-            <Button variant="outline" onClick={() => setShowBarcodeGenerator(true)}>
+            <Button variant="outline" className="shrink-0" onClick={() => setShowBarcodeGenerator(true)}>
               <Barcode className="w-4 h-4 mr-2" />
               Labels
             </Button>
-            <Button variant="outline" onClick={() => setShowTransfers(true)}>
+            <Button variant="outline" className="shrink-0" onClick={() => setShowTransfers(true)}>
               <Truck className="w-4 h-4 mr-2" />
               Transfers
             </Button>
             <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
               <DialogTrigger asChild>
-                <Button disabled={!currentBranch}>
+                <Button disabled={!currentBranch} className="shrink-0">
                   <Plus className="w-4 h-4 mr-2" />
                   Product
                 </Button>
@@ -517,7 +517,7 @@ const Inventory = () => {
         {/* Main Content Tabs */}
         <Tabs defaultValue="all" className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
-            <TabsList>
+            <TabsList className="max-w-full overflow-x-auto scrollbar-hide justify-start">
               <TabsTrigger value="all">All Products</TabsTrigger>
               <TabsTrigger value="low-stock" className="gap-2">
                 Low Stock
