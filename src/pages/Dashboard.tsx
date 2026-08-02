@@ -19,7 +19,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { ReceiptData } from '@/lib/escpos';
 import { ShoppingCart, WifiOff, RefreshCw, Menu, LogOut, Settings, Printer } from 'lucide-react';
-import BottomNav from '@/components/layout/BottomNav';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import AppSidebar from '@/components/layout/AppSidebar';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -289,7 +290,10 @@ const Dashboard = () => {
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
+    <SidebarProvider defaultOpen={false}>
+      <div className="h-[100dvh] w-full bg-background flex overflow-hidden">
+        <AppSidebar />
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
       {/* Offline/sync bar */}
       {(!isOnline || pendingCount > 0) && (
         <div className={`shrink-0 flex items-center justify-between px-3 py-1 text-xs font-medium text-white ${!isOnline ? 'bg-destructive' : 'bg-warning'}`}>
@@ -307,15 +311,12 @@ const Dashboard = () => {
       {/* Header — minimal */}
       <header className="bg-card border-b border-border flex items-center justify-between h-11 px-3 shrink-0">
         <div className="flex items-center gap-2">
+          <SidebarTrigger className="h-7 w-7" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-7 w-7"><Menu className="h-4 w-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-44">
-              <DropdownMenuItem asChild><Link to="/inventory">Inventory</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/customers">Customers</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/reports">Reports</Link></DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setShowReprint(true)}>
                 <Printer className="h-4 w-4 mr-2" />Reprint Receipt
               </DropdownMenuItem>
@@ -426,10 +427,10 @@ const Dashboard = () => {
         />
       )}
 
-      <BottomNav />
-
       <ReprintReceiptModal isOpen={showReprint} onClose={() => setShowReprint(false)} />
-    </div>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 };
 
