@@ -36,10 +36,16 @@ type NavItem = { path: string; label: string; icon: typeof Store; enabled?: bool
 
 const navGroups: { label: string; items: NavItem[] }[] = [
   {
+    label: 'Overview',
+    items: [
+      { path: '/command-center', label: 'Command Center', icon: LayoutDashboard },
+    ],
+  },
+  {
     label: 'Sales',
     items: [
       { path: '/dashboard', label: 'Point of Sale', icon: ShoppingCart },
-      { path: '/analytics', label: 'Command Center', icon: LayoutDashboard },
+      { path: '/analytics', label: 'Analytics', icon: PieChart },
       { path: '/promotions', label: 'Promotions', icon: Tag, enabled: FEATURES.promotions },
     ],
   },

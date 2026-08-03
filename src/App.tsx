@@ -34,6 +34,7 @@ const Parties = lazy(() => import("./pages/Parties"));
 const DebtDashboard = lazy(() => import("./pages/DebtDashboard"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
 const Analytics = lazy(() => import("./pages/Analytics"));
+const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const CustomerStatement = lazy(() => import("./pages/CustomerStatement"));
 const Warehouse = lazy(() => import("./pages/Warehouse"));
 const Promotions = lazy(() => import("./pages/Promotions"));
@@ -137,6 +138,7 @@ const App = () => (
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+                <Route path="/command-center" element={<ProtectedRoute><CommandCenter /></ProtectedRoute>} />
                 <Route path="/customers/:customerId/statement" element={<ProtectedRoute><CustomerStatement /></ProtectedRoute>} />
                 <Route path="/warehouse" element={<ProtectedRoute>{FEATURES.warehouse ? <Warehouse /> : <Navigate to="/more" replace />}</ProtectedRoute>} />
                 <Route path="/promotions" element={<ProtectedRoute>{FEATURES.promotions ? <Promotions /> : <Navigate to="/more" replace />}</ProtectedRoute>} />
