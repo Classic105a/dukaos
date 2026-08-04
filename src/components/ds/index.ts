@@ -7,6 +7,8 @@ export type { PageShellProps } from './PageShell';
 export { SearchBar, FilterBar, FilterChip } from './Controls';
 export { StatCard } from './StatCard';
 export type { StatCardProps } from './StatCard';
+export { DataTable } from './DataTable';
+export type { DataTableProps, DataTableColumn } from './DataTable';
 export { SkeletonBlock, WidgetSkeleton, StatSkeleton, ListSkeleton, ChartSkeleton } from './Skeletons';
 export { InlineEmpty, ErrorState } from './States';
 export { money, percentDelta } from './format';

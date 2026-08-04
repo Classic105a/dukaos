@@ -25,9 +25,11 @@ import {
   RefreshCw,
   Store,
 } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import BusinessSwitcher from '@/components/layout/BusinessSwitcher';
+import { useCommandPalette } from '@/hooks/useCommandPalette';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -38,6 +40,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, signOut } = useAuth();
   const { branches, currentBranch, setCurrentBranch } = useBranch();
   const { isOnline, pendingCount, isSyncing } = useOfflineSync();
+  const { open: openPalette } = useCommandPalette();
 
   const handleSignOut = async () => {
     await signOut();
@@ -69,6 +72,21 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
           {/* Right: Status + Branch + User */}
           <div className="flex items-center gap-1.5">
+            {/* Global command palette */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openPalette}
+              aria-label="Search and commands"
+              className="h-8 gap-2 px-2 sm:px-3 rounded-lg text-muted-foreground"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span className="hidden md:inline text-xs">Search…</span>
+              <kbd className="hidden lg:inline text-2xs bg-muted px-1.5 py-0.5 rounded border border-border">
+                ⌘K
+              </kbd>
+            </Button>
+
             {/* Status Indicators */}
             <div className="flex items-center gap-1">
               {pendingCount > 0 && (
