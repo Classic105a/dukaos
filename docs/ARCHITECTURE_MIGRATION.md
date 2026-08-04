@@ -56,6 +56,31 @@ branch comparison · staff on shift · system health · recent activity timeline
 
 ## Known technical debt
 
+---
+
+## Pass 3a — Shared data surface + global command palette (done)
+
+**New design-system primitives**
+| Primitive | File | Purpose |
+| --- | --- | --- |
+| `DataTable` | `src/components/ds/DataTable.tsx` | Canonical table: sticky header, optional sticky first column, client-side sorting, checkbox selection + bulk-action bar, skeleton/empty states, and an automatic card layout under `md` (no horizontal scrolling on 360px). |
+| `useDebouncedValue` | `src/hooks/useDebouncedValue.ts` | Shared debounce for search inputs and filters (kills redundant queries). |
+
+Modules must now render lists through `DataTable` instead of hand-rolled `<table>` markup.
+
+**Global command palette**
+- `src/components/command/CommandPalette.tsx` + `src/hooks/useCommandPalette.tsx`.
+- `Ctrl/Cmd + K` anywhere inside the authenticated shell; a `Search…` button in the app bar is the mobile entry point.
+- Fuzzy navigation across every feature-flagged module, plus debounced tenant-scoped search of products, customers and suppliers (react-query cached, 30s staleTime, only fires at ≥2 characters).
+- Recently visited destinations persist in `localStorage` (`dukaos:recent-routes`).
+- Provider is mounted inside `ProtectedRoute`, so it sits under Business/Branch context and is unavailable when signed out.
+
+**Security (backend)**
+- `business_users` self-insert policy no longer allows self-assigned elevated roles — self-inserts are limited to non-owner, staff-level, `pending` rows; elevated roles must come through the invite RPCs.
+- `dr-backups` storage reads are now business-scoped via `has_business_role(auth.uid(), <business_id from object path>, ARRAY['owner','admin'])` instead of the global `has_role` check.
+
+**Next implementation target (Pass 3b)** — migrate `Inventory` and `Reports` list surfaces onto `DataTable`, add the product quick-edit drawer and preview side panel, then continue into Pass 4 (Customers & CRM).
+
 - Legacy pages (Inventory, Reports, Customers, Warehouse, Settings, Analytics) still use bespoke headers and cards; they must be migrated to `PageShell` + `Surface` + `StatusBadge`.
 - Two toast systems are mounted (`@/components/ui/toaster` legacy + sonner). New code uses **sonner only**; the legacy toaster stays until remaining call sites are migrated.
 - "Employee attendance" is derived from `cashier_shifts`; a real HR/attendance module is not implemented.
