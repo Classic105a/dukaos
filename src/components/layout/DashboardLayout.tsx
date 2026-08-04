@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import BusinessSwitcher from '@/components/layout/BusinessSwitcher';
+import { useCommandPalette } from '@/hooks/useCommandPalette';
 
 interface DashboardLayoutProps {
   children: ReactNode;
