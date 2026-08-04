@@ -107,7 +107,10 @@ export function DataTable<T>({
   if (!sorted.length) {
     return (
       <Surface padding="lg" className={className}>
-        <InlineEmpty title={emptyTitle} description={emptyDescription} action={emptyAction} />
+        <div className="space-y-3">
+          <InlineEmpty message={emptyDescription ? `${emptyTitle} — ${emptyDescription}` : emptyTitle} />
+          {emptyAction && <div className="flex justify-center">{emptyAction}</div>}
+        </div>
       </Surface>
     );
   }
