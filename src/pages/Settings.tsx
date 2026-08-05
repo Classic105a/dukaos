@@ -695,24 +695,25 @@ const TeamSettings = ({
         <div className="space-y-4">
           {users.map(member => (
             <div key={member.id}>
-              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="sr-only" />
                     <span className="text-sm font-medium text-primary">
                       {member.full_name?.charAt(0) || member.email?.charAt(0) || '?'}
                     </span>
                   </div>
-                  <div>
-                    <p className="font-medium flex items-center gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium flex items-center gap-2 truncate">
                       {member.full_name || 'Unnamed'}
                       {member.id === currentUserId && (
                         <Badge variant="outline" className="text-xs">You</Badge>
                       )}
                     </p>
-                    <p className="text-sm text-muted-foreground">{member.email}</p>
+                    <p className="text-sm text-muted-foreground truncate">{member.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <Select 
                     value={member.role}
                     onValueChange={(role) => onUpdateRole(member.id, role)}
