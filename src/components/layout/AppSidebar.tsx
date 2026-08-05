@@ -15,6 +15,13 @@ import {
   Warehouse,
   PieChart,
   Activity,
+  Receipt,
+  Printer,
+  User,
+  KeyRound,
+  Percent,
+  CheckSquare,
+  ArrowLeftRight,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -53,6 +60,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Inventory',
     items: [
       { path: '/inventory', label: 'Products', icon: Package },
+      { path: '/branches?tab=transfers', label: 'Transfers', icon: ArrowLeftRight },
       { path: '/smart-inventory', label: 'Forecasting', icon: TrendingUp, enabled: FEATURES.smartInventory },
       { path: '/warehouse', label: 'Warehouse & GRN', icon: Warehouse, enabled: FEATURES.warehouse },
     ],
@@ -70,6 +78,13 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'System',
     items: [
       { path: '/branches', label: 'Branches', icon: Building2 },
+      { path: '/settings?tab=team', label: 'Team & Roles', icon: Users },
+      { path: '/settings?tab=receipts', label: 'Receipts', icon: Receipt },
+      { path: '/settings?tab=printers', label: 'Printers', icon: Printer },
+      { path: '/settings?tab=tax', label: 'Tax', icon: Percent },
+      { path: '/settings?tab=approvals', label: 'Approvals', icon: CheckSquare },
+      { path: '/settings?tab=profile', label: 'Profile', icon: User },
+      { path: '/settings?tab=security', label: 'Security', icon: KeyRound },
       { path: '/audit-log', label: 'Audit Log', icon: Shield },
       { path: '/observability', label: 'System Health', icon: Activity },
       { path: '/settings', label: 'Settings', icon: Settings },
@@ -80,7 +95,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
 export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === 'collapsed' && !isMobile;
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const currentUrl = `${pathname}${search}`;
 
   return (
     <Sidebar collapsible="icon">
@@ -106,7 +122,9 @@ export function AppSidebar() {
                 <SidebarMenu>
                   {items.map(item => {
                     const Icon = item.icon;
-                    const active = pathname === item.path;
+                    const active = item.path.includes('?')
+                      ? currentUrl === item.path
+                      : pathname === item.path && (!search || !item.path.startsWith('/settings'));
                     return (
                       <SidebarMenuItem key={item.path}>
                         <SidebarMenuButton

@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
+import { useBusiness } from '@/hooks/useBusiness';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,6 +78,8 @@ interface BranchStock {
 
 const Branches = () => {
   const { branches, currentBranch, refetch } = useBranch();
+  const { currentBusiness } = useBusiness();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [branchDialogOpen, setBranchDialogOpen] = useState(false);
@@ -154,9 +158,11 @@ const Branches = () => {
   // Create branch mutation
   const createBranch = useMutation({
     mutationFn: async (branchData: Partial<Branch>) => {
+      const businessId = currentBusiness?.id ?? (currentBranch as any)?.business_id;
+      if (!businessId) throw new Error('No active business selected');
       const { data, error } = await supabase
         .from('branches')
-        .insert([branchData as any])
+        .insert([{ ...branchData, business_id: businessId } as any])
         .select()
         .single();
       if (error) throw error;
@@ -440,7 +446,11 @@ const Branches = () => {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="branches" className="space-y-4">
+        <Tabs
+          value={searchParams.get('tab') || 'branches'}
+          onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}
+          className="space-y-4"
+        >
           <TabsList>
             <TabsTrigger value="branches">Branches</TabsTrigger>
             <TabsTrigger value="transfers" className="gap-2">
