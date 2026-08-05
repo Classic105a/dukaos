@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
@@ -78,6 +79,7 @@ interface BranchStock {
 const Branches = () => {
   const { branches, currentBranch, refetch } = useBranch();
   const { currentBusiness } = useBusiness();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [branchDialogOpen, setBranchDialogOpen] = useState(false);
@@ -444,7 +446,11 @@ const Branches = () => {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="branches" className="space-y-4">
+        <Tabs
+          value={searchParams.get('tab') || 'branches'}
+          onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}
+          className="space-y-4"
+        >
           <TabsList>
             <TabsTrigger value="branches">Branches</TabsTrigger>
             <TabsTrigger value="transfers" className="gap-2">
