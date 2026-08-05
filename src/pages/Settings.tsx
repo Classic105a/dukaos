@@ -697,8 +697,7 @@ const TeamSettings = ({
             <div key={member.id}>
               <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-lg bg-muted/50">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="sr-only" />
+                  <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                     <span className="text-sm font-medium text-primary">
                       {member.full_name?.charAt(0) || member.email?.charAt(0) || '?'}
                     </span>
