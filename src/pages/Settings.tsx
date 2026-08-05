@@ -73,6 +73,7 @@ const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Fetch current user profile
   const { data: profile } = useQuery({
