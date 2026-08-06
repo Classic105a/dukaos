@@ -43,6 +43,7 @@ const SmartInventory = lazy(() => import("./pages/SmartInventory"));
 const More = lazy(() => import("./pages/More"));
 const Install = lazy(() => import("./pages/Install"));
 const Observability = lazy(() => import("./pages/Observability"));
+const Subscription = lazy(() => import("./pages/Subscription"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -149,6 +150,7 @@ const App = () => (
                 <Route path="/more" element={<ProtectedRoute><More /></ProtectedRoute>} />
                 <Route path="/install" element={<Install />} />
                 <Route path="/observability" element={<ProtectedRoute><Observability /></ProtectedRoute>} />
+                <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </Suspense>

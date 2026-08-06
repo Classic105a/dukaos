@@ -344,6 +344,110 @@ export type Database = {
           },
         ]
       }
+      business_modules: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          module_key: string
+          settings: Json
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          module_key: string
+          settings?: Json
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          module_key?: string
+          settings?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_modules_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_subscriptions: {
+        Row: {
+          auto_renew: boolean
+          billing_cycle: string
+          business_id: string
+          cancelled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          grace_period_ends_at: string | null
+          id: string
+          plan_id: string | null
+          status: string
+          trial_ends_at: string
+          trial_started_at: string
+          updated_at: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          billing_cycle?: string
+          business_id: string
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          grace_period_ends_at?: string | null
+          id?: string
+          plan_id?: string | null
+          status?: string
+          trial_ends_at?: string
+          trial_started_at?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_renew?: boolean
+          billing_cycle?: string
+          business_id?: string
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          grace_period_ends_at?: string | null
+          id?: string
+          plan_id?: string | null
+          status?: string
+          trial_ends_at?: string
+          trial_started_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_subscriptions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_users: {
         Row: {
           business_id: string
@@ -387,35 +491,74 @@ export type Database = {
       }
       businesses: {
         Row: {
+          business_permit: string | null
+          country: string
+          county: string | null
           created_at: string
           created_by: string
           currency: string | null
+          email: string | null
           id: string
+          industry: string
           is_active: boolean | null
+          kra_pin: string | null
           logo_url: string | null
           name: string
+          owner_name: string | null
+          paybill_number: string | null
+          phone: string | null
+          physical_address: string | null
+          till_number: string | null
+          timezone: string
+          town: string | null
           type: string | null
           updated_at: string
         }
         Insert: {
+          business_permit?: string | null
+          country?: string
+          county?: string | null
           created_at?: string
           created_by: string
           currency?: string | null
+          email?: string | null
           id?: string
+          industry?: string
           is_active?: boolean | null
+          kra_pin?: string | null
           logo_url?: string | null
           name: string
+          owner_name?: string | null
+          paybill_number?: string | null
+          phone?: string | null
+          physical_address?: string | null
+          till_number?: string | null
+          timezone?: string
+          town?: string | null
           type?: string | null
           updated_at?: string
         }
         Update: {
+          business_permit?: string | null
+          country?: string
+          county?: string | null
           created_at?: string
           created_by?: string
           currency?: string | null
+          email?: string | null
           id?: string
+          industry?: string
           is_active?: boolean | null
+          kra_pin?: string | null
           logo_url?: string | null
           name?: string
+          owner_name?: string | null
+          paybill_number?: string | null
+          phone?: string | null
+          physical_address?: string | null
+          till_number?: string | null
+          timezone?: string
+          town?: string | null
           type?: string | null
           updated_at?: string
         }
@@ -2368,6 +2511,141 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_invoices: {
+        Row: {
+          amount: number
+          billing_cycle: string
+          business_id: string
+          created_at: string
+          currency: string
+          due_date: string | null
+          id: string
+          invoice_number: string
+          paid_at: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          period_end: string | null
+          period_start: string | null
+          status: string
+          subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          billing_cycle?: string
+          business_id: string
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string
+          business_id?: string
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_invoices_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "business_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          code: string
+          created_at: string
+          currency: string
+          description: string | null
+          features: Json
+          id: string
+          is_active: boolean
+          max_branches: number | null
+          max_employees: number | null
+          max_products: number | null
+          max_warehouses: number | null
+          name: string
+          price_monthly: number
+          price_yearly: number
+          sort_order: number
+          storage_mb: number | null
+          support_level: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: Json
+          id?: string
+          is_active?: boolean
+          max_branches?: number | null
+          max_employees?: number | null
+          max_products?: number | null
+          max_warehouses?: number | null
+          name: string
+          price_monthly?: number
+          price_yearly?: number
+          sort_order?: number
+          storage_mb?: number | null
+          support_level?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: Json
+          id?: string
+          is_active?: boolean
+          max_branches?: number | null
+          max_employees?: number | null
+          max_products?: number | null
+          max_warehouses?: number | null
+          name?: string
+          price_monthly?: number
+          price_yearly?: number
+          sort_order?: number
+          storage_mb?: number | null
+          support_level?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       sync_conflicts: {
         Row: {
