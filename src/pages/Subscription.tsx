@@ -13,12 +13,12 @@ import {
 import { MODULE_CATALOG, ModuleDefinition, ModuleKey, getIndustry } from '@/lib/industry-modules';
 import { toast } from 'sonner';
 
-const STATUS_LABEL: Record<string, { label: string; tone: 'success' | 'warning' | 'danger' | 'muted' }> = {
+const STATUS_LABEL: Record<string, { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral' }> = {
   trialing: { label: 'Free trial', tone: 'success' },
   active: { label: 'Active', tone: 'success' },
   grace: { label: 'Grace period', tone: 'warning' },
   expired: { label: 'Expired', tone: 'danger' },
-  cancelled: { label: 'Cancelled', tone: 'muted' },
+  cancelled: { label: 'Cancelled', tone: 'neutral' },
 };
 
 const Subscription = () => {
