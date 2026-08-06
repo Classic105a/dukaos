@@ -22,6 +22,7 @@ import {
   Percent,
   CheckSquare,
   ArrowLeftRight,
+  CreditCard,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -78,6 +79,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'System',
     items: [
       { path: '/branches', label: 'Branches', icon: Building2 },
+      { path: '/subscription', label: 'Subscription', icon: CreditCard },
       { path: '/settings?tab=team', label: 'Team & Roles', icon: Users },
       { path: '/settings?tab=receipts', label: 'Receipts', icon: Receipt },
       { path: '/settings?tab=printers', label: 'Printers', icon: Printer },
