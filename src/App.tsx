@@ -16,6 +16,7 @@ import SessionLockScreen from "@/components/SessionLockScreen";
 import SessionWarning from "@/components/SessionWarning";
 import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 import { CommandPaletteProvider } from "@/hooks/useCommandPalette";
+import { SubscriptionGate } from "@/components/subscription/SubscriptionGate";
 // Eager: landing, auth, primary POS (kept fast on cold boot)
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -103,10 +104,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       <TaxProvider>
         <ShiftProvider>
           <CommandPaletteProvider>
-            {showWarning && (
-              <SessionWarning timeUntilLock={timeUntilLock} onStayLoggedIn={resetTimer} />
-            )}
-            {children}
+            <SubscriptionGate>
+              {showWarning && (
+                <SessionWarning timeUntilLock={timeUntilLock} onStayLoggedIn={resetTimer} />
+              )}
+              {children}
+            </SubscriptionGate>
           </CommandPaletteProvider>
         </ShiftProvider>
       </TaxProvider>
