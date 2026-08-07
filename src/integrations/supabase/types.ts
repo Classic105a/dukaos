@@ -169,6 +169,160 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          business_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      billing_promotion_redemptions: {
+        Row: {
+          business_id: string
+          created_at: string
+          discount_applied: number
+          id: string
+          invoice_id: string | null
+          promotion_id: string
+          redeemed_by: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          discount_applied?: number
+          id?: string
+          invoice_id?: string | null
+          promotion_id: string
+          redeemed_by?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          discount_applied?: number
+          id?: string
+          invoice_id?: string | null
+          promotion_id?: string
+          redeemed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_promotion_redemptions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_promotion_redemptions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_promotion_redemptions_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "billing_promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_promotions: {
+        Row: {
+          applies_to_cycles: string[]
+          applies_to_plan_ids: string[] | null
+          code: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          current_redemptions: number
+          description: string | null
+          discount_type: string
+          discount_value: number
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          max_per_business: number
+          max_redemptions: number | null
+          name: string
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          applies_to_cycles?: string[]
+          applies_to_plan_ids?: string[] | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          current_redemptions?: number
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_per_business?: number
+          max_redemptions?: number | null
+          name: string
+          starts_at?: string
+          updated_at?: string
+        }
+        Update: {
+          applies_to_cycles?: string[]
+          applies_to_plan_ids?: string[] | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          current_redemptions?: number
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_per_business?: number
+          max_redemptions?: number | null
+          name?: string
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       branch_inventory: {
         Row: {
           batch_number: string | null
@@ -378,6 +532,81 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_price_overrides: {
+        Row: {
+          approved_by: string | null
+          business_id: string
+          created_at: string
+          currency: string
+          custom_monthly: number | null
+          custom_yearly: number | null
+          discount_amount: number | null
+          discount_percent: number | null
+          end_date: string | null
+          id: string
+          is_grandfathered: boolean
+          override_type: string
+          plan_id: string | null
+          reason: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          business_id: string
+          created_at?: string
+          currency?: string
+          custom_monthly?: number | null
+          custom_yearly?: number | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          end_date?: string | null
+          id?: string
+          is_grandfathered?: boolean
+          override_type: string
+          plan_id?: string | null
+          reason: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          business_id?: string
+          created_at?: string
+          currency?: string
+          custom_monthly?: number | null
+          custom_yearly?: number | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          end_date?: string | null
+          id?: string
+          is_grandfathered?: boolean
+          override_type?: string
+          plan_id?: string | null
+          reason?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_price_overrides_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_price_overrides_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -1548,6 +1777,80 @@ export type Database = {
           route?: string | null
           user_id?: string | null
           value_ms?: number
+        }
+        Relationships: []
+      }
+      plan_prices: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          notes: string | null
+          plan_id: string
+          price_monthly: number
+          price_yearly: number
+          price_yearly_discounted: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          notes?: string | null
+          plan_id: string
+          price_monthly?: number
+          price_yearly?: number
+          price_yearly_discounted?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          notes?: string | null
+          plan_id?: string
+          price_monthly?: number
+          price_yearly?: number
+          price_yearly_discounted?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_prices_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_admins: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -2744,10 +3047,33 @@ export type Database = {
     }
     Functions: {
       accept_invite: { Args: { p_token: string }; Returns: Json }
+      admin_subscription_action: {
+        Args: {
+          p_action: string
+          p_business_id: string
+          p_days?: number
+          p_plan_id?: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      admin_update_invoice_status: {
+        Args: { p_invoice_id: string; p_reason?: string; p_status: string }
+        Returns: Json
+      }
       business_id_from_branch: { Args: { _branch_id: string }; Returns: string }
       business_id_from_grn: { Args: { _grn_id: string }; Returns: string }
       business_id_from_po: { Args: { _po_id: string }; Returns: string }
       business_id_from_sale: { Args: { _sale_id: string }; Returns: string }
+      calculate_subscription_price: {
+        Args: {
+          p_business_id: string
+          p_coupon?: string
+          p_cycle?: string
+          p_plan_id: string
+        }
+        Returns: Json
+      }
       cleanup_invites: { Args: never; Returns: Json }
       complete_sale: {
         Args: {
@@ -2851,6 +3177,19 @@ export type Database = {
       is_member_of_business: {
         Args: { _business_id: string }
         Returns: boolean
+      }
+      is_platform_admin: { Args: never; Returns: boolean }
+      log_billing_action: {
+        Args: {
+          p_action: string
+          p_business_id: string
+          p_entity_id?: string
+          p_entity_type: string
+          p_new?: Json
+          p_old?: Json
+          p_reason?: string
+        }
+        Returns: string
       }
       next_receipt_number: { Args: { p_branch_id: string }; Returns: string }
       refresh_daily_sales_summary: { Args: never; Returns: undefined }
