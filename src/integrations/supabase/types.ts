@@ -3047,6 +3047,20 @@ export type Database = {
     }
     Functions: {
       accept_invite: { Args: { p_token: string }; Returns: Json }
+      admin_subscription_action: {
+        Args: {
+          p_action: string
+          p_business_id: string
+          p_days?: number
+          p_plan_id?: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      admin_update_invoice_status: {
+        Args: { p_invoice_id: string; p_reason?: string; p_status: string }
+        Returns: Json
+      }
       business_id_from_branch: { Args: { _branch_id: string }; Returns: string }
       business_id_from_grn: { Args: { _grn_id: string }; Returns: string }
       business_id_from_po: { Args: { _po_id: string }; Returns: string }
@@ -3165,6 +3179,18 @@ export type Database = {
         Returns: boolean
       }
       is_platform_admin: { Args: never; Returns: boolean }
+      log_billing_action: {
+        Args: {
+          p_action: string
+          p_business_id: string
+          p_entity_id?: string
+          p_entity_type: string
+          p_new?: Json
+          p_old?: Json
+          p_reason?: string
+        }
+        Returns: string
+      }
       next_receipt_number: { Args: { p_branch_id: string }; Returns: string }
       refresh_daily_sales_summary: { Args: never; Returns: undefined }
       revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
