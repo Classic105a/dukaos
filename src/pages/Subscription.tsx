@@ -1,15 +1,19 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { PageShell, Surface, SurfaceHeader, StatusBadge, money, ListSkeleton } from '@/components/ds';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { CreditCard, Check, ShieldCheck } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { CreditCard, Check, ShieldCheck, Gauge, TicketPercent } from 'lucide-react';
 import {
   usePlans,
   useSubscription,
   useSubscriptionInvoices,
   useBusinessModules,
 } from '@/hooks/useSubscription';
+import { usePlanPrices, usePriceQuote, useBusinessPriceOverrides, BillingCycle } from '@/hooks/usePricing';
+import { useUsage } from '@/hooks/useUsage';
 import { MODULE_CATALOG, ModuleDefinition, ModuleKey, getIndustry } from '@/lib/industry-modules';
 import { toast } from 'sonner';
 
@@ -26,9 +30,25 @@ const Subscription = () => {
   const { data: plans = [], isLoading: plansLoading } = usePlans();
   const { data: invoices = [] } = useSubscriptionInvoices();
   const { industry, isModuleEnabled, setModule } = useBusinessModules();
+  const { data: prices } = usePlanPrices();
+  const { data: overrides = [] } = useBusinessPriceOverrides();
+  const { rows: usageRows, isLoading: usageLoading } = useUsage();
+  const [cycle, setCycle] = useState<BillingCycle>('monthly');
+  const [couponInput, setCouponInput] = useState('');
+  const [coupon, setCoupon] = useState('');
+  const { data: quote } = usePriceQuote(plan?.id, cycle, coupon);
 
   const meta = STATUS_LABEL[status] ?? STATUS_LABEL.trialing;
   const industryDef = getIndustry(industry);
+
+  /** Pricing always comes from the pricing engine — plans only define capabilities. */
+  const priceFor = (planId: string, fallbackMonthly: number, fallbackYearly: number) => {
+    const row = prices?.get(planId);
+    return {
+      monthly: Number(row?.price_monthly ?? fallbackMonthly),
+      yearly: Number(row?.price_yearly_discounted ?? row?.price_yearly ?? fallbackYearly),
+    };
+  };
 
   const modules = useMemo(
     () => Object.values(MODULE_CATALOG) as ModuleDefinition[],
@@ -73,21 +93,94 @@ const Subscription = () => {
                 </p>
               </div>
               <div className="shrink-0 text-sm">
-                <span className="font-semibold">{money(Number(plan?.price_monthly ?? 0))}</span>
-                <span className="text-muted-foreground"> / month</span>
+                {quote && quote.total_discount > 0 && (
+                  <span className="text-muted-foreground line-through mr-1">{money(Number(quote.base_amount))}</span>
+                )}
+                <span className="font-semibold">
+                  {money(Number(quote?.final_amount ?? priceFor(plan?.id ?? '', Number(plan?.price_monthly ?? 0), 0).monthly))}
+                </span>
+                <span className="text-muted-foreground"> / {cycle === 'monthly' ? 'month' : 'year'}</span>
+                {overrides.length > 0 && (
+                  <div className="mt-1"><StatusBadge tone="success">Custom pricing</StatusBadge></div>
+                )}
               </div>
             </div>
           </Surface>
         )}
 
         <Surface padding="lg">
+          <SurfaceHeader
+            title="Usage this period"
+            description="Live consumption against your plan allowances."
+            icon={<Gauge />}
+          />
+          {usageLoading ? (
+            <ListSkeleton />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {usageRows.map(row => (
+                <div key={row.key} className="rounded-lg border border-border p-3 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-sm font-medium truncate">{row.label}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {row.used} / {row.allowed ?? '∞'}
+                    </span>
+                  </div>
+                  <Progress value={row.allowed === null ? 0 : row.percent} className="h-2" />
+                  <p className="text-2xs text-muted-foreground mt-1.5">
+                    {row.allowed === null
+                      ? 'Unlimited on this plan'
+                      : row.exceeded
+                        ? 'Limit reached — upgrade to add more'
+                        : `${row.remaining} remaining`}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Surface>
+
+        <Surface padding="lg">
           <SurfaceHeader title="Plans" description="Upgrade or downgrade at any time." />
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="inline-flex rounded-lg border border-border p-0.5">
+              {(['monthly', 'yearly'] as BillingCycle[]).map(c => (
+                <button
+                  key={c}
+                  onClick={() => setCycle(c)}
+                  className={`px-3 py-1 text-xs rounded-md capitalize transition-colors ${
+                    cycle === c ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 min-w-0">
+              <Input
+                value={couponInput}
+                onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                placeholder="Coupon code"
+                className="h-8 w-36 text-xs"
+                maxLength={32}
+              />
+              <Button size="sm" variant="outline" className="h-8" onClick={() => setCoupon(couponInput.trim())}>
+                <TicketPercent className="w-3.5 h-3.5 mr-1" /> Apply
+              </Button>
+            </div>
+            {coupon && quote?.promo_status && (
+              <StatusBadge tone={quote.promo_status === 'applied' ? 'success' : 'danger'}>
+                {quote.promo_status.replace(/_/g, ' ')}
+              </StatusBadge>
+            )}
+          </div>
           {plansLoading ? (
             <ListSkeleton />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {plans.map(p => {
                 const current = p.id === plan?.id;
+                const pricing = priceFor(p.id, Number(p.price_monthly), Number(p.price_yearly));
                 return (
                   <Surface
                     key={p.id}
@@ -99,7 +192,12 @@ const Subscription = () => {
                       <span className="font-semibold truncate">{p.name}</span>
                       {current && <StatusBadge tone="success">Current</StatusBadge>}
                     </div>
-                    <div className="text-xl font-bold">{money(Number(p.price_monthly))}</div>
+                    <div className="text-xl font-bold">
+                      {money(cycle === 'monthly' ? pricing.monthly : pricing.yearly)}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        /{cycle === 'monthly' ? 'mo' : 'yr'}
+                      </span>
+                    </div>
                     <p className="text-xs text-muted-foreground break-words">{p.description}</p>
                     <ul className="text-xs text-muted-foreground space-y-1 mt-1">
                       <li className="flex gap-1.5"><Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />{p.max_branches ?? 'Unlimited'} branches</li>
@@ -108,7 +206,9 @@ const Subscription = () => {
                       <li className="flex gap-1.5"><Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />{p.support_level} support</li>
                     </ul>
                     <div className="text-2xs text-muted-foreground mt-auto pt-2">
-                      {money(Number(p.price_yearly))} billed yearly
+                      {cycle === 'monthly'
+                        ? `${money(pricing.yearly)} billed yearly`
+                        : `${money(pricing.monthly)} billed monthly`}
                     </div>
                   </Surface>
                 );
