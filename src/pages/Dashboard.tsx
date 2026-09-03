@@ -144,13 +144,17 @@ const Dashboard = () => {
 
     completingRef.current = true;
     // Online: server generates gapless receipt (BR{code}-YYYYMMDD-0001).
-    // Offline: temporary receipt for local persistence; server replaces on sync.
-    const tempReceiptNumber = `OFF-${Date.now().toString(36).toUpperCase()}`;
+    // Offline: device-unique receipt (time + random) kept on sync; DB enforces uniqueness per branch.
+    const tempReceiptNumber = `OFF-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 4).toUpperCase()}`;
     let finalReceiptNumber = tempReceiptNumber;
     const saleItems = [...cartItems];
     const saleSubtotal = subtotal;
     const saleTax = tax;
     const saleTotal = total;
+    // Idempotency key: stable for this cart across network retries, so a timeout
+    // followed by a resubmit can never produce a second sale or a second stock deduction.
+    if (!saleIdempotencyKeyRef.current) saleIdempotencyKeyRef.current = crypto.randomUUID();
+    const idempotencyKey = saleIdempotencyKeyRef.current;
 
     try {
       if (navigator.onLine) {
