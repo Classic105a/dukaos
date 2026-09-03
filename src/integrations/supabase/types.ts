@@ -2489,12 +2489,83 @@ export type Database = {
           },
         ]
       }
+      return_items: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          product_id: string
+          product_name: string
+          quantity: number
+          refund_amount: number
+          return_id: string
+          sale_item_id: string | null
+          unit_price: number
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+          product_name: string
+          quantity: number
+          refund_amount?: number
+          return_id: string
+          sale_item_id?: string | null
+          unit_price?: number
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          refund_amount?: number
+          return_id?: string
+          sale_item_id?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_items_sale_item_id_fkey"
+            columns: ["sale_item_id"]
+            isOneToOne: false
+            referencedRelation: "sale_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       returns: {
         Row: {
+          approval_request_id: string | null
+          approved_by: string | null
           branch_id: string | null
           business_id: string
           created_at: string
           id: string
+          idempotency_key: string | null
           original_sale_id: string | null
           processed_by: string | null
           reason: string
@@ -2504,10 +2575,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_request_id?: string | null
+          approved_by?: string | null
           branch_id?: string | null
           business_id: string
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           original_sale_id?: string | null
           processed_by?: string | null
           reason: string
@@ -2517,10 +2591,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_request_id?: string | null
+          approved_by?: string | null
           branch_id?: string | null
           business_id?: string
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           original_sale_id?: string | null
           processed_by?: string | null
           reason?: string
@@ -3192,6 +3269,17 @@ export type Database = {
         Returns: string
       }
       next_receipt_number: { Args: { p_branch_id: string }; Returns: string }
+      process_return: {
+        Args: {
+          p_approval_request_id?: string
+          p_idempotency_key?: string
+          p_items: Json
+          p_reason: string
+          p_refund_method?: string
+          p_sale_id: string
+        }
+        Returns: Json
+      }
       refresh_daily_sales_summary: { Args: never; Returns: undefined }
       revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
       run_complete_sale_tests: { Args: never; Returns: string[] }
@@ -3214,7 +3302,7 @@ export type Database = {
         }[]
       }
       verify_manager_pin: {
-        Args: { p_pin: string }
+        Args: { p_business_id?: string; p_pin: string }
         Returns: {
           full_name: string
           role: string
