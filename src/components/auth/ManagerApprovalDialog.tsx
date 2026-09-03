@@ -14,16 +14,30 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranch } from '@/hooks/useBranch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+export interface ManagerApproval {
+  id: string;
+  email: string;
+  role: string;
+  /** Server-issued single-use approval record id (present when requestType is given). */
+  approvalId?: string | null;
+}
+
+/** Server-side request types accepted by the approval_requests table. */
+export type ApprovalRequestType = 'REFUND' | 'VOID' | 'DISCOUNT' | 'PRICE_OVERRIDE' | 'CREDIT_SALE';
 
 interface ManagerApprovalDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onApprove: (approverInfo: { id: string; email: string; role: string }) => void;
+  onApprove: (approverInfo: ManagerApproval) => void;
   actionType: string;
   actionDescription: string;
   entityId?: string;
   entityType?: 'sale' | 'return' | 'product' | 'customer' | 'stock_movement';
+  /** When set, the server records a single-use approval that privileged RPCs consume. */
+  requestType?: ApprovalRequestType;
 }
 
 const ManagerApprovalDialog = ({
@@ -34,6 +48,7 @@ const ManagerApprovalDialog = ({
   actionDescription,
   entityId,
   entityType,
+  requestType,
 }: ManagerApprovalDialogProps) => {
   const [authMethod, setAuthMethod] = useState<'password' | 'pin'>('pin');
   const [managerEmail, setManagerEmail] = useState('');
@@ -42,6 +57,7 @@ const ManagerApprovalDialog = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const { log } = useAuditLog();
   const { user } = useAuth();
+  const { currentBranch } = useBranch();
 
   const handleReset = () => {
     setManagerEmail('');
@@ -55,8 +71,18 @@ const ManagerApprovalDialog = ({
     onClose();
   };
 
-  const verifyViaEdgeFunction = async (method: 'pin' | 'password') => {
-    const payload: Record<string, string> = { method };
+  const verifyViaEdgeFunction = async (method: 'pin' | 'password'): Promise<ManagerApproval> => {
+    const businessId = (currentBranch as any)?.business_id as string | undefined;
+    if (!businessId || !currentBranch?.id) throw new Error('Select a branch before requesting approval');
+
+    const payload: Record<string, string | undefined> = {
+      method,
+      business_id: businessId,
+      branch_id: currentBranch.id,
+      request_type: requestType,
+      entity_id: entityId,
+      reason: actionDescription,
+    };
     if (method === 'pin') {
       if (managerPin.length !== 4) throw new Error('PIN must be 4 digits');
       payload.pin = managerPin;
@@ -71,14 +97,23 @@ const ManagerApprovalDialog = ({
     });
 
     if (error) {
-      throw new Error(data?.error || 'Verification failed');
+      // FunctionsHttpError carries the JSON body on context
+      let message = 'Verification failed';
+      try {
+        const ctx = (error as any)?.context;
+        if (ctx && typeof ctx.json === 'function') {
+          const body = await ctx.json();
+          if (body?.error) message = body.error;
+        }
+      } catch { /* ignore */ }
+      throw new Error(data?.error || message);
     }
 
     if (!data?.id) {
       throw new Error(data?.error || 'Invalid response from verification');
     }
 
-    return { id: data.id, email: data.email, role: data.role };
+    return { id: data.id, email: data.email, role: data.role, approvalId: data.approval_id ?? null };
   };
 
   const handleVerify = async (e: React.FormEvent) => {

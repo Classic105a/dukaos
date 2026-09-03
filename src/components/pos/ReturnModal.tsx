@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,9 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
-import ManagerApprovalDialog from '@/components/auth/ManagerApprovalDialog';
+import ManagerApprovalDialog, { type ManagerApproval } from '@/components/auth/ManagerApprovalDialog';
 
 interface ReturnItem {
   id: string;
@@ -44,7 +43,6 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
   const { currentBranch } = useBranch();
   const { user } = useAuth();
   const { canProcessRefunds, isManager } = usePermissions();
-  const { log } = useAuditLog();
   const [receiptNumber, setReceiptNumber] = useState('');
   const [saleData, setSaleData] = useState<{
     id: string;
@@ -61,7 +59,7 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
   // Manager approval state
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [_pendingApproval, setPendingApproval] = useState(false);
-  const [_approverInfo, setApproverInfo] = useState<{ id: string; email: string; role: string } | null>(null);
+  const [_approverInfo, setApproverInfo] = useState<ManagerApproval | null>(null);
 
   const handleSearch = async () => {
     if (!receiptNumber.trim()) return;
@@ -175,17 +173,26 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
     setShowApprovalDialog(true);
   };
 
-  const handleApprovalGranted = (info: { id: string; email: string; role: string }) => {
+  const handleApprovalGranted = (info: ManagerApproval) => {
     setApproverInfo(info);
     setPendingApproval(true);
     // Auto-process after approval
     processReturn(info);
   };
 
-  const processReturn = async (approver?: { id: string; email: string; role: string }) => {
-    const branchId = (currentBranch as any)?.id as string | undefined;
-    const businessId = (currentBranch as any)?.business_id as string | undefined;
-    if (!branchId || !businessId || !user?.id) {
+  // One idempotency key per refund attempt for a given sale. A network retry of the
+  // same attempt is recognised by the server and cannot restore stock twice.
+  const idempotencyKeyRef = useRef<{ saleId: string; key: string } | null>(null);
+  const getIdempotencyKey = (saleId: string) => {
+    if (!idempotencyKeyRef.current || idempotencyKeyRef.current.saleId !== saleId) {
+      idempotencyKeyRef.current = { saleId, key: crypto.randomUUID() };
+    }
+    return idempotencyKeyRef.current.key;
+  };
+
+  const processReturn = async (approver?: ManagerApproval) => {
+    const branchId = currentBranch?.id;
+    if (!branchId || !user?.id) {
       toast.error('Please select a branch');
       return;
     }
@@ -195,69 +202,39 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
       return;
     }
 
+    if (!canProcessRefunds && !isManager && !approver?.approvalId) {
+      toast.error('Manager approval is required to process this refund');
+      return;
+    }
+
     setProcessing(true);
     try {
-      // Create return record
-      const { data: returnRow, error: returnError } = await supabase
-        .from('returns' as any)
-        .insert({
-          original_sale_id: saleData.id,
-          branch_id: branchId,
-          business_id: businessId,
-          processed_by: user.id,
-          reason,
-          refund_method: refundMethod,
-          refund_amount: totalRefund,
-          status: 'completed',
-        })
-        .select('id')
-        .single();
-
-      if (returnError) throw returnError;
-
-      const returnId = (returnRow as any)?.id as string | undefined;
-      if (!returnId) throw new Error('Failed to create return record');
-
-      // Restore inventory for returned items via stock movements
-      const { error: movementError } = await supabase
-        .from('stock_movements')
-        .insert(
-          returnItems.map(item => ({
-            product_id: item.product_id,
-            branch_id: branchId,
-            business_id: businessId,
-            quantity_change: item.returnQuantity,
-            movement_type: 'RETURN',
-            reference_id: returnId,
-            created_by: user.id,
-            notes: `Return for ${saleData.receipt_number}${approver ? ` - Approved by ${approver.email}` : ''}`,
-          })) as any
-        );
-
-      if (movementError) throw movementError;
-
-      // Log the refund
-      log('REFUND_PROCESSED', 'return', returnId, undefined, {
-        original_sale_id: saleData.id,
-        receipt_number: saleData.receipt_number,
-        refund_amount: totalRefund,
-        refund_method: refundMethod,
-        reason,
-        items: returnItems.map(i => ({ 
-          product_id: i.product_id, 
-          product_name: i.product_name, 
-          quantity: i.returnQuantity 
-        })),
-        approved_by: approver?.id,
-        approver_email: approver?.email,
+      // Single atomic server-side operation: return + line items + stock restoration +
+      // audit trail. Server enforces authorization, over-refund and duplicate protection.
+      const { data, error } = await supabase.rpc('process_return', {
+        p_sale_id: saleData.id,
+        p_items: returnItems.map(item => ({ sale_item_id: item.id, quantity: item.returnQuantity })),
+        p_reason: reason.trim(),
+        p_refund_method: refundMethod,
+        p_idempotency_key: getIdempotencyKey(saleData.id),
+        p_approval_request_id: approver?.approvalId ?? undefined,
       });
 
-      toast.success(`Return processed. Refund: KES ${totalRefund.toLocaleString()}`);
+      if (error) throw error;
+
+      const result = data as { return_id: string; refund_amount: number; status: string };
+      idempotencyKeyRef.current = null;
+
+      if (result.status === 'already_processed') {
+        toast.info('This return was already processed');
+      } else {
+        toast.success(`Return processed. Refund: KES ${Number(result.refund_amount).toLocaleString()}`);
+      }
       handleClose();
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Return error:', error);
-      toast.error('Failed to process return');
+      toast.error(error?.message || 'Failed to process return');
     } finally {
       setProcessing(false);
       setPendingApproval(false);
@@ -460,6 +437,7 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
         actionDescription={`Refund KES ${totalRefund.toLocaleString()} for ${returnItems.length} item(s) from receipt ${saleData?.receipt_number || ''}`}
         entityId={saleData?.id}
         entityType="return"
+        requestType="REFUND"
       />
     </>
   );
