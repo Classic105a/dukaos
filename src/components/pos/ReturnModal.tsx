@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,9 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBranch } from '@/hooks/useBranch';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
-import ManagerApprovalDialog from '@/components/auth/ManagerApprovalDialog';
+import ManagerApprovalDialog, { type ManagerApproval } from '@/components/auth/ManagerApprovalDialog';
 
 interface ReturnItem {
   id: string;
@@ -44,7 +43,6 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
   const { currentBranch } = useBranch();
   const { user } = useAuth();
   const { canProcessRefunds, isManager } = usePermissions();
-  const { log } = useAuditLog();
   const [receiptNumber, setReceiptNumber] = useState('');
   const [saleData, setSaleData] = useState<{
     id: string;
@@ -61,7 +59,7 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
   // Manager approval state
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [_pendingApproval, setPendingApproval] = useState(false);
-  const [_approverInfo, setApproverInfo] = useState<{ id: string; email: string; role: string } | null>(null);
+  const [_approverInfo, setApproverInfo] = useState<ManagerApproval | null>(null);
 
   const handleSearch = async () => {
     if (!receiptNumber.trim()) return;
@@ -439,6 +437,7 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
         actionDescription={`Refund KES ${totalRefund.toLocaleString()} for ${returnItems.length} item(s) from receipt ${saleData?.receipt_number || ''}`}
         entityId={saleData?.id}
         entityType="return"
+        requestType="REFUND"
       />
     </>
   );
