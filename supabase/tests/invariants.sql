@@ -14,9 +14,11 @@ BEGIN;
 DO $test$
 DECLARE
   -- fixtures
-  u_manager uuid := gen_random_uuid();
-  u_cashier uuid := gen_random_uuid();
-  u_outsider uuid := gen_random_uuid();
+  -- Real user ids are required by FKs to auth.users; we borrow three existing
+  -- profiles as actors. Their test memberships are created below and rolled back.
+  u_manager uuid;
+  u_cashier uuid;
+  u_outsider uuid;
   biz_a uuid; biz_b uuid;
   br_a uuid; br_b uuid;
   prod_a uuid; prod_a2 uuid; prod_b uuid;
@@ -32,14 +34,15 @@ DECLARE
   failed boolean;
   msg text;
 
-  PROCEDURE_AS_USER CONSTANT text := '';
+  ids uuid[];
 BEGIN
   ------------------------------------------------------------------ fixtures
-  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
-                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-  SELECT x.id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-         x.id::text || '@invariants.test', 'x', now(), '{"provider":"email"}', '{}', now(), now()
-  FROM (VALUES (u_manager), (u_cashier), (u_outsider)) AS x(id);
+  SELECT array_agg(id) INTO STRICT ids FROM (SELECT id FROM public.profiles ORDER BY created_at LIMIT 3) p;
+  IF ids IS NULL OR array_length(ids, 1) < 3 THEN RAISE EXCEPTION 'Need at least 3 user profiles to run invariant tests'; END IF;
+  u_manager := ids[1]; u_cashier := ids[2]; u_outsider := ids[3];
+  -- Detach borrowed users from any real memberships for the duration of this (rolled-back) txn
+  DELETE FROM public.branch_users WHERE user_id = ANY(ids);
+  DELETE FROM public.business_users WHERE user_id = ANY(ids);
 
   INSERT INTO public.businesses (name, type, created_by, industry) VALUES ('INV Biz A', 'retail', u_manager, 'retail') RETURNING id INTO biz_a;
   INSERT INTO public.businesses (name, type, created_by, industry) VALUES ('INV Biz B', 'retail', u_outsider, 'retail') RETURNING id INTO biz_b;
