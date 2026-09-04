@@ -352,9 +352,9 @@ export const useOfflineSync = () => {
               const msg = String(error?.message || '');
               const conflictType = /insufficient stock|negative|stock/i.test(msg)
                 ? 'oversell'
-                : /duplicate|unique|offline_id/i.test(msg)
+                : /duplicate|unique|offline_id|already/i.test(msg)
                 ? 'duplicate'
-                : /violat|invalid|check_violation|promo/i.test(msg)
+                : /violat|invalid|check_violation|promo|quantity must|mismatch|underpayment|not found|inactive|closed/i.test(msg)
                 ? 'validation'
                 : 'other';
               await supabase.from('sync_conflicts').insert({
