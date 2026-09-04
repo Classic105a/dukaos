@@ -333,11 +333,17 @@ export const useOfflineSync = () => {
           }
         } catch (error: any) {
           const newRetry = item.retry_count + 1;
-          const willGiveUp = newRetry >= item.max_retries;
+          const msgText = String(error?.message || '');
+          // Deterministic server rejections (oversell, validation, tenant/permission) will
+          // never succeed on retry — fail fast and surface a conflict for a manager instead
+          // of hammering the server 10 times.
+          const isNonRetryable =
+            /insufficient stock|not found|inactive|not assigned|not a member|quantity must|payment mismatch|underpayment|unsupported|already been used|already exists|closed/i.test(msgText);
+          const willGiveUp = isNonRetryable || newRetry >= item.max_retries;
           await updateSyncQueueItem(item.id!, {
             status: willGiveUp ? 'failed' : 'pending',
             retry_count: newRetry,
-            error_message: error.message || 'Unknown error',
+            error_message: msgText || 'Unknown error',
           });
           // Persist a conflict record so a manager can resolve it.
           if (willGiveUp && item.entity_type === 'sale') {
