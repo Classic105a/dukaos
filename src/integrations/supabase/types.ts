@@ -3283,6 +3283,7 @@ export type Database = {
       refresh_daily_sales_summary: { Args: never; Returns: undefined }
       revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
       run_complete_sale_tests: { Args: never; Returns: string[] }
+      run_invariant_tests: { Args: never; Returns: string }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       verify_audit_chain: {
