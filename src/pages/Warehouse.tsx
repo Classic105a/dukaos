@@ -172,7 +172,7 @@ const Warehouse = () => {
       if (grnError) throw grnError;
 
       if (grnForm.items.length > 0) {
-        await supabase.from('grn_items').insert(
+        const { error: itemsError } = await supabase.from('grn_items').insert(
           grnForm.items.map(item => ({
             grn_id: grn.id,
             product_id: item.product_id,
@@ -186,22 +186,27 @@ const Warehouse = () => {
             expiry_date: item.expiry_date || null,
           }))
         );
+        if (itemsError) throw itemsError;
 
-        // Auto-add stock movements for received items
-        await supabase.from('stock_movements').insert(
-          grnForm.items.filter(i => i.quantity_received > 0).map(item => ({
-            product_id: item.product_id,
-            branch_id: currentBranch.id,
-            business_id: (currentBranch as any).business_id,
-            quantity_change: item.quantity_received,
-            movement_type: 'PURCHASE',
-            reference_id: grn.id,
-            created_by: user.id,
-            batch_number: item.batch_number || null,
-            expiry_date: item.expiry_date || null,
-            notes: `GRN ${grnNumber}`,
-          })) as any
-        );
+        // Stock ledger entries for received items (trigger updates current_stock)
+        const receivedItems = grnForm.items.filter(i => i.quantity_received > 0);
+        if (receivedItems.length > 0) {
+          const { error: movementError } = await supabase.from('stock_movements').insert(
+            receivedItems.map(item => ({
+              product_id: item.product_id,
+              branch_id: currentBranch.id,
+              business_id: (currentBranch as any).business_id,
+              quantity_change: item.quantity_received,
+              movement_type: 'PURCHASE',
+              reference_id: grn.id,
+              created_by: user.id,
+              batch_number: item.batch_number || null,
+              expiry_date: item.expiry_date || null,
+              notes: `GRN ${grnNumber}`,
+            })) as any
+          );
+          if (movementError) throw new Error(`GRN saved but stock was not updated: ${movementError.message}`);
+        }
       }
       return grn;
     },
