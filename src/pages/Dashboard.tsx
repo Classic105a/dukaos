@@ -51,7 +51,7 @@ const Dashboard = () => {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {}
+    } catch { /* localStorage unavailable */ }
     return [];
   });
   const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
@@ -74,7 +74,7 @@ const Dashboard = () => {
       } else {
         localStorage.removeItem('pos_cart');
       }
-    } catch {}
+    } catch { /* localStorage unavailable */ }
   }, [cartItems]);
 
   // TAX-INCLUSIVE: product prices ARE the final price. Tax is extracted for reporting only.
