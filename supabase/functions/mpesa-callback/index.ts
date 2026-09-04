@@ -77,17 +77,39 @@ Deno.serve(async (req) => {
     const phone = pickItem(items, "PhoneNumber") ?? null;
     const txDate = parseDarajaTimestamp(pickItem(items, "TransactionDate"));
 
-    // Try to reconcile against an existing payment by checkout_request_id stored in mpesa_reference
+    // Idempotency: a callback we already reconciled is acknowledged without any further
+    // processing (Safaricom retries, duplicate deliveries, delayed re-sends).
+    if (checkoutRequestId) {
+      const { data: existing } = await supabase
+        .from("mpesa_callbacks")
+        .select("id, reconciled")
+        .eq("checkout_request_id", checkoutRequestId)
+        .maybeSingle();
+      if (existing?.reconciled) {
+        return new Response(JSON.stringify({ ResultCode: 0, ResultDesc: "Accepted (duplicate)" }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Reconcile against an existing completed payment. The POS stores either the
+    // CheckoutRequestID (STK flows) or the customer's M-Pesa receipt code (till/paybill
+    // flows) in payments.mpesa_reference. This function only LINKS records; it never
+    // creates sales/payments or touches stock, so replays are side-effect free.
     let saleId: string | null = null;
     let paymentId: string | null = null;
     let businessId: string | null = null;
     let branchId: string | null = null;
 
-    if (checkoutRequestId) {
+    const candidates = [checkoutRequestId, receipt ? String(receipt).toUpperCase() : null].filter(Boolean) as string[];
+    if (candidates.length > 0) {
       const { data: payment } = await supabase
         .from("payments")
         .select("id, sale_id")
-        .eq("mpesa_reference", checkoutRequestId)
+        .eq("payment_method", "mpesa")
+        .eq("status", "completed")
+        .in("mpesa_reference", candidates)
+        .limit(1)
         .maybeSingle();
       if (payment) {
         paymentId = payment.id;
@@ -104,7 +126,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { error } = await supabase.from("mpesa_callbacks").upsert({
+    const reconciled = !!receipt && resultCode === 0 && !!paymentId;
+    const row = {
       business_id: businessId,
       branch_id: branchId,
       sale_id: saleId,
@@ -118,9 +141,22 @@ Deno.serve(async (req) => {
       phone_number: phone ? String(phone) : null,
       transaction_date: txDate,
       raw_payload: raw,
-      reconciled: !!receipt && resultCode === 0 && !!paymentId,
-      reconciled_at: receipt && resultCode === 0 && paymentId ? new Date().toISOString() : null,
-    }, { onConflict: "checkout_request_id" });
+      reconciled,
+      reconciled_at: reconciled ? new Date().toISOString() : null,
+    };
+
+    // Unique indexes on checkout_request_id and mpesa_receipt_number make this upsert
+    // the single point of idempotency for the callback record.
+    const { error } = checkoutRequestId
+      ? await supabase.from("mpesa_callbacks").upsert(row, { onConflict: "checkout_request_id" })
+      : await supabase.from("mpesa_callbacks").insert(row);
+
+    if (error && (error as any).code === "23505") {
+      // Same receipt already stored via another delivery — treat as idempotent success.
+      return new Response(JSON.stringify({ ResultCode: 0, ResultDesc: "Accepted (duplicate)" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (error) {
       console.error("[mpesa-callback] insert failed", error);

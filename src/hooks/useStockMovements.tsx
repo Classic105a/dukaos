@@ -33,7 +33,7 @@ export const useStockMovements = () => {
         .insert({
           product_id: data.productId,
           branch_id: data.branchId,
-          business_id: data.businessId || currentBranch?.business_id!,
+          business_id: data.businessId || (currentBranch?.business_id as string),
           quantity_change: data.quantityChange,
           movement_type: data.movementType,
           batch_number: data.batchNumber || null,

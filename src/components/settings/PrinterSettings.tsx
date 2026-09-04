@@ -115,8 +115,8 @@ export const PrinterSettings = () => {
         .from('printer_configurations')
         .insert([{ 
           ...data, 
-          branch_id: currentBranch?.id!,
-          business_id: currentBranch?.business_id!,
+          branch_id: currentBranch?.id as string,
+          business_id: currentBranch?.business_id as string,
         }] as any);
       if (error) throw error;
     },

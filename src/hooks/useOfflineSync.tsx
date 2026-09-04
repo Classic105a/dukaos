@@ -93,7 +93,7 @@ export const useOfflineSync = () => {
       const sinceIso = lastSyncIso || '1970-01-01T00:00:00Z';
       const nowIso = new Date().toISOString();
 
-      let productQuery = supabase
+      const productQuery = supabase
         .from('products')
         .select('id, name, barcode, unit_price, cost_price, image_url, category_id, branch_id, is_shared_product, is_active, tax_rate, sku, unit_of_measure, track_inventory, low_stock_threshold, updated_at, categories(name, color)')
         .eq('is_active', true)
@@ -333,11 +333,17 @@ export const useOfflineSync = () => {
           }
         } catch (error: any) {
           const newRetry = item.retry_count + 1;
-          const willGiveUp = newRetry >= item.max_retries;
+          const msgText = String(error?.message || '');
+          // Deterministic server rejections (oversell, validation, tenant/permission) will
+          // never succeed on retry — fail fast and surface a conflict for a manager instead
+          // of hammering the server 10 times.
+          const isNonRetryable =
+            /insufficient stock|not found|inactive|not assigned|not a member|quantity must|payment mismatch|underpayment|unsupported|already been used|already exists|closed/i.test(msgText);
+          const willGiveUp = isNonRetryable || newRetry >= item.max_retries;
           await updateSyncQueueItem(item.id!, {
             status: willGiveUp ? 'failed' : 'pending',
             retry_count: newRetry,
-            error_message: error.message || 'Unknown error',
+            error_message: msgText || 'Unknown error',
           });
           // Persist a conflict record so a manager can resolve it.
           if (willGiveUp && item.entity_type === 'sale') {
@@ -346,9 +352,9 @@ export const useOfflineSync = () => {
               const msg = String(error?.message || '');
               const conflictType = /insufficient stock|negative|stock/i.test(msg)
                 ? 'oversell'
-                : /duplicate|unique|offline_id/i.test(msg)
+                : /duplicate|unique|offline_id|already/i.test(msg)
                 ? 'duplicate'
-                : /violat|invalid|check_violation|promo/i.test(msg)
+                : /violat|invalid|check_violation|promo|quantity must|mismatch|underpayment|not found|inactive|closed/i.test(msg)
                 ? 'validation'
                 : 'other';
               await supabase.from('sync_conflicts').insert({

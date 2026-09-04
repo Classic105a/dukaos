@@ -40,6 +40,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const lastSaleItemsRef = useRef<CartItem[]>([]);
   const completingRef = useRef(false);
+  // Per-checkout idempotency key (see completeSale). Reset when the cart is cleared or a sale succeeds.
+  const saleIdempotencyKeyRef = useRef<string | null>(null);
   const [productRefreshKey, setProductRefreshKey] = useState(0);
   // Cart persistence — survive crashes & refreshes
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
@@ -49,7 +51,7 @@ const Dashboard = () => {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {}
+    } catch { /* localStorage unavailable */ }
     return [];
   });
   const [lastSaleTotal, setLastSaleTotal] = useState({ subtotal: 0, tax: 0, discount: 0, total: 0 });
@@ -72,7 +74,7 @@ const Dashboard = () => {
       } else {
         localStorage.removeItem('pos_cart');
       }
-    } catch {}
+    } catch { /* localStorage unavailable */ }
   }, [cartItems]);
 
   // TAX-INCLUSIVE: product prices ARE the final price. Tax is extracted for reporting only.
@@ -132,7 +134,7 @@ const Dashboard = () => {
     setCartItems(prev => prev.filter(item => item.id !== itemId));
   }, []);
 
-  const handleClearCart = useCallback(() => setCartItems([]), []);
+  const handleClearCart = useCallback(() => { setCartItems([]); saleIdempotencyKeyRef.current = null; }, []);
 
   // === COMPLETE SALE — uses atomic DB function when online, offline queue when offline ===
   const completeSale = useCallback(async (
@@ -187,7 +189,7 @@ const Dashboard = () => {
             mpesa_reference: p.mpesa_reference || undefined,
             mpesa_phone: p.mpesa_phone || undefined,
           })),
-          p_offline_id: undefined,
+          p_offline_id: idempotencyKey,
           p_promotion_id: undefined,
         });
         void logMetric({
@@ -210,7 +212,8 @@ const Dashboard = () => {
           return;
         }
 
-        // Use the gapless receipt number returned by the server
+        // Use the gapless receipt number returned by the server. status 'already_synced'
+        // means a previous attempt of this same checkout succeeded (e.g. response lost).
         const serverReceipt = (data as any)?.receipt_number;
         if (serverReceipt) finalReceiptNumber = serverReceipt;
       } else {
@@ -234,6 +237,7 @@ const Dashboard = () => {
         });
       }
 
+      saleIdempotencyKeyRef.current = null;
       lastSaleItemsRef.current = saleItems;
       setLastSaleTotal({ subtotal: saleSubtotal, tax: saleTax, discount: 0, total: saleTotal });
       const cashPay = payments.find(p => p.method === 'cash');
