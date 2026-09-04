@@ -139,7 +139,7 @@ const ReturnModal = ({ isOpen, onClose, onComplete, preloadedSaleId, preloadFull
     if (isOpen && preloadedSaleId) {
       loadSaleById(preloadedSaleId, !!preloadFullRefund);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isOpen, preloadedSaleId, preloadFullRefund]);
 
   const handleQuantityChange = (itemId: string, quantity: number) => {

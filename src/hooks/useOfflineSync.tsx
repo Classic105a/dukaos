@@ -93,7 +93,7 @@ export const useOfflineSync = () => {
       const sinceIso = lastSyncIso || '1970-01-01T00:00:00Z';
       const nowIso = new Date().toISOString();
 
-      let productQuery = supabase
+      const productQuery = supabase
         .from('products')
         .select('id, name, barcode, unit_price, cost_price, image_url, category_id, branch_id, is_shared_product, is_active, tax_rate, sku, unit_of_measure, track_inventory, low_stock_threshold, updated_at, categories(name, color)')
         .eq('is_active', true)
