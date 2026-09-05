@@ -4,22 +4,23 @@ import { escapeHtml } from './html';
 /**
  * Export data as CSV file download
  */
+/** Neutralise spreadsheet formula injection (cells starting with = + - @ or tab/CR). */
+const sanitizeCsvCell = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  let text = String(value);
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  if (/[",\n\r]/.test(text)) text = `"${text.replace(/"/g, '""')}"`;
+  return text;
+};
+
 export const exportToCSV = (data: Record<string, any>[], filename: string) => {
   if (data.length === 0) return;
 
   const headers = Object.keys(data[0]);
   const csvContent = [
-    headers.join(','),
-    ...data.map(row =>
-      headers.map(header => {
-        const value = row[header];
-        // Escape commas and quotes
-        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        return value ?? '';
-      }).join(',')
-    ),
+    headers.map(sanitizeCsvCell).join(','),
+    ...data.map(row => headers.map(header => sanitizeCsvCell(row[header])).join(',')),
   ].join('\n');
 
   downloadFile(csvContent, `${filename}.csv`, 'text/csv;charset=utf-8;');

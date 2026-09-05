@@ -49,6 +49,8 @@ export const useTransactionRecovery = () => {
     } catch {
       localStorage.removeItem(RECOVERY_KEY);
     }
+    // Mount-only: recovery detection must run exactly once per app load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const saveCheckpoint = useCallback((checkpoint: Omit<TransactionCheckpoint, 'timestamp'>) => {

@@ -288,7 +288,7 @@ export const usePrinter = () => {
     } finally {
       setIsPrinting(false);
     }
-  }, [defaultPrinter, buildReceiptSettings, printViaNetwork]);
+  }, [defaultPrinter, buildReceiptSettings]);
 
   // Check printer capabilities
   const getPrinterCapabilities = useCallback(() => {
