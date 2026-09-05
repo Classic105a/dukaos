@@ -98,3 +98,30 @@ Modules must now render lists through `DataTable` instead of hand-rolled `<table
 3. Extract a shared `FormSection`/`FormField` primitive and standardise dialogs and drawers.
 4. Retire the legacy toaster once all call sites use sonner.
 5. Optimistic updates for inventory stock edits and customer mutations.
+## Production hardening pass (done)
+
+Scope: money safety, inventory integrity, M-Pesa, offline sync, tenant security. No rewrites; new migrations only.
+
+### Changed
+- `complete_sale`: idempotency check runs **before** any stock work (same `p_offline_id` → same sale, no second deduction); business-scoped product validation; quantity/payment/shift validation; friendly errors for duplicate receipt and reused M-Pesa code.
+- `process_return` (new RPC): atomic full/partial refunds, per-line "sold minus already returned" caps, refund ≤ paid, single-use 15-minute manager approvals for cashiers, `return_items` ledger, audit row. Client `ReturnModal` now calls it instead of writing `returns`/`stock_movements` directly.
+- Unique indexes: `(branch_id, receipt_number)`, completed M-Pesa `payments.mpesa_reference`.
+- `stock_movements` is append-only for clients; RETURN/SALE rows are only written by RPCs.
+- `verify-manager` edge function: requires `business_id`, checks caller membership, validates PIN/password against that business's managers, issues a bound approval, audits the override.
+- `mpesa-callback`: reconciles by CheckoutRequestID **or** receipt code; duplicate callbacks acknowledged without regressing state.
+- Online POS checkout now sends a stable UUID as `p_offline_id` (retry-safe); offline sync fails fast on deterministic errors and records `sync_conflicts`.
+- Storage: `branch-logos` writes scoped to the branch's business. `user_roles` reads/writes scoped to same-business owners/admins (or platform admins).
+- CSV export neutralises spreadsheet formula injection.
+- Tooling: `tsconfig.app.json` and `eslint.config.js` repaired; lint passes at `--max-warnings 0`.
+
+### Added
+- `public.run_invariant_tests()` — 13 rolled-back DB checks (sale creation, idempotent replay, oversell, cross-tenant product, duplicate receipt, M-Pesa reuse, cashier approval gate, approval consumption, refund replay, over-refund, exact refund totals, RLS/RPC isolation). Runner: `supabase/tests/invariants.sql` (needs a role that can `SET ROLE authenticated`, e.g. postgres/service role).
+
+### Preserved
+Auth, business switching, RLS helpers, receipt numbering, audit hash chain, invites, subscriptions, offline architecture, all client flows.
+
+### Remaining risks / follow-ups
+- `usePermissions` still reads the global `user_roles` table for UI gating; the database enforces `business_users` roles. Align the UI hook to the current business's `business_users` role (behavioural change — confirm with product first).
+- Security linter warnings (informational): 23 SECURITY DEFINER helpers callable by signed-in users (required by RLS/app), `pg_trgm`/`pgcrypto` in `public`, one mutable search_path on an extension function, `plan_prices` readable by anon (pricing page).
+- M-Pesa STK push initiation is not implemented (manual code entry only); callback endpoint is ready for it.
+- Sale voids for completed sales still go through client code paths; consider a `void_sale` RPC mirroring `process_return`.
