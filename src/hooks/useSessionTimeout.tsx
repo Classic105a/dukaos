@@ -154,6 +154,9 @@ export const useSessionTimeout = (): UseSessionTimeoutReturn => {
     } else {
       clearTimers();
     }
+    // Intentionally keyed on `user` only: resetTimer/clearTimers are stable
+    // callbacks and re-running this on their identity would re-unlock the screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   return {
