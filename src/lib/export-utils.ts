@@ -7,6 +7,7 @@ import { escapeHtml } from './html';
 /** Neutralise spreadsheet formula injection (cells starting with = + - @ or tab/CR). */
 const sanitizeCsvCell = (value: unknown): string => {
   if (value === null || value === undefined) return '';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   let text = String(value);
   if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   if (/[",\n\r]/.test(text)) text = `"${text.replace(/"/g, '""')}"`;
