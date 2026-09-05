@@ -3268,6 +3268,10 @@ export type Database = {
         }
         Returns: string
       }
+      manages_user_in_own_business: {
+        Args: { _target_user: string }
+        Returns: boolean
+      }
       next_receipt_number: { Args: { p_branch_id: string }; Returns: string }
       process_return: {
         Args: {
