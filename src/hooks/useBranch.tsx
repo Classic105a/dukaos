@@ -86,6 +86,9 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     fetchBranches();
+    // fetchBranches is a plain closure re-created each render; keying on `user`
+    // (the only input that should trigger a refetch) is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleSetCurrentBranch = async (branch: Branch) => {
