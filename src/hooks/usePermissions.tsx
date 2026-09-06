@@ -1,156 +1,61 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useBusiness } from './useBusiness';
+import {
+  resolvePermissions,
+  resolveEffectiveRole,
+  NO_PERMISSIONS,
+  type BusinessMembership,
+  type BusinessRole,
+  type Permissions,
+} from '@/lib/permissions';
 
-export type AppRole = 'owner' | 'admin' | 'manager' | 'cashier';
+export type AppRole = BusinessRole;
+export type { Permissions };
 
-interface Permissions {
-  canViewProfit: boolean;
-  canEditProducts: boolean;
-  canProcessRefunds: boolean;
-  canApproveRefunds: boolean;
-  canManageInventory: boolean;
-  canManageUsers: boolean;
-  canViewReports: boolean;
-  canManageBranches: boolean;
-  canVoidSales: boolean;
-  canApplyCreditSales: boolean;
-  canManageCustomerCredit: boolean;
-  canViewAuditLogs: boolean;
-  canCloseShifts: boolean;
-  isManager: boolean;
-  isAdmin: boolean;
-  isOwner: boolean;
-}
-
-const DEFAULT_PERMISSIONS: Permissions = {
-  canViewProfit: false,
-  canEditProducts: false,
-  canProcessRefunds: false,
-  canApproveRefunds: false,
-  canManageInventory: false,
-  canManageUsers: false,
-  canViewReports: false,
-  canManageBranches: false,
-  canVoidSales: false,
-  canApplyCreditSales: false,
-  canManageCustomerCredit: false,
-  canViewAuditLogs: false,
-  canCloseShifts: false,
-  isManager: false,
-  isAdmin: false,
-  isOwner: false,
-};
-
-const getPermissionsForRole = (role: AppRole | null): Permissions => {
-  if (!role) return DEFAULT_PERMISSIONS;
-
-  switch (role) {
-    case 'owner':
-      return {
-        canViewProfit: true,
-        canEditProducts: true,
-        canProcessRefunds: true,
-        canApproveRefunds: true,
-        canManageInventory: true,
-        canManageUsers: true,
-        canViewReports: true,
-        canManageBranches: true,
-        canVoidSales: true,
-        canApplyCreditSales: true,
-        canManageCustomerCredit: true,
-        canViewAuditLogs: true,
-        canCloseShifts: true,
-        isManager: true,
-        isAdmin: true,
-        isOwner: true,
-      };
-    case 'admin':
-      return {
-        canViewProfit: true,
-        canEditProducts: true,
-        canProcessRefunds: true,
-        canApproveRefunds: true,
-        canManageInventory: true,
-        canManageUsers: true,
-        canViewReports: true,
-        canManageBranches: true,
-        canVoidSales: true,
-        canApplyCreditSales: true,
-        canManageCustomerCredit: true,
-        canViewAuditLogs: true,
-        canCloseShifts: true,
-        isManager: true,
-        isAdmin: true,
-        isOwner: false,
-      };
-    case 'manager':
-      return {
-        canViewProfit: true,
-        canEditProducts: true,
-        canProcessRefunds: true,
-        canApproveRefunds: true,
-        canManageInventory: true,
-        canManageUsers: false,
-        canViewReports: true,
-        canManageBranches: false,
-        canVoidSales: true,
-        canApplyCreditSales: true,
-        canManageCustomerCredit: true,
-        canViewAuditLogs: true,
-        canCloseShifts: true,
-        isManager: true,
-        isAdmin: false,
-        isOwner: false,
-      };
-    case 'cashier':
-    default:
-      return {
-        canViewProfit: false,
-        canEditProducts: false,
-        canProcessRefunds: false, // Needs manager approval
-        canApproveRefunds: false,
-        canManageInventory: false,
-        canManageUsers: false,
-        canViewReports: false,
-        canManageBranches: false,
-        canVoidSales: false,
-        canApplyCreditSales: false, // Needs manager approval
-        canManageCustomerCredit: false,
-        canViewAuditLogs: false,
-        canCloseShifts: true, // Can close their own shift
-        isManager: false,
-        isAdmin: false,
-        isOwner: false,
-      };
-  }
-};
-
+/**
+ * Authoritative frontend permission source (UI visibility only).
+ *
+ *   authenticated user → selected business → business_users membership
+ *   → resolvePermissions() → UI
+ *
+ * The query is keyed by BOTH user and business, so switching businesses
+ * recomputes from scratch and nothing leaks between tenants. When the user
+ * has no active membership in the selected business every flag is false.
+ * The database (RLS + RPCs) remains the real authorization boundary.
+ */
 export const usePermissions = () => {
   const { user } = useAuth();
+  const { currentBusiness, isLoading: businessLoading } = useBusiness();
+  const businessId = currentBusiness?.id ?? null;
 
-  const { data: role, isLoading } = useQuery({
-    queryKey: ['user-role', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
+  const { data: membership, isLoading } = useQuery({
+    queryKey: ['business-membership', user?.id, businessId],
+    queryFn: async (): Promise<BusinessMembership | null> => {
+      if (!user?.id || !businessId) return null;
       const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
+        .from('business_users')
+        .select('business_id, user_id, role, is_owner, status')
         .eq('user_id', user.id)
-        .single();
-      if (error) return 'cashier' as AppRole;
-      return data?.role as AppRole;
+        .eq('business_id', businessId)
+        .maybeSingle();
+      if (error) return null;
+      return (data as BusinessMembership | null) ?? null;
     },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    enabled: !!user?.id && !!businessId,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const permissions = getPermissionsForRole(role || null);
+  const permissions = businessId ? resolvePermissions(membership) : NO_PERMISSIONS;
+  const role = businessId ? resolveEffectiveRole(membership) : null;
 
   return {
     role,
+    membership: membership ?? null,
+    businessId,
     permissions,
-    isLoading,
+    isLoading: businessLoading || (!!businessId && isLoading),
     ...permissions,
   };
 };
