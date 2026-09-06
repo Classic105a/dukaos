@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
+import { useBusiness } from './useBusiness';
 
 export interface CustomPermission {
   id: string;
@@ -67,44 +68,54 @@ export const useCustomPermissions = (userId?: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { currentBusiness } = useBusiness();
+  const businessId = currentBusiness?.id ?? null;
+
   const targetUserId = userId || user?.id;
 
+  // Scoped to the selected business so toggles never leak across tenants.
+  // Legacy rows with a NULL business_id are honoured only as a fallback.
   const { data: permissions, isLoading } = useQuery({
-    queryKey: ['custom-permissions', targetUserId],
+    queryKey: ['custom-permissions', targetUserId, businessId],
     queryFn: async () => {
-      if (!targetUserId) return null;
+      if (!targetUserId || !businessId) return null;
       const { data, error } = await supabase
         .from('custom_permissions')
         .select('*')
         .eq('user_id', targetUserId)
+        .or(`business_id.eq.${businessId},business_id.is.null`)
+        .order('business_id', { ascending: false, nullsFirst: false })
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data as CustomPermission | null;
     },
-    enabled: !!targetUserId,
+    enabled: !!targetUserId && !!businessId,
   });
 
   const updatePermissions = useMutation({
     mutationFn: async (updates: Partial<CustomPermission> & { user_id: string }) => {
-      const { user_id, ...permData } = updates;
-      
-      // Check if record exists
+      if (!businessId) throw new Error('No business selected');
+      const { user_id, business_id: _ignored, ...permData } = updates;
+
+      // Check if a record exists for this user IN THIS BUSINESS
       const { data: existing } = await supabase
         .from('custom_permissions')
         .select('id')
         .eq('user_id', user_id)
+        .eq('business_id', businessId)
         .maybeSingle();
 
       if (existing) {
         const { error } = await supabase
           .from('custom_permissions')
           .update(permData)
-          .eq('user_id', user_id);
+          .eq('id', existing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('custom_permissions')
-          .insert({ user_id, ...permData });
+          .insert({ user_id, business_id: businessId, ...permData });
         if (error) throw error;
       }
     },
