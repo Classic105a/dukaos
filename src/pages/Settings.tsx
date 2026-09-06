@@ -91,42 +91,43 @@ const Settings = () => {
     enabled: !!user?.id,
   });
 
-  // Fetch current user role
-  const { data: userRole } = useQuery({
-    queryKey: ['user-role', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-      if (error) return null;
-      return data?.role;
-    },
-    enabled: !!user?.id,
-  });
+  // Role/permissions for the SELECTED business (business_users), not a global table.
+  const { currentBusiness } = useBusiness();
+  const { role: userRole, canManageUsers, canChangeMemberRoles } = usePermissions();
+  const businessId = currentBusiness?.id ?? null;
 
-  // Fetch all users with roles (admin only)
+  // Fetch team members of the current business (owner/admin only; RLS scopes profiles the same way)
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['all-users'],
+    queryKey: ['team-members', businessId],
     queryFn: async () => {
+      if (!businessId) return [];
+      const { data: members, error: membersError } = await supabase
+        .from('business_users')
+        .select('user_id, role, is_owner, status, created_at')
+        .eq('business_id', businessId);
+      if (membersError) throw membersError;
+      const ids = (members ?? []).map(m => m.user_id);
+      if (ids.length === 0) return [];
+
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, email, full_name, created_at');
+        .select('id, email, full_name, created_at')
+        .in('id', ids);
       if (profilesError) throw profilesError;
 
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-      if (rolesError) throw rolesError;
-
-      return profiles.map(p => ({
-        ...p,
-        role: roles.find(r => r.user_id === p.id)?.role || 'cashier',
-      })) as UserWithRole[];
+      return (members ?? []).map(m => {
+        const p = profiles?.find(pr => pr.id === m.user_id);
+        return {
+          id: m.user_id,
+          email: p?.email ?? '',
+          full_name: p?.full_name ?? null,
+          role: m.is_owner ? 'owner' : (m.role || 'staff'),
+          status: m.status ?? 'active',
+          created_at: m.created_at,
+        };
+      }) as UserWithRole[];
     },
-    enabled: userRole === 'owner' || userRole === 'admin',
+    enabled: !!businessId && canManageUsers,
   });
 
   // Update profile mutation
@@ -148,31 +149,23 @@ const Settings = () => {
     },
   });
 
-  // Update user role mutation
+  // Update a member's role IN THIS BUSINESS. RLS only lets business owners do this;
+  // we verify a row actually changed so a silent RLS no-op is surfaced.
   const updateUserRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      // Check if role exists
-      const { data: existingRole } = await supabase
-        .from('user_roles')
-        .select('id')
+      if (!businessId) throw new Error('No business selected');
+      const { data, error } = await supabase
+        .from('business_users')
+        .update({ role })
+        .eq('business_id', businessId)
         .eq('user_id', userId)
-        .single();
-
-      if (existingRole) {
-        const { error } = await supabase
-          .from('user_roles')
-          .update({ role: role as any })
-          .eq('user_id', userId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('user_roles')
-          .insert([{ user_id: userId, role: role as any }]);
-        if (error) throw error;
-      }
+        .select('id');
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Only the business owner can change roles');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['business-membership'] });
       toast({ title: 'User role updated successfully' });
     },
     onError: (error: Error) => {
@@ -180,7 +173,7 @@ const Settings = () => {
     },
   });
 
-  const isAdmin = userRole === 'owner' || userRole === 'admin';
+  const isAdmin = canManageUsers;
 
   const getRoleColor = (role: string) => {
     switch (role) {
