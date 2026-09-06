@@ -50,6 +50,7 @@ import PermissionToggles from '@/components/staff/PermissionToggles';
 import ApprovalSettings from '@/components/settings/ApprovalSettings';
 import ModulesSettings from '@/components/settings/ModulesSettings';
 import { useBusiness } from '@/hooks/useBusiness';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Copy, Mail, X, LayoutGrid } from 'lucide-react';
 import { INVITE_ROLES, INVITE_ROLE_LABELS, normalizeInviteRole, type InviteStatus } from '@/lib/invite-roles';
 
@@ -66,6 +67,7 @@ interface UserWithRole {
   email: string;
   full_name: string | null;
   role: string;
+  status?: string;
   created_at: string;
 }
 
@@ -268,6 +270,7 @@ const Settings = () => {
                 users={allUsers}
                 currentUserId={user?.id || ''}
                 onUpdateRole={(userId, role) => updateUserRole.mutate({ userId, role })}
+                canChangeRoles={canChangeMemberRoles}
                 getRoleColor={getRoleColor}
               />
             </TabsContent>
@@ -709,7 +712,7 @@ const TeamSettings = ({
                   <Select 
                     value={member.role}
                     onValueChange={(role) => onUpdateRole(member.id, role)}
-                    disabled={member.id === currentUserId || member.role === 'owner'}
+                    disabled={!canChangeRoles || member.id === currentUserId || member.role === 'owner'}
                   >
                     <SelectTrigger className={cn('w-32', getRoleColor(member.role))}>
                       <SelectValue />
@@ -723,7 +726,9 @@ const TeamSettings = ({
                       </SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="attendant">Attendant</SelectItem>
                       <SelectItem value="cashier">Cashier</SelectItem>
+                      <SelectItem value="staff">Staff</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
