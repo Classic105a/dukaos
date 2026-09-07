@@ -494,11 +494,13 @@ const TeamSettings = ({
   users, 
   currentUserId,
   onUpdateRole,
+  canChangeRoles,
   getRoleColor,
 }: { 
   users: UserWithRole[];
   currentUserId: string;
   onUpdateRole: (userId: string, role: string) => void;
+  canChangeRoles: boolean;
   getRoleColor: (role: string) => string;
 }) => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
