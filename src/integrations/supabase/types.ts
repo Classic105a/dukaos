@@ -733,6 +733,7 @@ export type Database = {
           kra_pin: string | null
           logo_url: string | null
           name: string
+          onboarded_at: string | null
           owner_name: string | null
           paybill_number: string | null
           phone: string | null
@@ -757,6 +758,7 @@ export type Database = {
           kra_pin?: string | null
           logo_url?: string | null
           name: string
+          onboarded_at?: string | null
           owner_name?: string | null
           paybill_number?: string | null
           phone?: string | null
@@ -781,6 +783,7 @@ export type Database = {
           kra_pin?: string | null
           logo_url?: string | null
           name?: string
+          onboarded_at?: string | null
           owner_name?: string | null
           paybill_number?: string | null
           phone?: string | null
