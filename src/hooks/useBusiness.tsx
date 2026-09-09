@@ -12,6 +12,7 @@ interface Business {
   is_active: boolean;
   created_by: string;
   created_at: string;
+  onboarded_at: string | null;
 }
 
 interface BusinessContextType {
