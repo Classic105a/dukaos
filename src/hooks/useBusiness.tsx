@@ -53,6 +53,13 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
   }, [businesses, currentBusiness]);
 
   const handleSetBusiness = (b: Business) => {
+    if (currentBusiness?.id === b.id) return;
+    // Purge every cached query except the business list itself so nothing
+    // from the previous tenant can render while the new one loads.
+    queryClient.cancelQueries();
+    queryClient.removeQueries({
+      predicate: q => q.queryKey[0] !== 'businesses',
+    });
     setCurrentBusiness(b);
     localStorage.setItem('currentBusinessId', b.id);
   };
