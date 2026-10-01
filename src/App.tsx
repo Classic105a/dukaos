@@ -17,6 +17,7 @@ import SessionWarning from "@/components/SessionWarning";
 import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 import { CommandPaletteProvider } from "@/hooks/useCommandPalette";
 import { SubscriptionGate } from "@/components/subscription/SubscriptionGate";
+import OnboardingGate from "@/components/onboarding/OnboardingGate";
 // Eager: landing, auth, primary POS (kept fast on cold boot)
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -45,6 +46,7 @@ const More = lazy(() => import("./pages/More"));
 const Install = lazy(() => import("./pages/Install"));
 const Observability = lazy(() => import("./pages/Observability"));
 const Subscription = lazy(() => import("./pages/Subscription"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
 const BillingAdmin = lazy(() => import("./pages/BillingAdmin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -109,7 +111,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
               {showWarning && (
                 <SessionWarning timeUntilLock={timeUntilLock} onStayLoggedIn={resetTimer} />
               )}
-              {children}
+              <OnboardingGate>{children}</OnboardingGate>
             </SubscriptionGate>
           </CommandPaletteProvider>
         </ShiftProvider>
@@ -154,6 +156,7 @@ const App = () => (
                 <Route path="/more" element={<ProtectedRoute><More /></ProtectedRoute>} />
                 <Route path="/install" element={<Install />} />
                 <Route path="/observability" element={<ProtectedRoute><Observability /></ProtectedRoute>} />
+                <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                 <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
                 <Route path="/admin/billing" element={<ProtectedRoute><BillingAdmin /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
