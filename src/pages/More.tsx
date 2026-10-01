@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEATURES } from '@/lib/feature-flags';
+import { usePermissions } from '@/hooks/usePermissions';
+import { canAccess } from '@/lib/nav-access';
 
 interface NavBoxItem {
   path: string;
@@ -109,6 +111,11 @@ const navGroups: NavGroup[] = allGroups
 const More = () => {
   const { user } = useAuth();
   const { currentBranch, branches } = useBranch();
+  const { permissions, role } = usePermissions();
+  const visibleGroups = navGroups
+    .map(g => ({ ...g, items: g.items.filter(i => canAccess(permissions, i.path)) }))
+    .filter(g => g.items.length > 0);
+  const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Member';
 
   return (
     <DashboardLayout>
@@ -128,10 +135,10 @@ const More = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground truncate">{user?.email}</p>
-            <p className="text-xs text-muted-foreground">Owner</p>
+            <p className="text-xs text-muted-foreground">{roleLabel}</p>
           </div>
           <span className="text-xs font-semibold text-accent bg-accent/10 px-2.5 py-1 rounded-full uppercase tracking-wide">
-            Owner
+            {roleLabel}
           </span>
         </div>
 
@@ -168,7 +175,7 @@ const More = () => {
         )}
 
         {/* Grouped Navigation Boxes */}
-        {navGroups.map(group => (
+        {visibleGroups.map(group => (
           <div key={group.label} className="space-y-2">
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
               {group.label}

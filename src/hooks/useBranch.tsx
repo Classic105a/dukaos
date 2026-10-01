@@ -1,6 +1,7 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useBusiness } from './useBusiness';
 
 interface Branch {
   id: string;
@@ -32,70 +33,71 @@ interface BranchContextType {
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
 
+const branchKey = (businessId: string) => `currentBranchId:${businessId}`;
+
+/**
+ * Branches are always scoped to the SELECTED business. Switching business
+ * clears the branch list immediately (no stale branch from the previous
+ * tenant) and re-resolves the active branch, remembered per business.
+ */
 export const BranchProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const { currentBusiness } = useBusiness();
+  const businessId = currentBusiness?.id ?? null;
   const [branches, setBranches] = useState<Branch[]>([]);
   const [currentBranch, setCurrentBranch] = useState<Branch | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchBranches = async () => {
-    if (!user) {
+  const fetchBranches = useCallback(async () => {
+    if (!user || !businessId) {
       setBranches([]);
       setCurrentBranch(null);
-      setLoading(false);
+      setLoading(!!user && !businessId ? true : false);
       return;
     }
-
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('branches')
         .select('*')
+        .eq('business_id', businessId)
         .eq('is_active', true)
         .order('is_headquarters', { ascending: false });
-
       if (error) throw error;
 
-      setBranches(data || []);
-      
-      // Set default branch from localStorage or first available
-      const savedBranchId = localStorage.getItem('currentBranchId');
-      const savedBranch = data?.find(b => b.id === savedBranchId);
-      
-      const selectedBranch = savedBranch || (data && data.length > 0 ? data[0] : null);
-      
-      if (selectedBranch) {
-        setCurrentBranch(selectedBranch);
-        localStorage.setItem('currentBranchId', selectedBranch.id);
-        
-        // Auto-assign user to branch on load
-        if (user) {
-          await supabase
-            .from('branch_users')
-            .upsert(
-              { branch_id: selectedBranch.id, user_id: user.id, is_default: false },
-              { onConflict: 'branch_id,user_id' }
-            );
-        }
+      const list = (data || []) as Branch[];
+      setBranches(list);
+      const savedId = localStorage.getItem(branchKey(businessId)) ?? localStorage.getItem('currentBranchId');
+      const selected = list.find(b => b.id === savedId) || list[0] || null;
+      setCurrentBranch(selected);
+      if (selected) {
+        localStorage.setItem(branchKey(businessId), selected.id);
+        localStorage.setItem('currentBranchId', selected.id);
+        await supabase
+          .from('branch_users')
+          .upsert(
+            { branch_id: selected.id, user_id: user.id, is_default: false },
+            { onConflict: 'branch_id,user_id' }
+          );
       }
     } catch (error) {
       console.error('Error fetching branches:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, businessId]);
 
   useEffect(() => {
+    // Drop previous tenant's branches synchronously before refetching.
+    setBranches([]);
+    setCurrentBranch(null);
     fetchBranches();
-    // fetchBranches is a plain closure re-created each render; keying on `user`
-    // (the only input that should trigger a refetch) is intentional.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [fetchBranches]);
 
   const handleSetCurrentBranch = async (branch: Branch) => {
     setCurrentBranch(branch);
     localStorage.setItem('currentBranchId', branch.id);
-    
-    // Ensure user is assigned to this branch (for cashiers/managers)
+    if (branch.business_id) localStorage.setItem(branchKey(branch.business_id), branch.id);
     if (user) {
       const { error } = await supabase
         .from('branch_users')
@@ -103,20 +105,17 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
           { branch_id: branch.id, user_id: user.id, is_default: false },
           { onConflict: 'branch_id,user_id' }
         );
-      
-      if (error) {
-        console.error('Failed to assign user to branch:', error);
-      }
+      if (error) console.error('Failed to assign user to branch:', error);
     }
   };
 
   return (
-    <BranchContext.Provider value={{ 
-      branches, 
-      currentBranch, 
-      setCurrentBranch: handleSetCurrentBranch, 
+    <BranchContext.Provider value={{
+      branches,
+      currentBranch,
+      setCurrentBranch: handleSetCurrentBranch,
       loading,
-      refetch: fetchBranches 
+      refetch: fetchBranches,
     }}>
       {children}
     </BranchContext.Provider>
