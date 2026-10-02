@@ -403,7 +403,7 @@ const Inventory = () => {
               Manage products and stock for {currentBranch?.name || 'your branch'}
             </p>
           </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 sm:overflow-visible">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="shrink-0">
