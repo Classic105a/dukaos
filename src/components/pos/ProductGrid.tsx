@@ -165,7 +165,13 @@ const ProductGrid = ({ onProductSelect, refreshKey }: ProductGridProps) => {
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
             <Package className="w-8 h-8 opacity-15 mb-1" />
-            <p className="text-xs">No products found</p>
+            <p className="text-xs text-center px-4">
+              {products.length === 0
+                ? 'No products are currently available in this branch.'
+                : searchQuery
+                  ? `No products match "${searchQuery}".`
+                  : 'No products in this category.'}
+            </p>
           </div>
         ) : useVirtual ? (
           <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }} className="pb-32 lg:pb-2">
