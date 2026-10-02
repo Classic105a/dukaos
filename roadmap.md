@@ -8,3 +8,7 @@
 - [x] G Tests: `run_invariant_tests()` (13 DB checks) + existing Vitest suite
 - [ ] H UX: stat card/modal shaking — deferred (no functional risk)
 - [ ] Follow-ups (see docs/ARCHITECTURE_MIGRATION.md → Hardening pass → Remaining risks)
+- [x] Role-aware nav: shared route→permission map (sidebar, More, route guard)
+- [x] Business switch purges tenant caches; branches scoped to selected business, remembered per business
+- [x] Till empty state distinguishes no branch stock vs no search match
+- [x] Security scan clean (only intentional public plan pricing); sales RLS = own sales for cashiers, all for manager+

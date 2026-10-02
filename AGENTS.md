@@ -1,0 +1,2 @@
+- Route/nav access is defined once in `src/lib/nav-access.ts` and consumed by sidebar, More and RouteGuard — so menus and route access never disagree (RLS stays the real boundary).
+- Branch context is always scoped to the selected business, and switching business removes all non-`businesses` queries — prevents cross-tenant stale data.

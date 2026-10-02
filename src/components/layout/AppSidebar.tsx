@@ -101,7 +101,7 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed' && !isMobile;
   const { pathname, search } = useLocation();
   const currentUrl = `${pathname}${search}`;
-  const { permissions, isLoading } = usePermissions();
+  const { permissions, isLoading, businessId } = usePermissions();
 
   return (
     <Sidebar collapsible="icon">
@@ -118,7 +118,7 @@ export function AppSidebar() {
 
       <SidebarContent className="scrollbar-thin">
         {navGroups.map(group => {
-          const items = group.items.filter(i => i.enabled !== false && !isLoading && canAccess(permissions, i.path));
+          const items = group.items.filter(i => i.enabled !== false && !isLoading && !!businessId && canAccess(permissions, i.path));
           if (items.length === 0) return null;
           return (
             <SidebarGroup key={group.label}>
