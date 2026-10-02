@@ -11,10 +11,12 @@ import { canAccess, homeFor } from '@/lib/nav-access';
 export const RouteGuard = ({ children }: { children: ReactNode }) => {
   const { pathname, search } = useLocation();
   const { permissions, isLoading } = usePermissions();
-  const { businesses, isLoading: bizLoading } = useBusiness();
+  const { businesses, currentBusiness, isLoading: bizLoading } = useBusiness();
 
   // While loading, or before any business exists (onboarding), render as-is.
   if (isLoading || bizLoading || businesses.length === 0) return <>{children}</>;
+  // Business list loaded but selection not applied yet — wait, don't redirect.
+  if (!currentBusiness) return null;
   if (pathname === '/settings' && !search) {
     if (!permissions.canManageUsers) return <Navigate to="/settings?tab=profile" replace />;
     return <>{children}</>;
