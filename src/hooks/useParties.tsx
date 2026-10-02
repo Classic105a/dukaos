@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
+import { useBusiness } from './useBusiness';
 
 export interface Party {
   id: string;
@@ -18,15 +19,17 @@ export interface Party {
   created_at: string;
 }
 
-export const useParties = (businessId?: string | null) => {
+export const useParties = (businessIdArg?: string | null) => {
+  const { currentBusiness } = useBusiness();
+  const businessId = businessIdArg ?? currentBusiness?.id ?? null;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: parties = [], isLoading } = useQuery({
     queryKey: ['parties', businessId],
     queryFn: async () => {
-      let query = supabase.from('parties').select('*').eq('is_active', true).order('name');
-      if (businessId) query = query.eq('business_id', businessId);
+      if (!businessId) return [];
+      const query = supabase.from('parties').select('*').eq('is_active', true).eq('business_id', businessId).order('name');
       const { data, error } = await query;
       if (error) throw error;
       return data as Party[];
@@ -35,7 +38,8 @@ export const useParties = (businessId?: string | null) => {
 
   const createParty = useMutation({
     mutationFn: async (party: Partial<Party>) => {
-      const { data, error } = await supabase.from('parties').insert(party as any).select().single();
+      if (!businessId) throw new Error('No business selected');
+      const { data, error } = await supabase.from('parties').insert({ ...party, business_id: businessId } as any).select().single();
       if (error) throw error;
       return data;
     },
