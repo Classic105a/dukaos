@@ -22,6 +22,8 @@ const PWAUpdatePrompt = () => {
         const updateSW = registerSW({
           immediate: true,
           onNeedRefresh() {
+            updateSW(true);
+            return;
             if (disposed) return;
             toast("Update available", {
               description: "A new version of DukaOS is ready.",

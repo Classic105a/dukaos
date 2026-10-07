@@ -106,7 +106,7 @@ const Parties = () => {
             <DialogTrigger asChild>
               <Button><Plus className="w-4 h-4 mr-2" />Add Party</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="sm:max-w-md">
               <DialogHeader><DialogTitle>Add New Party</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div>

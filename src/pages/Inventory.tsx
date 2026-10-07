@@ -433,7 +433,7 @@ const Inventory = () => {
                   Product
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg">
+              <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Add Product</DialogTitle>
                 </DialogHeader>

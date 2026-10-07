@@ -125,7 +125,7 @@ const Promotions = () => {
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="w-4 h-4 mr-1.5" />New Promotion</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader><DialogTitle>Create Promotion</DialogTitle></DialogHeader>
               <div className="space-y-4 mt-2">
                 <div className="space-y-1.5">
