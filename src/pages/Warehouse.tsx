@@ -289,7 +289,7 @@ const Warehouse = () => {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm"><ClipboardList className="w-4 h-4 mr-1.5" />New PO</Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create Purchase Order</DialogTitle>
                 </DialogHeader>
@@ -370,7 +370,7 @@ const Warehouse = () => {
               <DialogTrigger asChild>
                 <Button size="sm"><PackageCheck className="w-4 h-4 mr-1.5" />Receive Goods</Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Goods Receiving Note</DialogTitle>
                 </DialogHeader>

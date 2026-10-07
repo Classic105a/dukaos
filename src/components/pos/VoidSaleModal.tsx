@@ -81,7 +81,7 @@ const VoidSaleModal = ({ isOpen, onClose, onConfirm, itemCount, total }: VoidSal
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <XCircle className="w-5 h-5" />

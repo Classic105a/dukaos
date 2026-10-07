@@ -224,7 +224,7 @@ const ReprintReceiptModal = ({ isOpen, onClose }: ReprintReceiptModalProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh]">
+      <DialogContent className="sm:max-w-md max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="w-5 h-5" />
