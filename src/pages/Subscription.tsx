@@ -16,6 +16,7 @@ import { usePlanPrices, usePriceQuote, useBusinessPriceOverrides, BillingCycle }
 import { useUsage } from '@/hooks/useUsage';
 import { MODULE_CATALOG, ModuleDefinition, ModuleKey, getIndustry } from '@/lib/industry-modules';
 import { toast } from 'sonner';
+import PlanCheckoutDialog from '@/components/subscription/PlanCheckoutDialog';
 
 const STATUS_LABEL: Record<string, { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral' }> = {
   trialing: { label: 'Free trial', tone: 'success' },
@@ -37,6 +38,8 @@ const Subscription = () => {
   const [couponInput, setCouponInput] = useState('');
   const [coupon, setCoupon] = useState('');
   const { data: quote } = usePriceQuote(plan?.id, cycle, coupon);
+  const [checkoutPlan, setCheckoutPlan] = useState<{ id: string; name: string } | null>(null);
+  const pendingInvoice = invoices.some((i: any) => i.status === 'pending');
 
   const meta = STATUS_LABEL[status] ?? STATUS_LABEL.trialing;
   const industryDef = getIndustry(industry);
@@ -210,6 +213,14 @@ const Subscription = () => {
                         ? `${money(pricing.yearly)} billed yearly`
                         : `${money(pricing.monthly)} billed monthly`}
                     </div>
+                    <Button
+                      size="sm"
+                      variant={current ? 'outline' : 'default'}
+                      disabled={pendingInvoice}
+                      onClick={() => setCheckoutPlan({ id: p.id, name: p.name })}
+                    >
+                      {pendingInvoice ? 'Payment pending' : current ? (status === 'active' ? 'Renew' : 'Pay now') : 'Choose plan'}
+                    </Button>
                   </Surface>
                 );
               })}
@@ -273,6 +284,13 @@ const Subscription = () => {
             </div>
           )}
         </Surface>
+        <PlanCheckoutDialog
+          open={!!checkoutPlan}
+          onOpenChange={o => !o && setCheckoutPlan(null)}
+          plan={checkoutPlan}
+          cycle={cycle}
+          coupon={coupon}
+        />
       </PageShell>
     </DashboardLayout>
   );
