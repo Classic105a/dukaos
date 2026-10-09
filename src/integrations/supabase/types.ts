@@ -2905,6 +2905,7 @@ export type Database = {
           due_date: string | null
           id: string
           invoice_number: string
+          notes: string | null
           paid_at: string | null
           payment_method: string | null
           payment_reference: string | null
@@ -2923,6 +2924,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           invoice_number: string
+          notes?: string | null
           paid_at?: string | null
           payment_method?: string | null
           payment_reference?: string | null
@@ -2941,6 +2943,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           invoice_number?: string
+          notes?: string | null
           paid_at?: string | null
           payment_method?: string | null
           payment_reference?: string | null
@@ -3197,6 +3200,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_subscription_checkout: {
+        Args: {
+          p_business_id: string
+          p_coupon: string
+          p_cycle: string
+          p_method: string
+          p_phone: string
+          p_plan_id: string
+          p_reference: string
+        }
+        Returns: Json
       }
       get_daily_sales_summary: {
         Args: {
