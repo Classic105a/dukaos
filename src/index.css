@@ -370,7 +370,17 @@ body.scanner-active > #root {
 }
 
 @media (max-width: 1023px) {
-  .android-chromium-compositor-safe .fixed {
+  .android-chromium-compositor-safe .fixed:not([role="dialog"]):not([role="alertdialog"]) {
+    transform: none !important;
+  }
+
+  /* Popups keep their centring transform on Android browsers */
+  .android-chromium-compositor-safe [role="dialog"].fixed,
+  .android-chromium-compositor-safe [role="alertdialog"].fixed {
+    transform: translateY(-50%) !important;
+  }
+  .android-chromium-compositor-safe [role="dialog"].fixed[data-side],
+  .android-chromium-compositor-safe [role="dialog"].fixed:not(.top-1\/2) {
     transform: none !important;
   }
 
