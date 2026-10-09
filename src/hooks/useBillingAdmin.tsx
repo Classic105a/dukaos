@@ -25,6 +25,22 @@ export const useAdminBusinesses = (enabled: boolean) =>
     enabled,
   });
 
+/** Subscription invoices awaiting confirmation — platform admin only. */
+export const useAdminInvoices = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['admin-invoices'],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('subscription_invoices')
+        .select('*, business:businesses(id, name)')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled,
+  });
+
 export const useAdminPlanPrices = (enabled: boolean) =>
   useQuery({
     queryKey: ['admin-plan-prices'],
@@ -81,7 +97,7 @@ export const useBillingAuditLog = (businessId?: string) =>
 export const useBillingMutations = () => {
   const qc = useQueryClient();
   const invalidate = () =>
-    ['admin-plan-prices', 'admin-overrides', 'admin-promotions', 'admin-businesses', 'plan-prices', 'billing-audit', 'price-quote']
+    ['admin-plan-prices', 'admin-overrides', 'admin-promotions', 'admin-businesses', 'admin-invoices', 'plan-prices', 'billing-audit', 'price-quote']
       .forEach(key => qc.invalidateQueries({ queryKey: [key] }));
 
   const audit = async (payload: {

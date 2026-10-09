@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { usePlans } from '@/hooks/useSubscription';
 import { useIsPlatformAdmin } from '@/hooks/usePricing';
 import {
-  useAdminBusinesses, useAdminOverrides, useAdminPlanPrices, useAdminPromotions,
+  useAdminBusinesses, useAdminInvoices, useAdminOverrides, useAdminPlanPrices, useAdminPromotions,
   useBillingAuditLog, useBillingMutations,
 } from '@/hooks/useBillingAdmin';
 
@@ -38,8 +38,9 @@ const BillingAdmin = () => {
   const { data: prices = [], isLoading: pricesLoading } = useAdminPlanPrices(enabled);
   const { data: overrides = [] } = useAdminOverrides(enabled);
   const { data: promos = [] } = useAdminPromotions(enabled);
+  const { data: invoices = [] } = useAdminInvoices(enabled);
   const { data: auditRows = [] } = useBillingAuditLog();
-  const { savePrice, saveOverride, savePromotion, subscriptionAction } = useBillingMutations();
+  const { savePrice, saveOverride, savePromotion, subscriptionAction, invoiceStatus } = useBillingMutations();
 
   const [priceForm, setPriceForm] = useState<any | null>(null);
   const [overrideForm, setOverrideForm] = useState<any | null>(null);
@@ -77,6 +78,7 @@ const BillingAdmin = () => {
             <TabsTrigger value="pricing"><Banknote className="w-3.5 h-3.5 mr-1" />Pricing</TabsTrigger>
             <TabsTrigger value="overrides">Overrides</TabsTrigger>
             <TabsTrigger value="promotions"><TicketPercent className="w-3.5 h-3.5 mr-1" />Promotions</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="audit"><ScrollText className="w-3.5 h-3.5 mr-1" />Audit</TabsTrigger>
           </TabsList>
 
@@ -218,6 +220,42 @@ const BillingAdmin = () => {
                         </p>
                       </div>
                       <StatusBadge tone={p.is_active ? 'success' : 'neutral'}>{p.is_active ? 'Active' : 'Disabled'}</StatusBadge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Surface>
+          </TabsContent>
+
+          {/* ── Payments awaiting confirmation ── */}
+          <TabsContent value="payments" className="mt-3">
+            <Surface padding="lg">
+              <SurfaceHeader title="Subscription payments" description="Confirm a payment once the code matches your M-Pesa / bank statement. Confirming activates the plan." />
+              {invoices.length === 0 ? <InlineEmpty message="No subscription payments yet" /> : (
+                <div className="space-y-2">
+                  {invoices.map((inv: any) => (
+                    <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 min-w-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{inv.business?.name ?? '—'} · {inv.invoice_number}</p>
+                        <p className="text-xs text-muted-foreground break-words">
+                          {money(Number(inv.amount))} · {inv.billing_cycle} · {inv.payment_method ?? '—'} · Code: {inv.payment_reference ?? '—'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <StatusBadge tone={inv.status === 'paid' ? 'success' : inv.status === 'void' ? 'danger' : 'warning'}>{inv.status}</StatusBadge>
+                        {inv.status === 'pending' && (
+                          <>
+                            <Button size="sm" disabled={invoiceStatus.isPending}
+                              onClick={() => run(invoiceStatus.mutateAsync({ invoiceId: inv.id, status: 'paid', reason: 'Payment confirmed' }), 'Payment confirmed — plan activated')}>
+                              Confirm
+                            </Button>
+                            <Button size="sm" variant="outline" disabled={invoiceStatus.isPending}
+                              onClick={() => run(invoiceStatus.mutateAsync({ invoiceId: inv.id, status: 'void', reason: 'Payment not found' }), 'Payment rejected')}>
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
