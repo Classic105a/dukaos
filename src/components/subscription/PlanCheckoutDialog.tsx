@@ -12,7 +12,7 @@ import { money, StatusBadge } from '@/components/ds';
 import { supabase } from '@/integrations/supabase/client';
 import { useBusiness } from '@/hooks/useBusiness';
 import { usePriceQuote, BillingCycle } from '@/hooks/usePricing';
-import { DUKAOS_BILLING } from '@/lib/billing-config';
+import { useBillingSettings } from '@/lib/billing-config';
 
 interface Props {
   open: boolean;
@@ -36,6 +36,9 @@ export const PlanCheckoutDialog = ({ open, onOpenChange, plan, cycle, coupon }: 
   const [phone, setPhone] = useState('');
   const amount = Number(quote?.final_amount ?? 0);
   const free = !isLoading && quote && amount === 0;
+  const { data: billing } = useBillingSettings();
+  const label = billing?.account_label?.trim() || 'Business name';
+  const accountNo = /^business name$/i.test(label) ? (currentBusiness?.name?.slice(0, 20) ?? 'DUKAOS') : label;
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -84,12 +87,21 @@ export const PlanCheckoutDialog = ({ open, onOpenChange, plan, cycle, coupon }: 
 
         {!free && (
           <div className="space-y-3">
+            {!billing?.paybill_number ? (
+              <p className="text-sm rounded-lg bg-warning/10 text-warning p-3">
+                Payment details are not set up yet. Please contact DukaOS support to pay.
+              </p>
+            ) : (
             <ol className="text-sm space-y-1 list-decimal pl-5 text-muted-foreground">
               <li>Open M-Pesa → Lipa na M-Pesa → Pay Bill</li>
-              <li>Business no. <span className="font-semibold text-foreground">{DUKAOS_BILLING.paybill}</span></li>
-              <li>Account no. <span className="font-semibold text-foreground break-all">{currentBusiness?.name?.slice(0, 20) ?? 'DUKAOS'}</span></li>
+              <li>Business no. <span className="font-semibold text-foreground">{billing.paybill_number}</span></li>
+              <li>Account no. <span className="font-semibold text-foreground break-all">{accountNo}</span></li>
               <li>Amount <span className="font-semibold text-foreground">{money(amount)}</span>, then enter the code below</li>
             </ol>
+            )}
+            {billing?.instructions && (
+              <p className="text-xs text-muted-foreground whitespace-pre-line">{billing.instructions}</p>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="ref">M-Pesa confirmation code</Label>
               <Input id="ref" value={reference} maxLength={40} placeholder="e.g. SJK7X2ABCD"

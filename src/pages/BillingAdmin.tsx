@@ -20,6 +20,7 @@ import {
   useAdminBusinesses, useAdminInvoices, useAdminOverrides, useAdminPlanPrices, useAdminPromotions,
   useBillingAuditLog, useBillingMutations,
 } from '@/hooks/useBillingAdmin';
+import BillingSettingsPanel from '@/components/subscription/BillingSettingsPanel';
 
 const OVERRIDE_TYPES = [
   { value: 'custom_price', label: 'Custom negotiated price' },
@@ -79,8 +80,13 @@ const BillingAdmin = () => {
             <TabsTrigger value="overrides">Overrides</TabsTrigger>
             <TabsTrigger value="promotions"><TicketPercent className="w-3.5 h-3.5 mr-1" />Promotions</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="settings">Pay Bill settings</TabsTrigger>
             <TabsTrigger value="audit"><ScrollText className="w-3.5 h-3.5 mr-1" />Audit</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="settings" className="mt-3">
+            <BillingSettingsPanel />
+          </TabsContent>
 
           {/* ── Businesses & lifecycle ── */}
           <TabsContent value="businesses" className="mt-3">
