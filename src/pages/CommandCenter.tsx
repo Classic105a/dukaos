@@ -35,8 +35,8 @@ const CommandCenter = () => {
   return (
     <DashboardLayout>
       <PageShell
-        title="Command Center"
-        description="What requires your attention today"
+        title="Home"
+        description="Today's sales, money received and what needs your attention"
         icon={<LayoutDashboard />}
         actions={
           <Button variant="outline" size="sm" onClick={refreshAll} className="shrink-0">
@@ -45,31 +45,9 @@ const CommandCenter = () => {
           </Button>
         }
       >
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <CriticalAlertsWidget />
-          <QuickActionsWidget />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <PendingApprovalsWidget />
-          <StockTransfersWidget />
-          <SupplierDuesWidget />
-          <LowStockWidget />
-          <SlowMovingWidget />
-          <BestSellersWidget />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <RevenueTrendWidget trend={agg.trend} loading={isLoading} />
-          <CashFlowWidget saleIds={agg.todayIds} />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <BranchComparisonWidget byBranch={agg.byBranch} loading={isLoading} />
-          <AttendanceWidget />
-          <SystemHealthWidget />
-        </div>
-        <ActivityTimelineWidget />
-        <section className="pt-1">
+        <section>
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-            Today at a glance
+            Today
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {isLoading ? (
@@ -77,28 +55,50 @@ const CommandCenter = () => {
             ) : (
               <>
                 <StatCard
-                  label="Revenue"
+                  label="Sold today"
                   value={money(agg.todayRevenue, { compact: true })}
                   icon={<Wallet />}
                   delta={percentDelta(agg.todayRevenue, agg.yesterdayRevenue)}
                   hint="vs yesterday"
                 />
-                <StatCard
-                  label="Profit"
-                  value={money(agg.todayProfit, { compact: true })}
-                  icon={<TrendingUp />}
-                  tone="success"
-                />
-                <StatCard label="Transactions" value={agg.todayCount} icon={<ShoppingCart />} />
-                <StatCard
-                  label="Avg. basket"
-                  value={money(agg.averageBasket, { compact: true })}
-                  icon={<Receipt />}
-                />
+                <StatCard label="Profit" value={money(agg.todayProfit, { compact: true })} icon={<TrendingUp />} tone="success" />
+                <StatCard label="Sales made" value={agg.todayCount} icon={<ShoppingCart />} />
+                <StatCard label="Average sale" value={money(agg.averageBasket, { compact: true })} icon={<Receipt />} />
               </>
             )}
           </div>
         </section>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <QuickActionsWidget />
+          <CashFlowWidget saleIds={agg.todayIds} />
+          <CriticalAlertsWidget />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <LowStockWidget />
+          <PendingApprovalsWidget />
+        </div>
+
+        <details className="group rounded-xl border border-border bg-card">
+          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-foreground">
+            More insights
+            <span className="ml-2 text-xs font-normal text-muted-foreground">trends, best sellers, branches, activity</span>
+          </summary>
+          <div className="space-y-3 p-3 pt-0">
+            <RevenueTrendWidget trend={agg.trend} loading={isLoading} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <BestSellersWidget />
+              <SlowMovingWidget />
+              <StockTransfersWidget />
+              <SupplierDuesWidget />
+              <BranchComparisonWidget byBranch={agg.byBranch} loading={isLoading} />
+              <AttendanceWidget />
+              <SystemHealthWidget />
+            </div>
+            <ActivityTimelineWidget />
+          </div>
+        </details>
       </PageShell>
     </DashboardLayout>
   );
