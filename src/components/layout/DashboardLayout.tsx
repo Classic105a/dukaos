@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import BusinessSwitcher from '@/components/layout/BusinessSwitcher';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
+import MobileBottomNav from '@/components/layout/MobileBottomNav';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -177,11 +178,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-3 lg:p-5 min-w-0">
+      <main className="flex-1 p-3 lg:p-5 min-w-0 pb-24 md:pb-5">
         <PageTransition>
           {children}
         </PageTransition>
       </main>
+      <MobileBottomNav />
         </div>
       </div>
     </SidebarProvider>
