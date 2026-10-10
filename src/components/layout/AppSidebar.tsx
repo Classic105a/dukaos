@@ -46,52 +46,52 @@ type NavItem = { path: string; label: string; icon: typeof Store; enabled?: bool
 
 const navGroups: { label: string; items: NavItem[] }[] = [
   {
-    label: 'Overview',
+    label: 'Daily work',
     items: [
-      { path: '/command-center', label: 'Command Center', icon: LayoutDashboard },
+      { path: '/command-center', label: 'Home', icon: LayoutDashboard },
+      { path: '/dashboard', label: 'Sell (POS)', icon: ShoppingCart },
+      { path: '/inventory', label: 'Products', icon: Package },
+      { path: '/customers', label: 'Customers', icon: Users },
+      { path: '/debts', label: 'Payments & Debts', icon: Wallet },
     ],
   },
   {
-    label: 'Sales',
+    label: 'Insights',
     items: [
-      { path: '/dashboard', label: 'Point of Sale', icon: ShoppingCart },
-      { path: '/analytics', label: 'Analytics', icon: PieChart },
+      { path: '/reports', label: 'Reports', icon: PieChart },
+      { path: '/analytics', label: 'Sales Trends', icon: TrendingUp },
+    ],
+  },
+  {
+    label: 'Stock & suppliers',
+    items: [
+      { path: '/parties', label: 'Suppliers', icon: Truck, enabled: FEATURES.parties },
+      { path: '/branches?tab=transfers', label: 'Transfers', icon: ArrowLeftRight },
+      { path: '/warehouse', label: 'Warehouse & Orders', icon: Warehouse, enabled: FEATURES.warehouse },
+      { path: '/smart-inventory', label: 'Reorder Advice', icon: TrendingUp, enabled: FEATURES.smartInventory },
       { path: '/promotions', label: 'Promotions', icon: Tag, enabled: FEATURES.promotions },
     ],
   },
   {
-    label: 'Inventory',
-    items: [
-      { path: '/inventory', label: 'Products', icon: Package },
-      { path: '/branches?tab=transfers', label: 'Transfers', icon: ArrowLeftRight },
-      { path: '/smart-inventory', label: 'Forecasting', icon: TrendingUp, enabled: FEATURES.smartInventory },
-      { path: '/warehouse', label: 'Warehouse & GRN', icon: Warehouse, enabled: FEATURES.warehouse },
-    ],
-  },
-  {
-    label: 'Finance',
-    items: [
-      { path: '/reports', label: 'Reports', icon: PieChart },
-      { path: '/customers', label: 'Customers', icon: Users },
-      { path: '/parties', label: 'Suppliers', icon: Truck, enabled: FEATURES.parties },
-      { path: '/debts', label: 'Debts', icon: Wallet },
-    ],
-  },
-  {
-    label: 'System',
+    label: 'Business setup',
     items: [
       { path: '/branches', label: 'Branches', icon: Building2 },
-      { path: '/subscription', label: 'Subscription', icon: CreditCard },
-      { path: '/settings?tab=team', label: 'Team & Roles', icon: Users },
+      { path: '/settings?tab=team', label: 'Staff & Roles', icon: Users },
       { path: '/settings?tab=receipts', label: 'Receipts', icon: Receipt },
       { path: '/settings?tab=printers', label: 'Printers', icon: Printer },
       { path: '/settings?tab=tax', label: 'Tax', icon: Percent },
       { path: '/settings?tab=approvals', label: 'Approvals', icon: CheckSquare },
-      { path: '/settings?tab=profile', label: 'Profile', icon: User },
+      { path: '/subscription', label: 'Subscription', icon: CreditCard },
+      { path: '/settings', label: 'All Settings', icon: Settings },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { path: '/settings?tab=profile', label: 'My Profile', icon: User },
       { path: '/settings?tab=security', label: 'Security', icon: KeyRound },
-      { path: '/audit-log', label: 'Audit Log', icon: Shield },
+      { path: '/audit-log', label: 'Activity Log', icon: Shield },
       { path: '/observability', label: 'System Health', icon: Activity },
-      { path: '/settings', label: 'Settings', icon: Settings },
     ],
   },
 ];
