@@ -15,6 +15,13 @@
       "when": 1791587536067,
       "tag": "0001_lock_invoice_writes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791626886882,
+      "tag": "0002_platform_billing_settings",
+      "breakpoints": true
     }
   ]
 }

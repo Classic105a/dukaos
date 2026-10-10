@@ -1857,6 +1857,33 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_billing_settings: {
+        Row: {
+          account_label: string
+          id: boolean
+          instructions: string | null
+          paybill_number: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          account_label?: string
+          id?: boolean
+          instructions?: string | null
+          paybill_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          account_label?: string
+          id?: boolean
+          instructions?: string | null
+          paybill_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       printer_configurations: {
         Row: {
           bluetooth_device_id: string | null
