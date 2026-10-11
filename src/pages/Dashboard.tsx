@@ -295,6 +295,14 @@ const Dashboard = () => {
     completeSale([{ method: 'mpesa', amount: total, mpesa_phone: phone, mpesa_reference: reference }]);
   }, [total, completeSale]);
 
+  // === SPLIT — cash + M-Pesa; server validates the payments add up ===
+  const handleSplitPayment = useCallback((cash: number, mpesa: number, reference: string, phone: string) => {
+    completeSale([
+      { method: 'cash', amount: cash },
+      { method: 'mpesa', amount: mpesa, mpesa_reference: reference, mpesa_phone: phone || undefined },
+    ]);
+  }, [completeSale]);
+
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
