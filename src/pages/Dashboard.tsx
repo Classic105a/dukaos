@@ -407,6 +407,7 @@ const Dashboard = () => {
         onCashPayment={handleCashPayment}
         onCardPayment={handleCardPayment}
         onMpesaPayment={() => setShowMpesa(true)}
+        onSplitPayment={handleSplitPayment}
       />
 
       {/* M-Pesa dialog — only modal left */}
