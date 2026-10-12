@@ -504,6 +504,8 @@ const TeamSettings = ({
   getRoleColor: (role: string) => string;
 }) => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [limitOpen, setLimitOpen] = useState(false);
+  const { usageFor } = useUsage();
   const { currentBusiness } = useBusiness();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -591,7 +593,11 @@ const TeamSettings = ({
           <CardTitle>Team Members</CardTitle>
           <CardDescription>Manage team access and roles</CardDescription>
         </div>
-        <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <UpgradeDialog open={limitOpen} onOpenChange={setLimitOpen} limitKey="employees" />
+        <Dialog open={inviteDialogOpen} onOpenChange={(o) => {
+          if (o && usageFor('employees').exceeded) { setLimitOpen(true); return; }
+          setInviteDialogOpen(o);
+        }}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="w-4 h-4 mr-2" />
