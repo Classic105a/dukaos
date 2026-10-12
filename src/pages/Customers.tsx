@@ -108,7 +108,7 @@ const Customers = () => {
   // name/phone/email and (business_id, segment, total_purchases) for
   // sub-100ms search even at 100k+ rows.
   const customersQuery = useInfiniteQuery({
-    queryKey: ['customers', { search: debouncedSearch, segment: segmentFilter }],
+    queryKey: ['customers', debouncedSearch, segmentFilter],
     initialPageParam: 0,
     queryFn: async ({ pageParam = 0 }) => {
       const from = (pageParam as number) * PAGE_SIZE;

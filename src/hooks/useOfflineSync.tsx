@@ -79,7 +79,9 @@ export const useOfflineSync = () => {
 
   useEffect(() => {
     refreshPendingCount();
-    const interval = setInterval(refreshPendingCount, PENDING_POLL_INTERVAL);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') refreshPendingCount();
+    }, PENDING_POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [refreshPendingCount]);
 
@@ -404,7 +406,7 @@ export const useOfflineSync = () => {
     syncPendingSales();
 
     const interval = setInterval(() => {
-      if (navigator.onLine) syncPendingSales();
+      if (navigator.onLine && document.visibilityState === 'visible') syncPendingSales();
     }, SYNC_INTERVAL);
 
     return () => clearInterval(interval);
