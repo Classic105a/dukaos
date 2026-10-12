@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useBusiness } from './useBusiness';
@@ -41,7 +41,11 @@ const branchKey = (businessId: string) => `currentBranchId:${businessId}`;
  * tenant) and re-resolves the active branch, remembered per business.
  */
 export const BranchProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  // Depend on the user id only — token refreshes replace the user object and
+  // previously re-triggered the branch fetch + branch_users upsert loop.
+  const userId = authUser?.id ?? null;
+  const user = useMemo(() => (userId ? { id: userId } : null), [userId]);
   const { currentBusiness } = useBusiness();
   const businessId = currentBusiness?.id ?? null;
   const [branches, setBranches] = useState<Branch[]>([]);

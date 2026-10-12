@@ -15,9 +15,12 @@ const SystemHealthBar = () => {
   }, [isOnline, syncError]);
 
   // Measure DB latency periodically
+  const barVisible = !isOnline || !!syncError || isSyncing || pendingCount > 0;
   useEffect(() => {
-    if (!isOnline) return;
+    // Only measure while the bar is actually shown and the tab is visible.
+    if (!isOnline || !barVisible) return;
     const measure = async () => {
+      if (document.visibilityState !== 'visible') return;
       const start = performance.now();
       try {
         const { supabase } = await import('@/integrations/supabase/client');
@@ -30,7 +33,7 @@ const SystemHealthBar = () => {
     measure();
     const interval = setInterval(measure, 60000);
     return () => clearInterval(interval);
-  }, [isOnline]);
+  }, [isOnline, barVisible]);
 
   const showBar = !isOnline || syncError || isSyncing || pendingCount > 0;
 
