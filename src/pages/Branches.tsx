@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useUsage } from '@/hooks/useUsage';
+import UpgradeDialog from '@/components/subscription/UpgradeDialog';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -380,7 +382,11 @@ const Branches = () => {
                 />
               </DialogContent>
             </Dialog>
-            <Dialog open={branchDialogOpen} onOpenChange={setBranchDialogOpen}>
+            <UpgradeDialog open={limitOpen} onOpenChange={setLimitOpen} limitKey="branches" />
+            <Dialog open={branchDialogOpen} onOpenChange={(o) => {
+              if (o && usageFor('branches').exceeded) { setLimitOpen(true); return; }
+              setBranchDialogOpen(o);
+            }}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
