@@ -894,8 +894,14 @@ const ProductForm = ({
     initialStock: '',
   });
 
+  const sellingNum = parseFloat(formData.unit_price);
+  const costNum = formData.cost_price ? parseFloat(formData.cost_price) : null;
+  const priceErr = formData.unit_price ? priceError(sellingNum, costNum) : null;
+  const margin = formData.unit_price ? marginInfo(sellingNum, costNum) : null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (priceErr) return;
     onSubmit({
       name: formData.name,
       sku: formData.sku || null,
