@@ -83,8 +83,11 @@ const SubscriptionBanner = () => {
   const showTrialNotice = status === 'trialing' && (daysRemaining ?? 99) <= 14;
   const critical = status === 'grace' || status === 'expired' || status === 'cancelled';
 
+  const onSellScreen = location.pathname.startsWith('/dashboard');
+  const dismissible = !critical || onSellScreen;
+
   if (onBillingPage || (!critical && !showTrialNotice)) return null;
-  if (dismissed && !critical) return null;
+  if (dismissed && dismissible) return null;
 
   const config = {
     grace: {
