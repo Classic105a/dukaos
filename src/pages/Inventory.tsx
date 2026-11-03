@@ -48,6 +48,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { priceError, marginInfo } from '@/lib/price-validation';
 import { format, differenceInDays } from 'date-fns';
 
 interface Product {
@@ -894,8 +895,14 @@ const ProductForm = ({
     initialStock: '',
   });
 
+  const sellingNum = parseFloat(formData.unit_price);
+  const costNum = formData.cost_price ? parseFloat(formData.cost_price) : null;
+  const priceErr = formData.unit_price ? priceError(sellingNum, costNum) : null;
+  const margin = formData.unit_price ? marginInfo(sellingNum, costNum) : null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (priceErr) return;
     onSubmit({
       name: formData.name,
       sku: formData.sku || null,
@@ -962,6 +969,17 @@ const ProductForm = ({
             disabled={isLoading}
           />
         </div>
+        {(priceErr || margin) && (
+          <div className="col-span-2 -mt-2">
+            {priceErr ? (
+              <p className="text-sm text-destructive" role="alert">{priceErr} Selling at a loss is not allowed.</p>
+            ) : margin && (
+              <p className={cn('text-xs font-medium', margin.profit > 0 ? 'text-success' : 'text-destructive')}>
+                Margin: {margin.percent.toFixed(1)}% · Profit KES {margin.profit.toLocaleString()} per unit
+              </p>
+            )}
+          </div>
+        )}
         <div>
           <Label htmlFor="category">Category</Label>
           <Select 
@@ -1023,7 +1041,7 @@ const ProductForm = ({
           />
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button type="submit" className="w-full" disabled={isLoading || !!priceErr}>
         {isLoading ? 'Creating...' : 'Create Product'}
       </Button>
     </form>
