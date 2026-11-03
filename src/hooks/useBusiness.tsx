@@ -33,9 +33,20 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
   const { data: businesses = [], isLoading } = useQuery({
     queryKey: ['businesses', user?.id],
     queryFn: async () => {
+      // Only businesses the user is an active member of. Platform admins can
+      // read every business via RLS, but the workspace must stay tenant-scoped.
+      const { data: memberships, error: mErr } = await supabase
+        .from('business_users')
+        .select('business_id')
+        .eq('user_id', user!.id)
+        .eq('is_active', true);
+      if (mErr) throw mErr;
+      const ids = (memberships ?? []).map(m => m.business_id);
+      if (ids.length === 0) return [] as Business[];
       const { data, error } = await supabase
         .from('businesses')
         .select('*')
+        .in('id', ids)
         .eq('is_active', true)
         .order('created_at');
       if (error) throw error;

@@ -79,7 +79,7 @@ const SubscriptionBanner = () => {
   const location = useLocation();
   const [dismissed, setDismissed] = useState(false);
 
-  const onBillingPage = location.pathname.startsWith('/subscription');
+  const onBillingPage = location.pathname.startsWith('/subscription') || location.pathname.startsWith('/admin/');
   const showTrialNotice = status === 'trialing' && (daysRemaining ?? 99) <= 14;
   const critical = status === 'grace' || status === 'expired' || status === 'cancelled';
 

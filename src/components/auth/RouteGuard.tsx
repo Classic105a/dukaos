@@ -13,6 +13,8 @@ export const RouteGuard = ({ children }: { children: ReactNode }) => {
   const { permissions, isLoading } = usePermissions();
   const { businesses, currentBusiness, isLoading: bizLoading } = useBusiness();
 
+  // Platform admin pages are authorized by the page itself + RLS, not business role.
+  if (pathname.startsWith('/admin/')) return <>{children}</>;
   // While loading, or before any business exists (onboarding), render as-is.
   if (isLoading || bizLoading || businesses.length === 0) return <>{children}</>;
   // Business list loaded but selection not applied yet — wait, don't redirect.
