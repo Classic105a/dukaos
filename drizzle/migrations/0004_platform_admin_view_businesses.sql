@@ -1,0 +1,1 @@
+CREATE POLICY "Platform admins view all businesses" ON public.businesses FOR SELECT TO authenticated USING (public.is_platform_admin());
