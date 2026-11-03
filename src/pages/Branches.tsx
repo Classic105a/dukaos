@@ -83,6 +83,8 @@ const Branches = () => {
   const { currentBusiness } = useBusiness();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const [limitOpen, setLimitOpen] = useState(false);
+  const { usageFor } = useUsage();
   const queryClient = useQueryClient();
   const [branchDialogOpen, setBranchDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
