@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { FEATURES } from '@/lib/feature-flags';
 import { usePermissions } from '@/hooks/usePermissions';
 import { canAccess } from '@/lib/nav-access';
+import { useIsPlatformAdmin } from '@/hooks/usePricing';
 
 type NavItem = { path: string; label: string; icon: typeof Store; enabled?: boolean };
 
@@ -102,6 +103,10 @@ export function AppSidebar() {
   const { pathname, search } = useLocation();
   const currentUrl = `${pathname}${search}`;
   const { permissions, isLoading, businessId } = usePermissions();
+  const { data: isPlatformAdmin } = useIsPlatformAdmin();
+  const groups = isPlatformAdmin
+    ? [...navGroups, { label: 'Platform admin', items: [{ path: '/admin/billing', label: 'Subscribers & Billing', icon: CreditCard }] }]
+    : navGroups;
 
   return (
     <Sidebar collapsible="icon">
@@ -117,8 +122,8 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
-        {navGroups.map(group => {
-          const items = group.items.filter(i => i.enabled !== false && !isLoading && !!businessId && canAccess(permissions, i.path));
+        {groups.map(group => {
+          const items = group.items.filter(i => i.path === '/admin/billing' || (i.enabled !== false && !isLoading && !!businessId && canAccess(permissions, i.path)));
           if (items.length === 0) return null;
           return (
             <SidebarGroup key={group.label}>

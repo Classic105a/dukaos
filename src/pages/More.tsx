@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { FEATURES } from '@/lib/feature-flags';
 import { usePermissions } from '@/hooks/usePermissions';
 import { canAccess } from '@/lib/nav-access';
+import { useIsPlatformAdmin } from '@/hooks/usePricing';
 
 interface NavBoxItem {
   path: string;
@@ -112,9 +113,16 @@ const More = () => {
   const { user } = useAuth();
   const { currentBranch, branches } = useBranch();
   const { permissions, role } = usePermissions();
+  const { data: isPlatformAdmin } = useIsPlatformAdmin();
   const visibleGroups = navGroups
     .map(g => ({ ...g, items: g.items.filter(i => canAccess(permissions, i.path)) }))
     .filter(g => g.items.length > 0);
+  if (isPlatformAdmin) {
+    visibleGroups.push({
+      label: 'Platform admin',
+      items: [{ path: '/admin/billing', label: 'Subscribers', icon: Wallet, color: 'text-primary', bg: 'bg-primary/10' }],
+    });
+  }
   const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Member';
 
   return (

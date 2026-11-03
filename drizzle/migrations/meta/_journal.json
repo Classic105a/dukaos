@@ -29,6 +29,13 @@
       "when": 1791677452441,
       "tag": "0003_scope_billing_settings_read",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793730723690,
+      "tag": "0004_platform_admin_view_businesses",
+      "breakpoints": true
     }
   ]
 }
