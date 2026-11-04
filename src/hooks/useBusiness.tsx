@@ -39,7 +39,7 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
         .from('business_users')
         .select('business_id')
         .eq('user_id', user!.id)
-        .eq('is_active', true);
+        .eq('status', 'active');
       if (mErr) throw mErr;
       const ids = (memberships ?? []).map(m => m.business_id);
       if (ids.length === 0) return [] as Business[];
