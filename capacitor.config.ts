@@ -7,7 +7,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const isDev = process.env.CAP_DEV === '1';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.9f53401b13e24b63bc62944bb82a6e79',
+  appId: 'com.dukaos.pos',
   appName: 'DukaOS',
   webDir: 'dist',
   ...(isDev

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DukaOS</string>
+    <string name="title_activity_main">DukaOS</string>
+    <string name="package_name">com.dukaos.pos</string>
+    <string name="custom_url_scheme">com.dukaos.pos</string>
+</resources>
